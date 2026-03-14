@@ -11,23 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('navigation_links', function (Blueprint $table) {
-
+        Schema::create('homepage_hero_sections', function (Blueprint $table) {
             $table->id();
-
             $table->string('title');
-
-            $table->string('url');
-
-            $table->integer('display_order')->default(0);
-
+            $table->string('subtitle')->nullable();
+            $table->string('button_text')->nullable();
+            $table->string('button_link')->nullable();
+            $table->string('background_image')->nullable();
             $table->boolean('is_active')->default(true);
-
-            $table->string('slug')->nullable();
-            $table->text('meta_description')->nullable();
-            $table->text('meta_keywords')->nullable();
-            $table->string('meta_title')->nullable();
-
             $table->timestamps();
         });
     }
@@ -37,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('navigation_links');
+        Schema::dropIfExists('homepage_hero_sections');
     }
 };

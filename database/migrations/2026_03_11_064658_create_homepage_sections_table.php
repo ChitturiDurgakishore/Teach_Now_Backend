@@ -23,6 +23,12 @@ return new class extends Migration
 
             $table->string('background_color')->nullable();
 
+            $table->integer('display_order')->default(0);
+            $table->string('slug')->nullable();
+            $table->text('meta_description')->nullable();
+            $table->text('meta_keywords')->nullable();
+            $table->string('meta_title')->nullable();
+
             $table->timestamps();
         });
     }

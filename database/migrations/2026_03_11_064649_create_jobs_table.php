@@ -17,7 +17,7 @@ return new class extends Migration
 
             $table->foreignId('employer_id')->constrained()->cascadeOnDelete();
 
-            $table->foreignId('created_by')->constrained('employer_users');
+            $table->foreignId('created_by')->constrained('employer_users')->cascadeOnDelete();
 
             $table->foreignId('category_id')->constrained();
 

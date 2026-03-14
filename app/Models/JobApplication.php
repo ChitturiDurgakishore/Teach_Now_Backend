@@ -30,4 +30,16 @@ class JobApplication extends Model
         'status',
         'slug'
     ];
+
+    public function answers()
+    {
+        return $this->hasMany(JobAnswer::class, 'job_id', 'job_id')
+            ->where('job_seeker_id', $this->job_seeker_id);
+    }
+    // Remove the 'answers' function and keep only this one
+    public function jobAnswers()
+    {
+        // Ensure 'application_id' is the ACTUAL column name in your job_answers table
+        return $this->hasMany(JobAnswer::class, 'application_id');
+    }
 }

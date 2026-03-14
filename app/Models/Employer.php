@@ -26,6 +26,10 @@ class Employer extends Authenticatable
     {
         return $this->hasMany(Payment::class);
     }
+    public function employerUsers()
+    {
+        return $this->hasMany(EmployerUser::class, 'employer_id');
+    }
     protected $fillable = [
 
         'company_name',

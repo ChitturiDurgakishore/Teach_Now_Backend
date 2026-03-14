@@ -31,6 +31,10 @@ class JobSeeker extends Model
     {
         return $this->hasMany(GeneratedCv::class);
     }
+    public function jobApplications()
+    {
+        return $this->hasMany(JobApplication::class, 'job_seeker_id');
+    }
 
     protected $fillable = [
         'user_id',

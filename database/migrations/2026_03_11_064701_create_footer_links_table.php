@@ -27,6 +27,10 @@ return new class extends Migration
 
             $table->boolean('is_active')->default(true);
 
+            $table->string('slug')->nullable();
+            $table->text('meta_description')->nullable();
+            $table->text('meta_keywords')->nullable();
+            $table->string('meta_title')->nullable();
             $table->timestamps();
         });
     }

@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Job;
 use App\Models\JobApplication;
-
+use App\Models\JobQuestion;
+use App\Models\JobAnswer;
 
 class RecruiterController extends Controller
 {
@@ -32,7 +33,7 @@ class RecruiterController extends Controller
                 ], 401);
             }
 
-            if (!$user->is_active) {
+            if (!$user->is_active==1) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Account disabled'
@@ -97,11 +98,18 @@ class RecruiterController extends Controller
                 'location' => 'nullable|string|max:200',
                 'experience_required' => 'nullable|integer',
                 'job_type' => 'required|in:full_time,part_time,internship,contract',
-                'application_deadline' => 'nullable|date'
+                'application_deadline' => 'nullable|date',
+
+                // questions validation
+                'questions' => 'nullable|array',
+                'questions.*.question' => 'required_with:questions|string',
+                'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
+                'questions.*.recruiter_answer' => 'nullable|string'
             ]);
 
             $recruiter = Auth::guard('employer_user')->user();
 
+            // Create Job
             $job = Job::create([
                 'employer_id' => $recruiter->employer_id,
                 'created_by' => $recruiter->id,
@@ -117,10 +125,31 @@ class RecruiterController extends Controller
                 'application_deadline' => $request->application_deadline
             ]);
 
+            $questionsCreated = [];
+
+            // Add questions if provided
+            if ($request->has('questions')) {
+
+                foreach ($request->questions as $q) {
+
+                    $question = JobQuestion::create([
+                        'job_id' => $job->id,
+                        'question' => $q['question'],
+                        'question_type' => $q['question_type'],
+                        'recruiter_answer' => $q['recruiter_answer'] ?? null
+                    ]);
+
+                    $questionsCreated[] = $question;
+                }
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job created successfully',
-                'data' => $job
+                'data' => [
+                    'job' => $job,
+                    'questions' => $questionsCreated
+                ]
             ], 201);
         } catch (\Exception $e) {
 
@@ -137,6 +166,25 @@ class RecruiterController extends Controller
     {
         try {
 
+            $request->validate([
+                'title' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'category_id' => 'nullable|exists:categories,id',
+                'salary_min' => 'nullable|numeric',
+                'salary_max' => 'nullable|numeric',
+                'vacancies' => 'nullable|integer',
+                'location' => 'nullable|string|max:200',
+                'experience_required' => 'nullable|integer',
+                'job_type' => 'nullable|in:full_time,part_time,internship,contract',
+                'application_deadline' => 'nullable|date',
+
+                // questions validation
+                'questions' => 'nullable|array',
+                'questions.*.question' => 'required_with:questions|string',
+                'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
+                'questions.*.recruiter_answer' => 'nullable|string'
+            ]);
+
             $recruiter = Auth::guard('employer_user')->user();
 
             $job = Job::where('id', $id)
@@ -150,12 +198,48 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
-            $job->update($request->all());
+            // Update job fields
+            $job->update($request->only([
+                'title',
+                'description',
+                'category_id',
+                'salary_min',
+                'salary_max',
+                'vacancies',
+                'location',
+                'experience_required',
+                'job_type',
+                'application_deadline'
+            ]));
+
+            $questionsUpdated = [];
+
+            // Update questions if provided
+            if ($request->has('questions')) {
+
+                // remove old questions
+                JobQuestion::where('job_id', $job->id)->delete();
+
+                foreach ($request->questions as $q) {
+
+                    $question = JobQuestion::create([
+                        'job_id' => $job->id,
+                        'question' => $q['question'],
+                        'question_type' => $q['question_type'],
+                        'recruiter_answer' => $q['recruiter_answer'] ?? null
+                    ]);
+
+                    $questionsUpdated[] = $question;
+                }
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'Job updated successfully',
-                'data' => $job
+                'data' => [
+                    'job' => $job,
+                    'questions' => $questionsUpdated
+                ]
             ], 200);
         } catch (\Exception $e) {
 
@@ -248,7 +332,10 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
-            $applications = JobApplication::where('job_id', $jobId)->latest()->get();
+            $applications = JobApplication::where('job_id', $jobId)->with([
+                'jobSeeker',
+                'answers.question'
+            ])->latest()->get();
 
             return response()->json([
                 'status' => true,
@@ -271,7 +358,10 @@ class RecruiterController extends Controller
     {
         try {
 
-            $application = JobApplication::with('jobSeeker')->find($applicationId);
+            $application = JobApplication::with([
+                'jobSeeker',
+                'answers.question'
+            ])->find($applicationId);
 
             if (!$application) {
                 return response()->json([

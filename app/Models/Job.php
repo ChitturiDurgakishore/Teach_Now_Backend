@@ -33,6 +33,12 @@ class Job extends Model
         return $this->hasMany(JobApplication::class, 'job_id');
     }
 
+    public function jobQuestions()
+    {
+        // This assumes your questions table has a 'job_id' column
+        return $this->hasMany(JobQuestion::class, 'job_id');
+    }
+
     public $fillable = [
         'employer_id',
         'created_by',
@@ -49,6 +55,10 @@ class Job extends Model
         'status',
         'featured',
         'admin_featured',
-        'application_deadline'
+        'application_deadline',
+        'slug',
+        'meta_title',
+        'meta_description',
+        'meta_keywords'
     ];
 }

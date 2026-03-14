@@ -45,6 +45,12 @@ class AuthController extends Controller
                 'message' => 'Invalid credentials'
             ], 401);
         }
+        if(Auth::user()->is_active == 0) {
+            Auth::logout();
+            return response()->json([
+                'message' => 'Your account is disabled. Please contact support.'
+            ], 403);
+        }
 
         $request->session()->regenerate();
 

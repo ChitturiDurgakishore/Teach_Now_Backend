@@ -14,6 +14,8 @@ use App\Models\Employer;
 use App\Models\Category;
 use App\Models\Location;
 use App\Models\User;
+use App\Models\JobQuestion;
+use App\Models\JobAnswer;
 
 class JobBrowseController extends Controller
 {
@@ -60,9 +62,14 @@ class JobBrowseController extends Controller
                 ], 404);
             }
 
+            $questions = JobQuestion::where('job_id', $id)->get();
+
             return response()->json([
                 'status' => true,
-                'data' => $job
+                'data' => [
+                    'job' => $job,
+                    'questions' => $questions
+                ]
             ], 200);
         } catch (\Exception $e) {
 
@@ -75,9 +82,15 @@ class JobBrowseController extends Controller
     }
 
     // Job Application
-    public function applyJob($jobId)
+    public function applyJob(Request $request, $jobId)
     {
         try {
+
+            $request->validate([
+                'answers' => 'nullable|array',
+                'answers.*.question_id' => 'required|exists:job_questions,id',
+                'answers.*.candidate_answer' => 'required'
+            ]);
 
             $user = Auth::user();
 
@@ -124,12 +137,27 @@ class JobBrowseController extends Controller
                 ], 404);
             }
 
+            // Create Job Application
             $application = JobApplication::create([
                 'job_id' => $jobId,
                 'job_seeker_id' => $jobSeeker->id,
                 'resume_id' => $resume->id,
                 'status' => 'applied'
             ]);
+
+            // Save screening question answers
+            if ($request->has('answers')) {
+
+                foreach ($request->answers as $ans) {
+
+                    JobAnswer::create([
+                        'job_question_id' => $ans['question_id'],
+                        'job_id' => $jobId,
+                        'job_seeker_id' => $jobSeeker->id,
+                        'candidate_answer' => $ans['candidate_answer']
+                    ]);
+                }
+            }
 
             return response()->json([
                 'status' => true,
@@ -145,7 +173,6 @@ class JobBrowseController extends Controller
             ], 500);
         }
     }
-
     //Get applied Jobs
 
     public function getAppliedJobs()
@@ -354,6 +381,4 @@ class JobBrowseController extends Controller
             ], 500);
         }
     }
-
-
 }

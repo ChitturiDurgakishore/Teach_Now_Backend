@@ -11,23 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('navigation_links', function (Blueprint $table) {
-
+        Schema::create('homepage_stats', function (Blueprint $table) {
             $table->id();
-
-            $table->string('title');
-
-            $table->string('url');
-
-            $table->integer('display_order')->default(0);
-
+            $table->integer('total_jobs')->default(0);
+            $table->integer('total_companies')->default(0);
+            $table->integer('total_candidates')->default(0);
+            $table->integer('total_recruiters')->default(0);
             $table->boolean('is_active')->default(true);
-
-            $table->string('slug')->nullable();
-            $table->text('meta_description')->nullable();
-            $table->text('meta_keywords')->nullable();
-            $table->string('meta_title')->nullable();
-
             $table->timestamps();
         });
     }
@@ -37,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('navigation_links');
+        Schema::dropIfExists('homepage_stats');
     }
 };

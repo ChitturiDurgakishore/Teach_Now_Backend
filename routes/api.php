@@ -7,8 +7,9 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\EmployerController;
 use App\Http\Controllers\Api\JobBrowseController;
-
-
+use App\Http\Controllers\Api\Admin\AdminController;
+use App\Http\Controllers\Api\Admin\AdminSEOController;
+use App\Http\Controllers\Api\Admin\AdminCMSController;
 
 Route::prefix('auth')->group(function () {
 
@@ -65,8 +66,134 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::post('/locations', [LocationController::class, 'store']);
     Route::put('/locations/{id}', [LocationController::class, 'update']);
     Route::delete('/locations/{id}', [LocationController::class, 'destroy']);
+
+    // Dashboard and analytics
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+
+    //Jobs Management for Admin
+    Route::get('/jobs', [AdminController::class, 'getAllJobs']);
+
+    Route::get('/jobs/{id}', [AdminController::class, 'getJobDetails']);
+
+    Route::patch('/jobs/{id}/approve', [AdminController::class, 'approveJob']);
+
+    Route::patch('/jobs/{id}/reject', [AdminController::class, 'rejectJob']);
+
+    Route::patch('/jobs/{id}/feature', [AdminController::class, 'featureJob']);
+
+    Route::delete('/jobs/{id}', [AdminController::class, 'deleteJob']);
+
+    //Employer Management for Admin
+
+    Route::get('/employers', [AdminController::class, 'getEmployers']);
+
+    Route::get('/employers/{id}', [AdminController::class, 'getEmployerDetails']);
+
+    Route::put('/employers/{id}', [AdminController::class, 'updateEmployer']);
+
+    Route::delete('/employers/{id}', [AdminController::class, 'deleteEmployer']);
+
+    Route::patch('/employers/{id}/verify', [AdminController::class, 'verifyEmployer']);
+
+    Route::patch('/employers/{id}/feature', [AdminController::class, 'featureEmployer']);
+
+    //Recruiters Management for Admin
+
+    Route::get('/recruiters', [AdminController::class, 'getRecruiters']);
+
+    Route::get('/recruiters/{id}', [AdminController::class, 'getRecruiterDetails']);
+
+    Route::patch('/recruiters/{id}/disable', [AdminController::class, 'disableRecruiter']);
+
+    Route::delete('/recruiters/{id}', [AdminController::class, 'deleteRecruiter']);
+
+    //Job Seekers Management for Admin
+    Route::get('/jobseekers', [AdminController::class, 'getJobSeekers']);
+
+    Route::get('/jobseekers/{id}', [AdminController::class, 'getJobSeekerDetails']);
+
+    Route::patch('/jobseekers/{id}/disable', [AdminController::class, 'disableJobSeeker']);
+
+    Route::delete('/jobseekers/{id}', [AdminController::class, 'deleteJobSeeker']);
+
+    //Application Management for Admin
+
+    Route::get('/applications', [AdminController::class, 'getApplications']);
+
+    Route::get('/applications/{id}', [AdminController::class, 'getApplicationDetails']);
+
+    Route::get('/jobs/{jobId}/applications', [AdminController::class, 'getApplicationsByJob']);
+
+    Route::delete('/applications/{id}', [AdminController::class, 'deleteApplication']);
 });
 
+// ----------------------------------------------------------------------------------
+//Admin SEO Management routes
+
+
+Route::prefix('admin/seo')->middleware(['auth', 'role:admin'])->group(function () {
+
+    Route::put('/job/{id}', [AdminSEOController::class, 'updateJobSEO']);
+    Route::put('/category/{id}', [AdminSEOController::class, 'updateCategorySEO']);
+    Route::put('/location/{id}', [AdminSEOController::class, 'updateLocationSEO']);
+    Route::put('/employer/{id}', [AdminSEOController::class, 'updateEmployerSEO']);
+
+    Route::put('/homepage-section/{id}', [AdminSEOController::class, 'updateHomepageSectionSEO']);
+    Route::put('/navigation/{id}', [AdminSEOController::class, 'updateNavigationLinkSEO']);
+    Route::put('/footer-section/{id}', [AdminSEOController::class, 'updateFooterSectionSEO']);
+    Route::put('/footer-link/{id}', [AdminSEOController::class, 'updateFooterLinkSEO']);
+});
+
+
+// ----------------------------------------------------------------------------------
+//Admin CMS Management routes
+
+Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function () {
+
+    //HeroSection
+    Route::get('/hero', [AdminCMSController::class, 'getHeroSection']);
+    Route::post('/hero', [AdminCMSController::class, 'updateHeroSection']);
+
+    //StatsSection
+    Route::get('stats', [AdminCMSController::class, 'getStats']);
+    Route::post('stats', [AdminCMSController::class, 'updateStats']);
+
+    // Testimonials
+    Route::get('testimonials', [AdminCMSController::class, 'getTestimonials']);
+    Route::post('testimonials', [AdminCMSController::class, 'createTestimonial']);
+    Route::put('testimonials/{id}', [AdminCMSController::class, 'updateTestimonial']);
+    Route::delete('testimonials/{id}', [AdminCMSController::class, 'deleteTestimonial']);
+    Route::patch('testimonials/{id}/toggle', [AdminCMSController::class, 'toggleTestimonial']);
+
+    // CTA Section
+
+    Route::get('cta', [AdminCMSController::class, 'getCTASection']);
+    Route::post('cta', [AdminCMSController::class, 'updateCTASection']);
+
+    // Navigation Links
+
+    Route::get('navigation', [AdminCMSController::class, 'getNavigationLinks']);
+    Route::post('navigation', [AdminCMSController::class, 'createNavigationLink']);
+    Route::put('navigation/{id}', [AdminCMSController::class, 'updateNavigationLink']);
+    Route::delete('navigation/{id}', [AdminCMSController::class, 'deleteNavigationLink']);
+    Route::patch('navigation/{id}/toggle', [AdminCMSController::class, 'toggleNavigationLink']);
+
+    // Footer Sections
+
+    Route::get('footer-sections', [AdminCMSController::class, 'getFooterSections']);
+    Route::post('footer-sections', [AdminCMSController::class, 'createFooterSection']);
+    Route::put('footer-sections/{id}', [AdminCMSController::class, 'updateFooterSection']);
+    Route::delete('footer-sections/{id}', [AdminCMSController::class, 'deleteFooterSection']);
+    Route::patch('footer-sections/{id}/toggle', [AdminCMSController::class, 'toggleFooterSection']);
+
+    // Footer Links
+
+    Route::get('footer-links', [AdminCMSController::class, 'getFooterLinks']);
+    Route::post('footer-links', [AdminCMSController::class, 'createFooterLink']);
+    Route::put('footer-links/{id}', [AdminCMSController::class, 'updateFooterLink']);
+    Route::delete('footer-links/{id}', [AdminCMSController::class, 'deleteFooterLink']);
+    Route::patch('footer-links/{id}/toggle', [AdminCMSController::class, 'toggleFooterLink']);
+});
 
 // ----------------------------------------------------------------------------------
 // Employer routes
@@ -173,5 +300,4 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
     Route::delete('/jobs/{id}/bookmark', [JobBrowseController::class, 'removeBookmark']);
 
     Route::get('/bookmarks', [JobBrowseController::class, 'getBookmarkedJobs']);
-
 });
