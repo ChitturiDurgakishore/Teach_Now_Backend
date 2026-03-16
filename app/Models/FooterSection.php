@@ -15,4 +15,9 @@ class FooterSection extends Model
         'meta_description',
         'meta_keywords'
     ];
+
+    public function links()
+    {
+        return $this->hasMany(FooterLink::class, 'section_id');
+    }
 }

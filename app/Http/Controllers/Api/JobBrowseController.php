@@ -28,11 +28,11 @@ class JobBrowseController extends Controller
             $jobs = Job::where('status', 'approved')
                 ->where('job_status', 'open')
                 ->latest()
-                ->get();
+                ->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total_jobs' => $jobs->count(),
+                'total_jobs' => $jobs->total(),
                 'data' => $jobs
             ], 200);
         } catch (\Exception $e) {

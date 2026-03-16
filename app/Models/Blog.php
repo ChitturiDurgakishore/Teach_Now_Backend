@@ -10,4 +10,16 @@ class Blog extends Model
     {
         return $this->belongsTo(User::class, 'author_id');
     }
+    public $fillable = [
+        'title',
+        'slug',
+        'content',
+        'image',
+        'meta_title',
+        'meta_description',
+        'meta_keywords',
+        'is_active',
+        'author_id',
+        'is_featured'
+    ];
 }

@@ -88,11 +88,11 @@ class AdminController extends Controller
                 'category:id,name'
             ])
                 ->latest()
-                ->get();
+                ->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total_jobs' => $jobs->count(),
+                'total_jobs' => $jobs->total(),
                 'data' => $jobs
             ], 200);
         } catch (\Exception $e) {
@@ -272,11 +272,11 @@ class AdminController extends Controller
     {
         try {
 
-            $employers = Employer::latest()->get();
+            $employers = Employer::latest()->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total_employers' => $employers->count(),
+                'total_employers' => $employers->total(),
                 'data' => $employers
             ], 200);
         } catch (\Exception $e) {
@@ -458,11 +458,11 @@ class AdminController extends Controller
 
             $recruiters = EmployerUser::with('employer:id,company_name')
                 ->latest()
-                ->get();
+                ->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total_recruiters' => $recruiters->count(),
+                'total_recruiters' => $recruiters->total(),
                 'data' => $recruiters
             ], 200);
         } catch (\Exception $e) {
@@ -581,11 +581,11 @@ class AdminController extends Controller
 
             $jobSeekers = JobSeeker::with('user:id,name,email')
                 ->latest()
-                ->get();
+                ->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total_job_seekers' => $jobSeekers->count(),
+                'total_job_seekers' => $jobSeekers->total(),
                 'data' => $jobSeekers
             ], 200);
         } catch (\Exception $e) {
@@ -716,11 +716,11 @@ class AdminController extends Controller
                 'jobSeeker.user:id,name,email'
             ])
                 ->latest()
-                ->get();
+                ->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total_applications' => $applications->count(),
+                'total_applications' => $applications->total(),
                 'data' => $applications
             ], 200);
         } catch (\Exception $e) {
@@ -781,7 +781,7 @@ class AdminController extends Controller
 
             return response()->json([
                 'status' => true,
-                'total' => $applications->count(),
+                'total' => $applications->total(),
                 'data' => $applications
             ], 200);
         } catch (\Exception $e) {

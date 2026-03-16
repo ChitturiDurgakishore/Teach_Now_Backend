@@ -335,11 +335,11 @@ class RecruiterController extends Controller
             $applications = JobApplication::where('job_id', $jobId)->with([
                 'jobSeeker',
                 'answers.question'
-            ])->latest()->get();
+            ])->latest()->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total_applications' => $applications->count(),
+                'total_applications' => $applications->total(),
                 'data' => $applications
             ], 200);
         } catch (\Exception $e) {
@@ -424,11 +424,11 @@ class RecruiterController extends Controller
             $shortlisted = JobApplication::where('job_id', $jobId)
                 ->where('status', 'shortlisted')
                 ->with('jobSeeker')
-                ->get();
+                ->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total_shortlisted' => $shortlisted->count(),
+                'total_shortlisted' => $shortlisted->total(),
                 'data' => $shortlisted
             ], 200);
         } catch (\Exception $e) {

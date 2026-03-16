@@ -11,6 +11,10 @@ use App\Models\NavigationLink;
 use App\Models\FooterSection;
 use App\Models\FooterLink;
 use Illuminate\Http\Request;
+use App\Models\HomepageCompanyLogo;
+use App\Models\FAQ;
+use App\Models\Blog;
+
 
 class AdminCMSController extends Controller
 {
@@ -549,7 +553,11 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $sections = FooterSection::orderBy('display_order')->get();
+            $sections = FooterSection::with(['links' => function ($query) {
+                $query->orderBy('display_order');
+            }])
+                ->orderBy('display_order')
+                ->get();
 
             return response()->json([
                 'status' => true,
@@ -840,6 +848,418 @@ class AdminCMSController extends Controller
                 'status' => true,
                 'message' => 'Footer link status updated',
                 'data' => $link
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // =================================================================
+    // Company Logo and Title
+
+    public function getCompanyLogos()
+    {
+        try {
+
+            $logos = HomepageCompanyLogo::orderBy('display_order')->get();
+
+            return response()->json([
+                'status' => true,
+                'total' => $logos->count(),
+                'data' => $logos
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch company logos',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Create
+    public function createCompanyLogo(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'company_name' => 'required|string|max:255',
+                'company_logo' => 'required|string',
+                'slug' => 'nullable|string|max:255',
+                'company_url' => 'nullable|string|max:255',
+                'display_order' => 'nullable|integer',
+                'is_featured' => 'nullable|boolean',
+                'is_verified' => 'nullable|boolean',
+                'is_active' => 'nullable|boolean',
+                'meta_title' => 'nullable|string|max:255',
+                'meta_description' => 'nullable|string',
+                'meta_keywords' => 'nullable|string'
+            ]);
+
+            $logo = HomepageCompanyLogo::create([
+                'company_name' => $request->company_name,
+                'company_logo' => $request->company_logo,
+                'slug' => $request->slug,
+                'company_url' => $request->company_url,
+                'display_order' => $request->display_order ?? 0,
+                'is_featured' => $request->is_featured ?? false,
+                'is_verified' => $request->is_verified ?? false,
+                'is_active' => $request->is_active ?? true,
+                'meta_title' => $request->meta_title,
+                'meta_description' => $request->meta_description,
+                'meta_keywords' => $request->meta_keywords
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Company logo created successfully',
+                'data' => $logo
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // update company logo and title
+
+    public function updateCompanyLogo(Request $request, $id = null)
+    {
+        try {
+
+            $request->validate([
+                'company_name' => 'required|string|max:255',
+                'company_logo' => 'required|string',
+                'slug' => 'nullable|string',
+                'company_url' => 'nullable|string',
+                'display_order' => 'nullable|integer'
+            ]);
+
+            if ($id) {
+
+                $logo = HomepageCompanyLogo::find($id);
+
+                if (!$logo) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Company logo not found'
+                    ], 404);
+                }
+
+                $logo->update($request->all());
+            } else {
+
+                $logo = HomepageCompanyLogo::create($request->all());
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Company logo saved successfully',
+                'data' => $logo
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteCompanyLogo($id)
+    {
+        try {
+
+            $logo = HomepageCompanyLogo::find($id);
+
+            if (!$logo) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Logo not found'
+                ], 404);
+            }
+
+            $logo->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Logo deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // =================================================================
+
+    // FAQs
+    //    Creating FAQs
+    public function createFAQ(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'question' => 'required|string|max:255',
+                'answer' => 'required|string',
+                'display_order' => 'nullable|integer'
+            ]);
+
+            $faq = FAQ::create([
+                'question' => $request->question,
+                'answer' => $request->answer,
+                'display_order' => $request->display_order ?? 0,
+                'is_active' => 1
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'FAQ created successfully',
+                'data' => $faq
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Getting FAQs
+    public function getFAQs()
+    {
+        $faqs = FAQ::orderBy('display_order')->get();
+
+        return response()->json([
+            'status' => true,
+            'total' => $faqs->count(),
+            'data' => $faqs
+        ]);
+    }
+
+    // Updating FAQS
+    public function updateFAQ(Request $request, $id)
+    {
+        $faq = FAQ::find($id);
+
+        if (!$faq) {
+            return response()->json([
+                'status' => false,
+                'message' => 'FAQ not found'
+            ], 404);
+        }
+
+        $faq->update($request->all());
+
+        return response()->json([
+            'status' => true,
+            'message' => 'FAQ updated',
+            'data' => $faq
+        ]);
+    }
+
+    // Deleting FAQs
+    public function deleteFAQ($id)
+    {
+        $faq = FAQ::find($id);
+
+        if (!$faq) {
+            return response()->json([
+                'status' => false,
+                'message' => 'FAQ not found'
+            ], 404);
+        }
+
+        $faq->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'FAQ deleted'
+        ]);
+    }
+
+    // =================================================================
+
+    // Blogs management
+
+    // Get Blogs
+
+    public function getBlogs()
+    {
+        try {
+
+            $blogs = Blog::latest()->paginate(10);
+
+            return response()->json([
+                'status' => true,
+                'total' => $blogs->total(),
+                'data' => $blogs
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch blogs',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    // Create Blogs
+
+    public function createBlog(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'slug' => 'required|string|max:255|unique:blogs,slug',
+                'content' => 'required|string',
+                'featured_image' => 'nullable|string',
+                'meta_title' => 'nullable|string|max:255',
+                'meta_description' => 'nullable|string',
+                'meta_keywords' => 'nullable|string'
+            ]);
+
+            $blog = Blog::create([
+                'title' => $request->title,
+                'slug' => $request->slug,
+                'content' => $request->content,
+                'featured_image' => $request->featured_image,
+                'meta_title' => $request->meta_title,
+                'meta_description' => $request->meta_description,
+                'meta_keywords' => $request->meta_keywords,
+                'is_active' => true
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Blog created successfully',
+                'data' => $blog
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Blog creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    // Update Blogs
+
+    public function updateBlog(Request $request, $id)
+    {
+        try {
+
+            $blog = Blog::find($id);
+
+            if (!$blog) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Blog not found'
+                ], 404);
+            }
+
+            $blog->update([
+                'title' => $request->title ?? $blog->title,
+                'slug' => $request->slug ?? $blog->slug,
+                'content' => $request->content ?? $blog->content,
+                'featured_image' => $request->featured_image ?? $blog->featured_image,
+                'meta_title' => $request->meta_title ?? $blog->meta_title,
+                'meta_description' => $request->meta_description ?? $blog->meta_description,
+                'meta_keywords' => $request->meta_keywords ?? $blog->meta_keywords
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Blog updated successfully',
+                'data' => $blog
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Blog update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Deleting Blogs
+
+    public function deleteBlog($id)
+    {
+        try {
+
+            $blog = Blog::find($id);
+
+            if (!$blog) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Blog not found'
+                ], 404);
+            }
+
+            $blog->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Blog deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Toggle Blog Status
+
+    public function toggleBlogStatus($id)
+    {
+        try {
+
+            $blog = Blog::find($id);
+
+            if (!$blog) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Blog not found'
+                ], 404);
+            }
+
+            $blog->update([
+                'is_active' => !$blog->is_active
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Blog status updated',
+                'data' => $blog
             ], 200);
         } catch (\Exception $e) {
 

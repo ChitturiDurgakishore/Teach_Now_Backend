@@ -42,4 +42,10 @@ class JobApplication extends Model
         // Ensure 'application_id' is the ACTUAL column name in your job_answers table
         return $this->hasMany(JobAnswer::class, 'application_id');
     }
+
+public function applicationAnswers()
+{
+
+    return $this->hasMany(JobAnswer::class, 'job_id', 'job_id');
+}
 }

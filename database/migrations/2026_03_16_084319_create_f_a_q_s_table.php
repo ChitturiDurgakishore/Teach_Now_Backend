@@ -11,25 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('blogs', function (Blueprint $table) {
-
+        Schema::create('f_a_q_s', function (Blueprint $table) {
             $table->id();
-
-            $table->string('title');
-
-            $table->text('content');
-
-            $table->string('image')->nullable();
-
-            $table->foreignId('author_id')->nullable();
+            $table->string('question');
+            $table->text('answer');
+            $table->integer('display_order')->default(0);
             $table->boolean('is_active')->default(true);
-            $table->boolean('is_featured')->default(false);
             $table->timestamps();
-
             $table->string('meta_title')->nullable();
             $table->text('meta_description')->nullable();
-            $table->string('meta_keywords')->nullable();
-            $table->string('slug')->unique();
+            $table->text('meta_keywords')->nullable();
+            $table->string('slug')->unique()->nullable();
         });
     }
 
@@ -38,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('blogs');
+        Schema::dropIfExists('f_a_q_s');
     }
 };

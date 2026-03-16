@@ -10,6 +10,8 @@ use App\Models\Job;
 use App\Models\JobApplication;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use App\Models\JobQuestion;
+use App\Models\JobAnswer;
 
 class EmployerController extends Controller
 {
@@ -279,7 +281,6 @@ class EmployerController extends Controller
 
     //Employer Dashboard
 
-
     public function dashboard()
     {
         try {
@@ -299,13 +300,35 @@ class EmployerController extends Controller
                     $q->where('employer_id', $employer->id);
                 })->count();
 
+            // Latest 5 Jobs posted by recruiters
+            $latestJobs = Job::where('employer_id', $employer->id)
+                ->latest()
+                ->limit(5)
+                ->select('id', 'title', 'job_status', 'created_at')
+                ->get();
+
+            // Latest 5 Applications received
+            $latestApplications = JobApplication::whereHas('job', function ($q) use ($employer) {
+                $q->where('employer_id', $employer->id);
+            })
+                ->with([
+                    'job:id,title',
+                    'jobSeeker.user:id,name,email'
+                ])
+                ->latest()
+                ->limit(5)
+                ->get();
+
             return response()->json([
                 'status' => true,
                 'data' => [
                     'total_recruiters' => $totalRecruiters,
                     'total_jobs' => $totalJobs,
                     'total_applications' => $totalApplications,
-                    'shortlisted_candidates' => $shortlisted
+                    'shortlisted_candidates' => $shortlisted,
+
+                    'latest_jobs' => $latestJobs,
+                    'latest_applications' => $latestApplications
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -317,7 +340,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
 
     // Jobs Created by Company
 
@@ -345,6 +367,227 @@ class EmployerController extends Controller
         }
     }
 
+    // Creating new Job for Company
+
+    public function createJob(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'required|string',
+                'category_id' => 'required|exists:categories,id',
+                'salary_min' => 'nullable|numeric',
+                'salary_max' => 'nullable|numeric',
+                'vacancies' => 'nullable|integer',
+                'location' => 'nullable|string|max:200',
+                'experience_required' => 'nullable|integer',
+                'job_type' => 'required|in:full_time,part_time,internship,contract',
+                'application_deadline' => 'nullable|date',
+
+                // questions validation
+                'questions' => 'nullable|array',
+                'questions.*.question' => 'required_with:questions|string',
+                'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
+                'questions.*.recruiter_answer' => 'nullable|string'
+            ]);
+
+            $employer = Auth::guard('employer')->user();
+
+            // Create Job
+            $job = Job::create([
+                'employer_id' => $employer->id,
+                'created_by' => $employer->id, // employer created
+                'category_id' => $request->category_id,
+                'title' => $request->title,
+                'description' => $request->description,
+                'salary_min' => $request->salary_min,
+                'salary_max' => $request->salary_max,
+                'vacancies' => $request->vacancies,
+                'location' => $request->location,
+                'experience_required' => $request->experience_required,
+                'job_type' => $request->job_type,
+                'application_deadline' => $request->application_deadline
+            ]);
+
+            $questionsCreated = [];
+
+            // Add questions if provided
+            if ($request->has('questions')) {
+
+                foreach ($request->questions as $q) {
+
+                    $question = JobQuestion::create([
+                        'job_id' => $job->id,
+                        'question' => $q['question'],
+                        'question_type' => $q['question_type'],
+                        'recruiter_answer' => $q['recruiter_answer'] ?? null
+                    ]);
+
+                    $questionsCreated[] = $question;
+                }
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job created successfully',
+                'data' => [
+                    'job' => $job,
+                    'questions' => $questionsCreated
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Job creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Update Job for Company
+
+    public function updateJob(Request $request, $id)
+    {
+        try {
+
+            $request->validate([
+                'title' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'category_id' => 'nullable|exists:categories,id',
+                'salary_min' => 'nullable|numeric',
+                'salary_max' => 'nullable|numeric',
+                'vacancies' => 'nullable|integer',
+                'location' => 'nullable|string|max:200',
+                'experience_required' => 'nullable|integer',
+                'job_type' => 'nullable|in:full_time,part_time,internship,contract',
+                'application_deadline' => 'nullable|date',
+
+                'questions' => 'nullable|array',
+                'questions.*.id' => 'nullable|exists:job_questions,id',
+                'questions.*.question' => 'required_with:questions|string',
+                'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
+                'questions.*.recruiter_answer' => 'nullable|string'
+            ]);
+
+            $employer = Auth::guard('employer')->user();
+
+            $job = Job::where('id', $id)
+                ->where('employer_id', $employer->id)
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            // Update Job
+            $job->update($request->only([
+                'title',
+                'description',
+                'category_id',
+                'salary_min',
+                'salary_max',
+                'vacancies',
+                'location',
+                'experience_required',
+                'job_type',
+                'application_deadline'
+            ]));
+
+            $questionsUpdated = [];
+
+            // Handle questions
+            if ($request->has('questions')) {
+
+                foreach ($request->questions as $q) {
+
+                    if (isset($q['id'])) {
+
+                        $question = JobQuestion::where('id', $q['id'])
+                            ->where('job_id', $job->id)
+                            ->first();
+
+                        if ($question) {
+                            $question->update([
+                                'question' => $q['question'],
+                                'question_type' => $q['question_type'],
+                                'recruiter_answer' => $q['recruiter_answer'] ?? null
+                            ]);
+                        }
+                    } else {
+
+                        $question = JobQuestion::create([
+                            'job_id' => $job->id,
+                            'question' => $q['question'],
+                            'question_type' => $q['question_type'],
+                            'recruiter_answer' => $q['recruiter_answer'] ?? null
+                        ]);
+                    }
+
+                    $questionsUpdated[] = $question;
+                }
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job updated successfully',
+                'data' => [
+                    'job' => $job,
+                    'questions' => $questionsUpdated
+                ]
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Job update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete Job for Company
+
+    public function deleteJob($id)
+    {
+        try {
+
+            $employer = Auth::guard('employer')->user();
+
+            $job = Job::where('id', $id)
+                ->where('employer_id', $employer->id)
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            // Delete questions first
+            JobQuestion::where('job_id', $job->id)->delete();
+
+            $job->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Job deletion failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     //Applications for Company Jobs
 
     public function getApplications()
@@ -367,6 +610,173 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch applications',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Application management get applicaion
+
+    //EMployer jobs
+    public function getJobApplications($jobId)
+    {
+        try {
+
+            $employer = Auth::guard('employer')->user();
+
+            $job = Job::where('id', $jobId)
+                ->where('employer_id', $employer->id)
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            $applications = JobApplication::where('job_id', $jobId)
+                ->with(['jobSeeker.user'])
+                ->latest()
+                ->get();
+
+            // Manually load the answers for each application to avoid the SQL error
+            // Manually load the answers for each application
+            $applications = JobApplication::where('job_id', $jobId)
+                ->with(['jobSeeker.user'])
+                ->latest()
+                ->get();
+
+            foreach ($applications as $application) {
+                // We fetch the answers manually
+                $answers = \App\Models\JobAnswer::where('job_id', $application->job_id)
+                    ->where('job_seeker_id', $application->job_seeker_id)
+                    ->with('question')
+                    ->get();
+
+                // We force the 'answers' attribute to contain this data
+                $application->setAttribute('answers', $answers);
+            }
+
+            return response()->json([
+                'status' => true,
+                'total_applications' => $applications->count(),
+                'data' => $applications
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch applications',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    // View applicant profile
+    public function viewApplicantProfile($applicationId)
+    {
+        try {
+            // 1. Fetch the application with basics
+            $application = JobApplication::with(['jobSeeker.user'])->find($applicationId);
+
+            if (!$application) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Application not found'
+                ], 404);
+            }
+
+            // 2. Manually load the answers using the application's data
+            // This ensures $application->job_id and $application->job_seeker_id are available
+            $answers = JobAnswer::where('job_id', $application->job_id)
+                ->where('job_seeker_id', $application->job_seeker_id)
+                ->with('question')
+                ->get();
+
+            // 3. Attach it to the application object
+            $application->setRelation('answers', $answers);
+
+            return response()->json([
+                'status' => true,
+                'data' => $application
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //Shortlist applicant
+    public function shortlistCandidate($applicationId)
+    {
+        try {
+
+            $application = JobApplication::find($applicationId);
+
+            if (!$application) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Application not found'
+                ], 404);
+            }
+
+            $application->update([
+                'status' => 'shortlisted'
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Candidate shortlisted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Shortlisting failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //Get shortlisted candidates
+
+    public function getShortlistedCandidates($jobId)
+    {
+        try {
+
+            $employer = Auth::guard('employer')->user();
+
+            $job = Job::where('id', $jobId)
+                ->where('employer_id', $employer->id)
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            $shortlisted = JobApplication::where('job_id', $jobId)
+                ->where('status', 'shortlisted')
+                ->with('jobSeeker.user')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'total_shortlisted' => $shortlisted->count(),
+                'data' => $shortlisted
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch shortlisted candidates',
                 'error' => $e->getMessage()
             ], 500);
         }
