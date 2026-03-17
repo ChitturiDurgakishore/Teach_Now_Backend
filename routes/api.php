@@ -317,6 +317,11 @@ Route::prefix('recruiter')->group(function () {
 
         Route::post('/logout', [RecruiterController::class, 'logout']);
 
+        //Profile management
+
+
+        Route::get('/profile', [RecruiterController::class, 'getProfile']); //Get recruiter profile
+
         // Jobs management
 
         Route::post('/jobs', [RecruiterController::class, 'createJob']); //Create job posting
@@ -386,6 +391,11 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
     Route::delete('/jobs/{id}/bookmark', [JobBrowseController::class, 'removeBookmark']);
 
     Route::get('/bookmarks', [JobBrowseController::class, 'getBookmarkedJobs']);
+
+    // Testimonials management
+    Route::get('testimonials', [JobSeekerController::class, 'getTestimonials']);
+    Route::post('testimonials', [JobSeekerController::class, 'createTestimonial']);
+    Route::put('testimonials/{id}', [JobSeekerController::class, 'updateTestimonial']);
 });
 
 

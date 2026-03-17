@@ -33,7 +33,7 @@ class RecruiterController extends Controller
                 ], 401);
             }
 
-            if (!$user->is_active==1) {
+            if (!$user->is_active == 1) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Account disabled'
@@ -78,6 +78,36 @@ class RecruiterController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Logout failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Recruiter profile
+    // Get Recruiter Profile with Company Details
+    public function getProfile()
+    {
+        try {
+            $user = Auth::guard('employer_user')->user();
+            $profile = EmployerUser::with('employer')
+                ->find($user->id);
+
+            if (!$profile) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Profile not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Profile fetched successfully',
+                'data' => $profile
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch profile',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -314,7 +344,9 @@ class RecruiterController extends Controller
         }
     }
 
+
     // Get applications for a specific job
+
     public function getJobApplications($jobId)
     {
         try {
@@ -332,14 +364,32 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
-            $applications = JobApplication::where('job_id', $jobId)->with([
-                'jobSeeker',
-                'answers.question'
-            ])->latest()->paginate(10);
+            $applications = JobApplication::where('job_id', $jobId)
+                ->with(['jobSeeker.user'])
+                ->latest()
+                ->get();
+
+            // Manually load the answers for each application to avoid the SQL error
+            // Manually load the answers for each application
+            $applications = JobApplication::where('job_id', $jobId)
+                ->with(['jobSeeker.user'])
+                ->latest()
+                ->get();
+
+            foreach ($applications as $application) {
+                // We fetch the answers manually
+                $answers = \App\Models\JobAnswer::where('job_id', $application->job_id)
+                    ->where('job_seeker_id', $application->job_seeker_id)
+                    ->with('question')
+                    ->get();
+
+                // We force the 'answers' attribute to contain this data
+                $application->setAttribute('answers', $answers);
+            }
 
             return response()->json([
                 'status' => true,
-                'total_applications' => $applications->total(),
+                'total_applications' => $applications->count(),
                 'data' => $applications
             ], 200);
         } catch (\Exception $e) {
@@ -352,16 +402,11 @@ class RecruiterController extends Controller
         }
     }
 
-
-    // View applicant profile
     public function viewApplicantProfile($applicationId)
     {
         try {
-
-            $application = JobApplication::with([
-                'jobSeeker',
-                'answers.question'
-            ])->find($applicationId);
+            // 1. Fetch the application with basics
+            $application = JobApplication::with(['jobSeeker.user', 'resume'])->find($applicationId);
 
             if (!$application) {
                 return response()->json([
@@ -370,12 +415,21 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
+            // 2. Manually load the answers using the application's data
+            // This ensures $application->job_id and $application->job_seeker_id are available
+            $answers = JobAnswer::where('job_id', $application->job_id)
+                ->where('job_seeker_id', $application->job_seeker_id)
+                ->with('question')
+                ->get();
+
+            // 3. Attach it to the application object
+            $application->setRelation('answers', $answers);
+
             return response()->json([
                 'status' => true,
                 'data' => $application
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch profile',

@@ -15,6 +15,8 @@ return new class extends Migration
         $table->id();
 
         $table->string('name',150);
+        $table->string('country',100);
+        $table->string('image')->nullable();
         $table->string('slug')->unique();
         $table->string('meta_title', 150)->nullable();
         $table->text('meta_description')->nullable();

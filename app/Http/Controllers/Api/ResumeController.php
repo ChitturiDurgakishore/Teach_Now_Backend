@@ -7,17 +7,30 @@ use Illuminate\Http\Request;
 use App\Models\Resume;
 use App\Models\JobSeeker;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ResumeController extends Controller
 {
+
+    // Upload function for resume upload
+
+    public function uploadFile($file, $folder)
+    {
+        $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
+
+        $path = $file->storeAs("public/media/$folder", $filename);
+
+        return str_replace('public/', 'storage/', $path);
+    }
+
+
     public function uploadResume(Request $request)
     {
         try {
 
             $request->validate([
-                'file_name' => 'required|string',
-                'file_url' => 'required|string'
+                'file' => 'required|file|mimes:pdf,doc,docx|max:2048' // 2MB max
             ]);
 
             $user = Auth::user();
@@ -31,10 +44,13 @@ class ResumeController extends Controller
                 ], 404);
             }
 
+            // Upload file using your common function
+            $filePath = $this->uploadFile($request->file('file'), 'resumes');
+
             $resume = Resume::create([
                 'job_seeker_id' => $jobSeeker->id,
-                'file_name' => $request->file_name,
-                'file_url' => $request->file_url
+                'file_name' => $request->file('file')->getClientOriginalName(),
+                'file_url' => $filePath
             ]);
 
             return response()->json([
@@ -127,6 +143,11 @@ class ResumeController extends Controller
                     'status' => false,
                     'message' => 'Resume not found'
                 ], 404);
+            }
+
+            // 🔥 delete file from storage
+            if ($resume->file_url) {
+                Storage::delete(str_replace('storage/', 'public/', $resume->file_url));
             }
 
             $resume->delete();

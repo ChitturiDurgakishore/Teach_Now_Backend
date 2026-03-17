@@ -16,6 +16,7 @@ use App\Models\HomepageCompanyLogo;
 use App\Models\FAQ;
 use App\Models\Blog;
 use App\Models\Category;
+use App\Models\SearchLog;
 
 
 class PublicAPIController extends Controller
@@ -68,28 +69,31 @@ class PublicAPIController extends Controller
             $keyword = $request->input('keyword');
             $location = $request->input('location');
 
-            // 1️⃣ Title + Location match
-            $primaryJobs = Job::when($keyword, function ($query) use ($keyword) {
-                $query->where('title', 'LIKE', '%' . $keyword . '%');
-            })
-                ->when($location, function ($query) use ($location) {
-                    $query->where('location', 'LIKE', '%' . $location . '%');
+            $jobs = Job::query()
+
+                ->when($keyword, function ($query) use ($keyword) {
+                    $query->where('title', 'LIKE', '%' . $keyword . '%');
                 })
+
+                ->when($location, function ($query) use ($location) {
+                    $query->orderByRaw("
+                    CASE
+                        WHEN location LIKE ? THEN 1
+                        ELSE 2
+                    END
+                ", ['%' . $location . '%']);
+                })
+
                 ->latest()
-                ->get();
+                ->paginate(10);
+            SearchLog::create([
+                'keyword' => $keyword,
+                'location' => $location,
+                'ip_address' => $request->header('X-Forwarded-For') ?? $request->ip(),
+                'user_id' => auth()->id() //
+            ]);
 
-            // 2️⃣ Title match only (exclude already fetched jobs)
-            $secondaryJobs = Job::when($keyword, function ($query) use ($keyword) {
-                $query->where('title', 'LIKE', '%' . $keyword . '%');
-            })
-                ->whereNotIn('id', $primaryJobs->pluck('id'))
-                ->latest()
-                ->get();
-
-            // Merge results
-            $jobs = $primaryJobs->merge($secondaryJobs);
-
-            if ($jobs->count() == 0) {
+            if ($jobs->total() == 0) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Job not found'
@@ -98,8 +102,10 @@ class PublicAPIController extends Controller
 
             return response()->json([
                 'status' => true,
-                'total_jobs' => $jobs->count(),
-                'data' => $jobs
+                'total_jobs' => $jobs->total(),
+                'current_page' => $jobs->currentPage(),
+                'last_page' => $jobs->lastPage(),
+                'data' => $jobs->items()
             ], 200);
         } catch (\Exception $e) {
 
@@ -110,6 +116,8 @@ class PublicAPIController extends Controller
             ], 500);
         }
     }
+
+
 
     //    Hero API
     public function getHero()

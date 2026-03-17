@@ -8,9 +8,26 @@ use App\Models\Location;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 
 class LocationController extends Controller
 {
+
+    //Helper function for Media Uploads
+
+
+    public function uploadFile($file, $folder)
+    {
+        $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
+
+        $path = $file->storeAs("public/media/$folder", $filename);
+
+        return str_replace('public/', 'storage/', $path);
+    }
+
 
     // Get all locations (Public)
     public function index()
@@ -38,19 +55,31 @@ class LocationController extends Controller
     public function store(Request $request)
     {
         try {
-            // 1. Validation (Laravel handles ValidationException automatically,
-            // but it's good to keep inside or just before the try block)
+
             $validatedData = $request->validate([
                 'name' => 'required|string|max:150',
+                'country' => 'nullable|string|max:150',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
             ]);
 
-            // 2. Database Operation
+            // 🔥 Handle image upload
+            $imagePath = null;
+
+            if ($request->hasFile('image')) {
+                $imagePath = $this->uploadFile(
+                    $request->file('image'),
+                    'locations'
+                );
+            }
+
             $location = Location::create([
                 'name' => $request->name,
-                'slug' => \Illuminate\Support\Str::slug($request->name),
+                'slug' => Str::slug($request->name),
+                'country' => $request->country,
+                'image' => $imagePath,
                 'meta_title' => $request->meta_title,
                 'meta_description' => $request->meta_description,
                 'meta_keywords' => $request->meta_keywords,
@@ -64,7 +93,7 @@ class LocationController extends Controller
                 'data' => $location
             ], 201);
         } catch (\Exception $e) {
-            // 3. Log the error for your own records (check storage/logs/laravel.log)
+
             Log::error("Location Store Error: " . $e->getMessage());
 
             return response()->json([
@@ -77,25 +106,42 @@ class LocationController extends Controller
 
 
     // Update location
+
     public function update(Request $request, $id)
     {
         try {
-            // 1. Find the record
-            // This will throw a ModelNotFoundException if not found
+
             $location = Location::findOrFail($id);
 
-            // 2. Validation
             $request->validate([
                 'name' => 'required|string|max:150',
+                'country' => 'nullable|string|max:150',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
             ]);
 
-            // 3. Perform the update
+            // 🔥 Handle image update
+            if ($request->hasFile('image')) {
+
+                // delete old image
+                if ($location->image) {
+                    Storage::delete(str_replace('storage/', 'public/', $location->image));
+                }
+
+                // upload new image
+                $location->image = $this->uploadFile(
+                    $request->file('image'),
+                    'locations'
+                );
+            }
+
+            // update other fields
             $location->update([
                 'name' => $request->name,
-                'slug' => \Illuminate\Support\Str::slug($request->name),
+                'slug' => Str::slug($request->name),
+                'country' => $request->country ?? $location->country,
                 'meta_title' => $request->meta_title,
                 'meta_description' => $request->meta_description,
                 'meta_keywords' => $request->meta_keywords,
@@ -109,13 +155,13 @@ class LocationController extends Controller
                 'data' => $location
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            // Specifically catch when the ID doesn't exist
+
             return response()->json([
                 'status' => false,
                 'message' => 'Location not found.'
             ], 404);
         } catch (\Exception $e) {
-            // Catch any other unexpected errors (DB connection, etc.)
+
             Log::error("Location Update Error [ID: $id]: " . $e->getMessage());
 
             return response()->json([

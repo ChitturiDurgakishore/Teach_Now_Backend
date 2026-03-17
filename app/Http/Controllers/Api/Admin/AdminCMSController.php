@@ -14,10 +14,27 @@ use Illuminate\Http\Request;
 use App\Models\HomepageCompanyLogo;
 use App\Models\FAQ;
 use App\Models\Blog;
-
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
+use App\Models\JobSeeker;
 
 class AdminCMSController extends Controller
 {
+
+
+    //Helper function for Media Uploads
+
+
+    public function uploadFile($file, $folder)
+    {
+        $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
+
+        $path = $file->storeAs("public/media/$folder", $filename);
+
+        return str_replace('public/', 'storage/', $path);
+    }
+
     // Get Hero section
     public function getHeroSection()
     {
@@ -39,7 +56,7 @@ class AdminCMSController extends Controller
         }
     }
 
-    //Updated Hero section
+    //Update Hero section
 
     public function updateHeroSection(Request $request)
     {
@@ -50,10 +67,27 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|string'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png|max:4096'
             ]);
 
             $hero = HomepageHeroSection::first();
+
+            // 🔥 Handle image upload
+            $imagePath = null;
+
+            if ($request->hasFile('background_image')) {
+
+                // delete old image if exists
+                if ($hero && $hero->background_image) {
+                    Storage::delete(str_replace('storage/', 'public/', $hero->background_image));
+                }
+
+                // upload new image
+                $imagePath = $this->uploadFile(
+                    $request->file('background_image'),
+                    'banners'
+                );
+            }
 
             if (!$hero) {
 
@@ -62,7 +96,7 @@ class AdminCMSController extends Controller
                     'subtitle' => $request->subtitle,
                     'button_text' => $request->button_text,
                     'button_link' => $request->button_link,
-                    'background_image' => $request->background_image
+                    'background_image' => $imagePath
                 ]);
             } else {
 
@@ -71,7 +105,7 @@ class AdminCMSController extends Controller
                     'subtitle' => $request->subtitle,
                     'button_text' => $request->button_text,
                     'button_link' => $request->button_link,
-                    'background_image' => $request->background_image
+                    'background_image' => $imagePath ?? $hero->background_image
                 ]);
             }
 
@@ -197,16 +231,24 @@ class AdminCMSController extends Controller
                 'designation' => 'nullable|string|max:150',
                 'company' => 'nullable|string|max:150',
                 'message' => 'required|string',
-                'photo' => 'nullable|string',
                 'display_order' => 'nullable|integer'
             ]);
+
+            $user = Auth::user();
+
+            // 🔥 Get JobSeeker profile (you can extend later for employer)
+            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+
+            $photo = $jobSeeker && $jobSeeker->profile_photo
+                ? $jobSeeker->profile_photo
+                : null;
 
             $testimonial = HomepageTestimonial::create([
                 'name' => $request->name,
                 'designation' => $request->designation,
                 'company' => $request->company,
                 'message' => $request->message,
-                'photo' => $request->photo,
+                'photo' => $photo, // ✅ auto-filled
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true
             ]);
@@ -225,6 +267,7 @@ class AdminCMSController extends Controller
             ], 500);
         }
     }
+
 
     public function updateTestimonial(Request $request, $id)
     {
@@ -883,14 +926,16 @@ class AdminCMSController extends Controller
         }
     }
 
-    // Create
+    // ===============================================================
+
+    // Create company logo and title
     public function createCompanyLogo(Request $request)
     {
         try {
 
             $request->validate([
                 'company_name' => 'required|string|max:255',
-                'company_logo' => 'required|string',
+                'company_logo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
                 'slug' => 'nullable|string|max:255',
                 'company_url' => 'nullable|string|max:255',
                 'display_order' => 'nullable|integer',
@@ -902,9 +947,15 @@ class AdminCMSController extends Controller
                 'meta_keywords' => 'nullable|string'
             ]);
 
+            // 🔥 Upload logo
+            $logoPath = $this->uploadFile(
+                $request->file('company_logo'),
+                'company_logos'
+            );
+
             $logo = HomepageCompanyLogo::create([
                 'company_name' => $request->company_name,
-                'company_logo' => $request->company_logo,
+                'company_logo' => $logoPath,
                 'slug' => $request->slug,
                 'company_url' => $request->company_url,
                 'display_order' => $request->display_order ?? 0,
@@ -933,20 +984,28 @@ class AdminCMSController extends Controller
 
     // update company logo and title
 
+
     public function updateCompanyLogo(Request $request, $id = null)
     {
         try {
 
             $request->validate([
                 'company_name' => 'required|string|max:255',
-                'company_logo' => 'required|string',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
                 'slug' => 'nullable|string',
                 'company_url' => 'nullable|string',
-                'display_order' => 'nullable|integer'
+                'display_order' => 'nullable|integer',
+                'is_featured' => 'nullable|boolean',
+                'is_verified' => 'nullable|boolean',
+                'is_active' => 'nullable|boolean',
+                'meta_title' => 'nullable|string',
+                'meta_description' => 'nullable|string',
+                'meta_keywords' => 'nullable|string'
             ]);
 
             if ($id) {
 
+                // 🔍 Find existing
                 $logo = HomepageCompanyLogo::find($id);
 
                 if (!$logo) {
@@ -956,10 +1015,59 @@ class AdminCMSController extends Controller
                     ], 404);
                 }
 
-                $logo->update($request->all());
+                // 🔥 Handle logo update
+                if ($request->hasFile('company_logo')) {
+
+                    // delete old file
+                    if ($logo->company_logo) {
+                        Storage::delete(str_replace('storage/', 'public/', $logo->company_logo));
+                    }
+
+                    // upload new file
+                    $logo->company_logo = $this->uploadFile(
+                        $request->file('company_logo'),
+                        'company_logos'
+                    );
+                }
+
+                // update other fields
+                $logo->update([
+                    'company_name' => $request->company_name,
+                    'slug' => $request->slug,
+                    'company_url' => $request->company_url,
+                    'display_order' => $request->display_order ?? 0,
+                    'is_featured' => $request->is_featured ?? false,
+                    'is_verified' => $request->is_verified ?? false,
+                    'is_active' => $request->is_active ?? true,
+                    'meta_title' => $request->meta_title,
+                    'meta_description' => $request->meta_description,
+                    'meta_keywords' => $request->meta_keywords
+                ]);
             } else {
 
-                $logo = HomepageCompanyLogo::create($request->all());
+                // 🔥 Create new
+                $logoPath = null;
+
+                if ($request->hasFile('company_logo')) {
+                    $logoPath = $this->uploadFile(
+                        $request->file('company_logo'),
+                        'company_logos'
+                    );
+                }
+
+                $logo = HomepageCompanyLogo::create([
+                    'company_name' => $request->company_name,
+                    'company_logo' => $logoPath,
+                    'slug' => $request->slug,
+                    'company_url' => $request->company_url,
+                    'display_order' => $request->display_order ?? 0,
+                    'is_featured' => $request->is_featured ?? false,
+                    'is_verified' => $request->is_verified ?? false,
+                    'is_active' => $request->is_active ?? true,
+                    'meta_title' => $request->meta_title,
+                    'meta_description' => $request->meta_description,
+                    'meta_keywords' => $request->meta_keywords
+                ]);
             }
 
             return response()->json([
@@ -1133,17 +1241,27 @@ class AdminCMSController extends Controller
                 'title' => 'required|string|max:255',
                 'slug' => 'required|string|max:255|unique:blogs,slug',
                 'content' => 'required|string',
-                'featured_image' => 'nullable|string',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
             ]);
 
+            // Upload image if exists
+            $imagePath = null;
+
+            if ($request->hasFile('image')) {
+                $imagePath = $this->uploadFile(
+                    $request->file('image'),
+                    'blogs'
+                );
+            }
+
             $blog = Blog::create([
                 'title' => $request->title,
                 'slug' => $request->slug,
                 'content' => $request->content,
-                'featured_image' => $request->featured_image,
+                'image' => $imagePath,
                 'meta_title' => $request->meta_title,
                 'meta_description' => $request->meta_description,
                 'meta_keywords' => $request->meta_keywords,
@@ -1165,7 +1283,6 @@ class AdminCMSController extends Controller
         }
     }
 
-
     // Update Blogs
 
     public function updateBlog(Request $request, $id)
@@ -1181,11 +1298,36 @@ class AdminCMSController extends Controller
                 ], 404);
             }
 
+            $request->validate([
+                'title' => 'nullable|string|max:255',
+                'slug' => 'nullable|string|max:255|unique:blogs,slug,' . $id,
+                'content' => 'nullable|string',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'meta_title' => 'nullable|string|max:255',
+                'meta_description' => 'nullable|string',
+                'meta_keywords' => 'nullable|string'
+            ]);
+
+            // 🔥 Handle image update
+            if ($request->hasFile('image')) {
+
+                // delete old image
+                if ($blog->image) {
+                    Storage::delete(str_replace('storage/', 'public/', $blog->image));
+                }
+
+                // upload new image
+                $blog->image = $this->uploadFile(
+                    $request->file('image'),
+                    'blogs'
+                );
+            }
+
+            // update other fields
             $blog->update([
                 'title' => $request->title ?? $blog->title,
                 'slug' => $request->slug ?? $blog->slug,
                 'content' => $request->content ?? $blog->content,
-                'featured_image' => $request->featured_image ?? $blog->featured_image,
                 'meta_title' => $request->meta_title ?? $blog->meta_title,
                 'meta_description' => $request->meta_description ?? $blog->meta_description,
                 'meta_keywords' => $request->meta_keywords ?? $blog->meta_keywords

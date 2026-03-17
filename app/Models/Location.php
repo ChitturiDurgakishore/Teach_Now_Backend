@@ -14,6 +14,8 @@ class Location extends Model
         'meta_description',
         'meta_keywords',
         'is_visible',
-        'is_featured'
+        'is_featured',
+        'country',
+        'image'
     ];
 }

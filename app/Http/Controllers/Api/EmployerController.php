@@ -12,9 +12,26 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use App\Models\JobQuestion;
 use App\Models\JobAnswer;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class EmployerController extends Controller
 {
+
+
+
+    //    //Helper function for Media Uploads
+
+
+    public function uploadFile($file, $folder)
+    {
+        $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
+
+        $path = $file->storeAs("public/media/$folder", $filename);
+
+        return str_replace('public/', 'storage/', $path);
+    }
+
 
     // Create Company
 
@@ -28,7 +45,7 @@ class EmployerController extends Controller
                 'company_description' => 'nullable|string',
                 'industry' => 'nullable|string|max:150',
                 'website' => 'nullable|string',
-                'company_logo' => 'nullable|string',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
                 'address' => 'nullable|string',
                 'email' => 'required|email',
                 'phone' => 'nullable|string',
@@ -38,12 +55,22 @@ class EmployerController extends Controller
                 'password' => 'required|min:6'
             ]);
 
+            // 🔥 Upload logo if exists
+            $logoPath = null;
+
+            if ($request->hasFile('company_logo')) {
+                $logoPath = $this->uploadFile(
+                    $request->file('company_logo'),
+                    'company_logos'
+                );
+            }
+
             $employer = Employer::create([
                 'company_name' => $request->company_name,
                 'company_description' => $request->company_description,
                 'industry' => $request->industry,
                 'website' => $request->website,
-                'company_logo' => $request->company_logo,
+                'company_logo' => $logoPath,
                 'address' => $request->address,
                 'email' => $request->email,
                 'phone' => $request->phone,
@@ -67,6 +94,7 @@ class EmployerController extends Controller
             ], 500);
         }
     }
+
 
     // Employer Login
 
@@ -145,7 +173,7 @@ class EmployerController extends Controller
                 'company_description' => 'nullable|string',
                 'industry' => 'nullable|string|max:150',
                 'website' => 'nullable|string',
-                'company_logo' => 'nullable|string',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
                 'address' => 'nullable|string',
                 'phone' => 'nullable|string',
                 'country' => 'nullable|string',
@@ -153,12 +181,27 @@ class EmployerController extends Controller
                 'map_link' => 'nullable|string'
             ]);
 
+            // 🔥 Handle logo update
+            if ($request->hasFile('company_logo')) {
+
+                // delete old logo
+                if ($employer->company_logo) {
+                    Storage::delete(str_replace('storage/', 'public/', $employer->company_logo));
+                }
+
+                // upload new logo
+                $employer->company_logo = $this->uploadFile(
+                    $request->file('company_logo'),
+                    'company_logos'
+                );
+            }
+
+            // update other fields
             $employer->update([
                 'company_name' => $request->company_name,
                 'company_description' => $request->company_description,
                 'industry' => $request->industry,
                 'website' => $request->website,
-                'company_logo' => $request->company_logo,
                 'address' => $request->address,
                 'phone' => $request->phone,
                 'country' => $request->country,
@@ -679,7 +722,7 @@ class EmployerController extends Controller
     {
         try {
             // 1. Fetch the application with basics
-            $application = JobApplication::with(['jobSeeker.user'])->find($applicationId);
+            $application = JobApplication::with(['jobSeeker.user', 'resume'])->find($applicationId);
 
             if (!$application) {
                 return response()->json([

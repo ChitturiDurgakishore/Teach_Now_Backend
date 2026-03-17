@@ -13,6 +13,7 @@ class HomepageTestimonial extends Model
         'photo',
         'message',
         'display_order',
-        'is_active'
+        'is_active',
+        'user_id'
     ];
 }

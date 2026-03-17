@@ -20,6 +20,7 @@ return new class extends Migration
             $table->text('message');
             $table->integer('display_order')->default(0);
             $table->boolean('is_active')->default(true);
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->timestamps();
         });
     }
