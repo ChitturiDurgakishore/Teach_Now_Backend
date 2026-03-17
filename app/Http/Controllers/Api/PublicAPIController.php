@@ -119,26 +119,35 @@ class PublicAPIController extends Controller
 
 
 
-    //    Hero API
-    public function getHero()
+    //HeroSection API
+    public function getHeroSectionData()
     {
         try {
 
+            // 🔹 Hero Section
             $hero = HomepageHeroSection::where('is_active', true)->first();
+
+            // 🔹 CTA Section
+            $cta = HomepageCtaSection::where('is_active', true)->first();
 
             return response()->json([
                 'status' => true,
-                'data' => $hero
+                'data' => [
+                    'hero' => $hero,
+                    'cta' => $cta
+                ]
             ], 200);
         } catch (\Exception $e) {
 
             return response()->json([
                 'status' => false,
-                'message' => 'Unable to fetch hero section',
+                'message' => 'Unable to fetch homepage hero data',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
+
+
     //   Stats API
     public function getStats()
     {
@@ -185,26 +194,7 @@ class PublicAPIController extends Controller
     }
 
 
-    // CTA API
-    public function getCTA()
-    {
-        try {
 
-            $cta = HomepageCtaSection::where('is_active', true)->first();
-
-            return response()->json([
-                'status' => true,
-                'data' => $cta
-            ], 200);
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Unable to fetch CTA section',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
     // Navigation API
     public function getNavigation()
@@ -309,38 +299,8 @@ class PublicAPIController extends Controller
         }
     }
 
-    // Company Title and Logo API
 
-    public function getCompanyLogos()
-    {
-        try {
 
-            $logos = HomepageCompanyLogo::where('is_active', true)
-                ->orderBy('display_order')
-                ->get([
-                    'company_name',
-                    'company_logo',
-                    'slug',
-                    'company_url',
-                    'meta_description',
-                    'meta_keywords',
-                    'meta_title'
-                ]);
-
-            return response()->json([
-                'status' => true,
-                'total' => $logos->count(),
-                'data' => $logos
-            ], 200);
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Unable to fetch company logos',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
     // Getting FAQs
 
@@ -439,6 +399,56 @@ class PublicAPIController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch latest blogs',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Navigation bar including Company details and nav links
+    public function getNavbarData()
+    {
+        try {
+
+            // 🔹 Navbar Links
+            $menus = NavigationLink::whereNull('parent_id')
+                ->where('show_in_nav', true)
+                ->where('is_active', true)
+                ->orderBy('display_order')
+                ->with(['children' => function ($q) {
+                    $q->where('show_in_nav', true)
+                        ->where('is_active', true)
+                        ->orderBy('display_order');
+                }])
+                ->get();
+
+            // 🔹 Company Logos
+            $logos = HomepageCompanyLogo::where('is_active', true)
+                ->orderBy('display_order')
+                ->get([
+                    'company_name',
+                    'company_logo',
+                    'slug',
+                    'company_url',
+                    'meta_description',
+                    'meta_keywords',
+                    'meta_title'
+                ]);
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'menus' => $menus,
+                    'companies' => [
+                        'total' => $logos->count(),
+                        'list' => $logos
+                    ]
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch header data',
                 'error' => $e->getMessage()
             ], 500);
         }

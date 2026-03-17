@@ -1412,4 +1412,154 @@ class AdminCMSController extends Controller
             ], 500);
         }
     }
+
+    // Navigation Bar Full Control FUnctions
+
+    // Create navigation link with parent-child relationship
+    public function store(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'url' => 'nullable|string',
+                'parent_id' => 'nullable|exists:navigation_links,id',
+                'display_order' => 'nullable|integer',
+                'show_in_nav' => 'nullable|boolean',
+                'is_active' => 'nullable|boolean'
+            ]);
+
+            $link = NavigationLink::create([
+                'title' => $request->title,
+                'url' => $request->url,
+                'parent_id' => $request->parent_id,
+                'display_order' => $request->display_order ?? 0,
+                'show_in_nav' => $request->show_in_nav ?? true,
+                'is_active' => $request->is_active ?? true,
+                'slug' => Str::slug($request->title)
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Navigation link created',
+                'data' => $link
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get All Links
+    public function index()
+    {
+        $links = NavigationLink::with('children')
+            ->orderBy('display_order')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $links
+        ]);
+    }
+
+    // Update navigation link
+    public function update(Request $request, $id)
+    {
+        try {
+
+            $link = NavigationLink::findOrFail($id);
+
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'url' => 'nullable|string',
+                'parent_id' => 'nullable|exists:navigation_links,id',
+                'display_order' => 'nullable|integer'
+            ]);
+
+            $link->update([
+                'title' => $request->title,
+                'url' => $request->url,
+                'parent_id' => $request->parent_id,
+                'display_order' => $request->display_order ?? $link->display_order,
+                'slug' => Str::slug($request->title),
+                'meta_title' => $request->meta_title ?? $link->meta_title,
+                'meta_description' => $request->meta_description ?? $link->meta_description,
+                'meta_keywords' => $request->meta_keywords ?? $link->meta_keywords
+
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Updated successfully',
+                'data' => $link
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete Link
+    public function delete($id)
+    {
+        try {
+
+            $link = NavigationLink::findOrFail($id);
+
+            // delete children first
+            NavigationLink::where('parent_id', $id)->delete();
+
+            $link->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Toggle Link Status
+
+    public function toggleActive($id)
+    {
+        $link = NavigationLink::findOrFail($id);
+
+        $link->is_active = !$link->is_active;
+        $link->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Status updated',
+            'data' => $link
+        ]);
+    }
+
+    // Toggle Show in Nav
+
+    public function toggleShowInNav($id)
+    {
+        $link = NavigationLink::findOrFail($id);
+
+        $link->show_in_nav = !$link->show_in_nav;
+        $link->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Navbar visibility updated',
+            'data' => $link
+        ]);
+    }
 }

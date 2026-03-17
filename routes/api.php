@@ -41,6 +41,7 @@ Route::prefix('auth')->group(function () {
 
 Route::prefix('open')->group(function () {
 
+    //Dashboard APIs Combination for optimization
 
     Route::get('/categories', [CategoryController::class, 'index']);  //Categories
     Route::get('/locations', [LocationController::class, 'index']);  //Locations
@@ -58,15 +59,18 @@ Route::prefix('open')->group(function () {
 
     // Public APIs for frontend
 
-    Route::get('/home/hero', [PublicAPIController::class, 'getHero']);
+    //hero Section API
+    Route::get('/home/hero-section', [PublicAPIController::class, 'getHeroSectionData']);
 
+    //nav bar
+    Route::get('/home/navigation', [PublicAPIController::class, 'getNavbarData']);
+
+    //stats
     Route::get('/home/stats', [PublicAPIController::class, 'getStats']);
 
+    //testimonials
     Route::get('/home/testimonials', [PublicAPIController::class, 'getTestimonials']);
 
-    Route::get('/home/cta', [PublicAPIController::class, 'getCTA']);
-
-    Route::get('/home/navigation', [PublicAPIController::class, 'getNavigation']);
 
     Route::get('home/footer', [PublicAPIController::class, 'getFooter']);
 
@@ -75,8 +79,6 @@ Route::prefix('open')->group(function () {
 
     Route::get('home/featured-jobs', [PublicAPIController::class, 'getFeaturedJobs']);
 
-    // Homepage company logos
-    Route::get('/home/company-logos', [PublicAPIController::class, 'getCompanyLogos']);
 
     // FAQs
     Route::get('/home/faqs', [PublicAPIController::class, 'getFAQs']);
@@ -88,6 +90,9 @@ Route::prefix('open')->group(function () {
     Route::get('/blogs/latest', [PublicAPIController::class, 'getLatestBlogs']);
 
     Route::get('/blogs/{slug}', [PublicAPIController::class, 'getBlogBySlug']);
+
+
+
 });
 
 
@@ -213,12 +218,26 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::post('cta', [AdminCMSController::class, 'updateCTASection']);
 
     // Navigation Links
+    //Updated function Dynamic nav bar
+    // Route::get('navigation', [AdminCMSController::class, 'getNavigationLinks']);
+    // Route::post('navigation', [AdminCMSController::class, 'createNavigationLink']);
+    // Route::put('navigation/{id}', [AdminCMSController::class, 'updateNavigationLink']);
+    // Route::delete('navigation/{id}', [AdminCMSController::class, 'deleteNavigationLink']);
+    // Route::patch('navigation/{id}/toggle', [AdminCMSController::class, 'toggleNavigationLink']);
 
-    Route::get('navigation', [AdminCMSController::class, 'getNavigationLinks']);
-    Route::post('navigation', [AdminCMSController::class, 'createNavigationLink']);
-    Route::put('navigation/{id}', [AdminCMSController::class, 'updateNavigationLink']);
-    Route::delete('navigation/{id}', [AdminCMSController::class, 'deleteNavigationLink']);
-    Route::patch('navigation/{id}/toggle', [AdminCMSController::class, 'toggleNavigationLink']);
+    // Create
+    Route::post('navigation', [AdminCMSController::class, 'store']);
+    // Get all (with children)
+    Route::get('navigation', [AdminCMSController::class, 'index']);
+    // Update
+    Route::put('navigation/{id}', [AdminCMSController::class, 'update']);
+    // Delete
+    Route::delete('navigation/{id}', [AdminCMSController::class, 'delete']);
+    // Toggle Active
+    Route::patch('navigation/{id}/toggle-active', [AdminCMSController::class, 'toggleActive']);
+    // Toggle Show in Navbar
+    Route::patch('navigation/{id}/toggle-nav', [AdminCMSController::class, 'toggleShowInNav']);
+
 
     // Footer Sections
 

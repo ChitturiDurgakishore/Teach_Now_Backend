@@ -14,7 +14,16 @@ class NavigationLink extends Model
         'title',
         'meta_description',
         'meta_keywords',
-        'meta_title'
+        'meta_title',
+        'parent_id',
+        'show_in_nav',
+        'created_at',
+        'updated_at'
 
     ];
+
+    public function children()
+    {
+        return $this->hasMany(NavigationLink::class, 'parent_id');
+    }
 }

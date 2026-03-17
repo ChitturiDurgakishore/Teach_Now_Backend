@@ -22,6 +22,7 @@ return new class extends Migration
         $table->text('meta_description')->nullable();
         $table->string('meta_keywords')->nullable();
         $table->boolean('is_visible')->default(true);
+
         $table->boolean('is_featured')->default(false);
         $table->timestamps();
     });
