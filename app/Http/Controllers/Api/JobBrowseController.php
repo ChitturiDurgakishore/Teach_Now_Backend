@@ -50,7 +50,7 @@ class JobBrowseController extends Controller
     public function viewJob($id)
     {
         try {
-
+            // 1. Fetch the main job
             $job = Job::where('id', $id)
                 ->where('status', 'approved')
                 ->first();
@@ -62,17 +62,30 @@ class JobBrowseController extends Controller
                 ], 404);
             }
 
+            // 2. Fetch job questions
             $questions = JobQuestion::where('job_id', $id)->get();
+
+            // 3. Fetch Similar Jobs
+            // We use "orWhere" to find matches in Title, Location, or Experience
+            $similarJobs = Job::where('id', '!=', $id) // Exclude current job
+                ->where('status', 'approved')
+                ->where(function ($query) use ($job) {
+                    $query->where('title', 'LIKE', '%' . $job->title . '%')
+                        ->orWhere('location', $job->location)
+                        ->orWhere('experience_required', $job->experience_required);
+                })
+                ->limit(5) // Get top 5 similar jobs
+                ->get();
 
             return response()->json([
                 'status' => true,
                 'data' => [
                     'job' => $job,
-                    'questions' => $questions
+                    'questions' => $questions,
+                    'similar_jobs' => $similarJobs
                 ]
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch job',
