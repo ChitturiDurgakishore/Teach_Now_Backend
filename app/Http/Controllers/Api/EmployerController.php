@@ -868,23 +868,26 @@ class EmployerController extends Controller
     public function uploadDocument(Request $request)
     {
         try {
-
             $request->validate([
-                'document_name' => 'required|string',
-                'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:4096'
+                // Made name optional since we will auto-detect it
+                'document_name' => 'nullable|string',
+                'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240' // max 10MB
             ]);
 
             $employer = Auth::guard('employer')->user();
+            $file = $request->file('document_file');
 
-            // upload file
-            $filePath = $this->uploadFile(
-                $request->file('document_file'),
-                'documents'
-            );
+            // 1. Auto-detect the document name if not provided
+            // getClientOriginalName() returns the actual name of the file on the user's computer
+            $docName = $request->document_name ?? $file->getClientOriginalName();
 
+            // 2. Upload using your existing helper
+            $filePath = $this->uploadFile($file, 'documents');
+
+            // 3. Create the record
             $doc = DocumentVerification::create([
                 'employer_id' => $employer->id,
-                'document_name' => $request->document_name,
+                'document_name' => $docName, // Stored as 'my_resume.pdf' etc.
                 'document_file' => $filePath,
                 'status' => 'pending'
             ]);
@@ -902,7 +905,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
     //View uploaded documents
     public function getMyDocuments()
     {

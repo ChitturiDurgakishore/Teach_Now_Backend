@@ -409,19 +409,13 @@ class PublicAPIController extends Controller
     {
         try {
 
-            // 🔹 Navbar Links
             $menus = NavigationLink::whereNull('parent_id')
                 ->where('show_in_nav', true)
                 ->where('is_active', true)
                 ->orderBy('display_order')
-                ->with(['children' => function ($q) {
-                    $q->where('show_in_nav', true)
-                        ->where('is_active', true)
-                        ->orderBy('display_order');
-                }])
+                ->with('childrenRecursive') // 🔥 key change
                 ->get();
 
-            // 🔹 Company Logos
             $logos = HomepageCompanyLogo::where('is_active', true)
                 ->orderBy('display_order')
                 ->get([
@@ -443,7 +437,7 @@ class PublicAPIController extends Controller
                         'list' => $logos
                     ]
                 ]
-            ], 200);
+            ]);
         } catch (\Exception $e) {
 
             return response()->json([

@@ -24,6 +24,15 @@ class NavigationLink extends Model
 
     public function children()
     {
-        return $this->hasMany(NavigationLink::class, 'parent_id');
+        return $this->hasMany(NavigationLink::class, 'parent_id')
+            ->where('is_active', true)
+            ->where('show_in_nav', true)
+            ->orderBy('display_order');
+    }
+
+    // 🔥 Recursive relation
+    public function childrenRecursive()
+    {
+        return $this->children()->with('childrenRecursive');
     }
 }

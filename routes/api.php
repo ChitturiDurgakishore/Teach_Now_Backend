@@ -281,8 +281,8 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::get('/dashboard', [EmployerController::class, 'dashboard']); //Employer dashboard
 
     //Document verification
-    Route::post('/upload', [EmployerController::class, 'uploadDocument']);
-    Route::get('/', [EmployerController::class, 'getMyDocuments']);
+    Route::post('/documents/upload', [EmployerController::class, 'uploadDocument']);
+    Route::get('/documents', [EmployerController::class, 'getMyDocuments']);
 
 
     Route::get('/applications', [EmployerController::class, 'getApplications']); //Get applications for company jobs

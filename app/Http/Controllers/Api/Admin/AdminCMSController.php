@@ -511,15 +511,16 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $links = NavigationLink::orderBy('display_order')->get();
+            $links = NavigationLink::whereNull('parent_id')
+                ->with('childrenRecursive')
+                ->orderBy('display_order')
+                ->get();
 
             return response()->json([
                 'status' => true,
-                'total' => $links->count(),
                 'data' => $links
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch navigation links',
@@ -534,15 +535,19 @@ class AdminCMSController extends Controller
 
             $request->validate([
                 'title' => 'required|string|max:150',
-                'url' => 'required|string|max:255',
+                'url' => 'nullable|string|max:255',
+                'parent_id' => 'nullable|exists:navigation_links,id',
                 'display_order' => 'nullable|integer'
             ]);
 
             $link = NavigationLink::create([
                 'title' => $request->title,
                 'url' => $request->url,
+                'parent_id' => $request->parent_id,
                 'display_order' => $request->display_order ?? 0,
-                'is_active' => true
+                'is_active' => true,
+                'show_in_nav' => true,
+                'slug' => Str::slug($request->title)
             ]);
 
             return response()->json([
@@ -551,7 +556,6 @@ class AdminCMSController extends Controller
                 'data' => $link
             ], 201);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Creation failed',
@@ -564,18 +568,12 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = NavigationLink::find($id);
-
-            if (!$link) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Navigation link not found'
-                ], 404);
-            }
+            $link = NavigationLink::findOrFail($id);
 
             $link->update([
                 'title' => $request->title ?? $link->title,
                 'url' => $request->url ?? $link->url,
+                'parent_id' => $request->parent_id ?? $link->parent_id,
                 'display_order' => $request->display_order ?? $link->display_order
             ]);
 
@@ -583,9 +581,8 @@ class AdminCMSController extends Controller
                 'status' => true,
                 'message' => 'Navigation link updated successfully',
                 'data' => $link
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Update failed',
@@ -598,23 +595,18 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = NavigationLink::find($id);
+            $link = NavigationLink::findOrFail($id);
 
-            if (!$link) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Navigation link not found'
-                ], 404);
-            }
+            // delete children
+            NavigationLink::where('parent_id', $id)->delete();
 
             $link->delete();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Navigation link deleted successfully'
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Delete failed',
@@ -627,14 +619,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = NavigationLink::find($id);
-
-            if (!$link) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Navigation link not found'
-                ], 404);
-            }
+            $link = NavigationLink::findOrFail($id);
 
             $link->update([
                 'is_active' => !$link->is_active
@@ -644,9 +629,8 @@ class AdminCMSController extends Controller
                 'status' => true,
                 'message' => 'Navigation status updated',
                 'data' => $link
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Operation failed',

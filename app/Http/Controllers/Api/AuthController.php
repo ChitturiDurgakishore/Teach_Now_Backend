@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use App\Services\MailService;
+
 
 class AuthController extends Controller
 {
@@ -26,6 +28,12 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'role' => $request->role
         ]);
+        $mailService = new MailService();
+
+        $mailService->send('jobseeker_welcome', [
+            'name' => $user->name,
+            'email' => $user->email
+        ], $user->email);
 
         return response()->json([
             'message' => 'User registered successfully',
@@ -45,7 +53,7 @@ class AuthController extends Controller
                 'message' => 'Invalid credentials'
             ], 401);
         }
-        if(Auth::user()->is_active == 0) {
+        if (Auth::user()->is_active == 0) {
             Auth::logout();
             return response()->json([
                 'message' => 'Your account is disabled. Please contact support.'
