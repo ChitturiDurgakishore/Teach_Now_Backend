@@ -374,11 +374,14 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $cta = HomepageCtaSection::first();
+            $ctas = HomepageCtaSection::where('is_active', true)
+                ->orderBy('id', 'desc')
+                ->get();
 
             return response()->json([
                 'status' => true,
-                'data' => $cta
+                'total' => $ctas->count(),
+                'data' => $ctas
             ], 200);
         } catch (\Exception $e) {
 
@@ -390,7 +393,7 @@ class AdminCMSController extends Controller
         }
     }
 
-    public function updateCTASection(Request $request)
+    public function storeCTASection(Request $request)
     {
         try {
 
@@ -402,31 +405,55 @@ class AdminCMSController extends Controller
                 'background_image' => 'nullable|string'
             ]);
 
-            $cta = HomepageCtaSection::first();
-
-            if (!$cta) {
-
-                $cta = HomepageCtaSection::create([
-                    'title' => $request->title,
-                    'subtitle' => $request->subtitle,
-                    'button_text' => $request->button_text,
-                    'button_link' => $request->button_link,
-                    'background_image' => $request->background_image
-                ]);
-            } else {
-
-                $cta->update([
-                    'title' => $request->title,
-                    'subtitle' => $request->subtitle,
-                    'button_text' => $request->button_text,
-                    'button_link' => $request->button_link,
-                    'background_image' => $request->background_image
-                ]);
-            }
+            $cta = HomepageCtaSection::create([
+                'title' => $request->title,
+                'subtitle' => $request->subtitle,
+                'button_text' => $request->button_text,
+                'button_link' => $request->button_link,
+                'background_image' => $request->background_image,
+                'is_active' => true
+            ]);
 
             return response()->json([
                 'status' => true,
-                'message' => 'CTA section updated successfully',
+                'message' => 'CTA created successfully',
+                'data' => $cta
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'CTA creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    // Update CTA Section
+    public function updateCTASection(Request $request, $id)
+    {
+        try {
+
+            $cta = HomepageCtaSection::findOrFail($id);
+
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'subtitle' => 'nullable|string|max:255',
+                'button_text' => 'nullable|string|max:100',
+                'button_link' => 'nullable|string|max:255',
+                'background_image' => 'nullable|string'
+            ]);
+
+            $cta->update([
+                'title' => $request->title,
+                'subtitle' => $request->subtitle,
+                'button_text' => $request->button_text,
+                'button_link' => $request->button_link,
+                'background_image' => $request->background_image
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'CTA updated successfully',
                 'data' => $cta
             ], 200);
         } catch (\Exception $e) {
@@ -437,6 +464,45 @@ class AdminCMSController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    // Delete CTA Section
+
+    public function deleteCTA($id)
+    {
+        try {
+
+            $cta = HomepageCtaSection::findOrFail($id);
+            $cta->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'CTA deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Toggle CTA section
+
+    public function toggleCTA($id)
+    {
+        $cta = HomepageCtaSection::findOrFail($id);
+
+        $cta->is_active = !$cta->is_active;
+        $cta->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'CTA status updated',
+            'data' => $cta
+        ]);
     }
 
     // =================================================================

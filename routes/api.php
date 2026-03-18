@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\Admin\AdminSEOController;
 use App\Http\Controllers\Api\Admin\AdminCMSController;
 use App\Http\Controllers\Api\PublicAPIController;
+use App\Models\Employer;
 use App\Models\FAQ;
 
 
@@ -45,6 +46,9 @@ Route::prefix('open')->group(function () {
 
     Route::get('/categories', [CategoryController::class, 'index']);  //Categories
     Route::get('/locations', [LocationController::class, 'index']);  //Locations
+
+    // Company details and jobs
+    Route::get('/company/{id}/profile', [PublicAPIController::class, 'getCompanyPublicProfile']);
 
     // Open Routes for job browsing and viewing job details
 
@@ -90,9 +94,6 @@ Route::prefix('open')->group(function () {
     Route::get('/blogs/latest', [PublicAPIController::class, 'getLatestBlogs']);
 
     Route::get('/blogs/{slug}', [PublicAPIController::class, 'getBlogBySlug']);
-
-
-
 });
 
 
@@ -119,58 +120,37 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
 
     //Jobs Management for Admin
     Route::get('/jobs', [AdminController::class, 'getAllJobs']);
-
     Route::get('/jobs/{id}', [AdminController::class, 'getJobDetails']);
-
     Route::patch('/jobs/{id}/approve', [AdminController::class, 'approveJob']);
-
     Route::patch('/jobs/{id}/reject', [AdminController::class, 'rejectJob']);
-
     Route::patch('/jobs/{id}/feature', [AdminController::class, 'featureJob']);
-
     Route::delete('/jobs/{id}', [AdminController::class, 'deleteJob']);
 
     //Employer Management for Admin
 
     Route::get('/employers', [AdminController::class, 'getEmployers']);
-
     Route::get('/employers/{id}', [AdminController::class, 'getEmployerDetails']);
-
     Route::put('/employers/{id}', [AdminController::class, 'updateEmployer']);
-
     Route::delete('/employers/{id}', [AdminController::class, 'deleteEmployer']);
-
     Route::patch('/employers/{id}/verify', [AdminController::class, 'verifyEmployer']);
-
     Route::patch('/employers/{id}/feature', [AdminController::class, 'featureEmployer']);
 
     //Recruiters Management for Admin
-
     Route::get('/recruiters', [AdminController::class, 'getRecruiters']);
-
     Route::get('/recruiters/{id}', [AdminController::class, 'getRecruiterDetails']);
-
     Route::patch('/recruiters/{id}/disable', [AdminController::class, 'disableRecruiter']);
-
     Route::delete('/recruiters/{id}', [AdminController::class, 'deleteRecruiter']);
 
     //Job Seekers Management for Admin
     Route::get('/jobseekers', [AdminController::class, 'getJobSeekers']);
-
     Route::get('/jobseekers/{id}', [AdminController::class, 'getJobSeekerDetails']);
-
     Route::patch('/jobseekers/{id}/disable', [AdminController::class, 'disableJobSeeker']);
-
     Route::delete('/jobseekers/{id}', [AdminController::class, 'deleteJobSeeker']);
 
     //Application Management for Admin
-
     Route::get('/applications', [AdminController::class, 'getApplications']);
-
     Route::get('/applications/{id}', [AdminController::class, 'getApplicationDetails']);
-
     Route::get('/jobs/{jobId}/applications', [AdminController::class, 'getApplicationsByJob']);
-
     Route::delete('/applications/{id}', [AdminController::class, 'deleteApplication']);
 });
 
@@ -214,8 +194,11 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
 
     // CTA Section
 
-    Route::get('cta', [AdminCMSController::class, 'getCTASection']);
-    Route::post('cta', [AdminCMSController::class, 'updateCTASection']);
+    Route::get('/cta', [AdminCMSController::class, 'getCTASection']);
+    Route::post('/cta', [AdminCMSController::class, 'storeCTASection']);
+    Route::put('/cta/{id}', [AdminCMSController::class, 'updateCTASection']);
+    Route::delete('/cta/{id}', [AdminCMSController::class, 'deleteCTA']);
+    Route::patch('/cta/{id}/toggle', [AdminCMSController::class, 'toggleCTA']);
 
     // Navigation Links
     //Updated function Dynamic nav bar
@@ -290,36 +273,34 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
 
     Route::post('/logout', [EmployerController::class, 'logout']);
 
+    // Recruiter management for employer
     Route::post('/users', [EmployerController::class, 'createEmployerUser']); //Employer user creation
-
     Route::get('/users', [EmployerController::class, 'getEmployerUsers']); //Get employer users
 
+    //Dashboard
     Route::get('/dashboard', [EmployerController::class, 'dashboard']); //Employer dashboard
 
-    Route::get('/jobs', [EmployerController::class, 'getCompanyJobs']); //Get company jobs
+    //Document verification
+    Route::post('/upload', [EmployerController::class, 'uploadDocument']);
+    Route::get('/', [EmployerController::class, 'getMyDocuments']);
+
 
     Route::get('/applications', [EmployerController::class, 'getApplications']); //Get applications for company jobs
-
     Route::put('/Update-Company', [EmployerController::class, 'updateCompanyProfile']); //Update company profile
-
     Route::delete('/users/{id}', [EmployerController::class, 'deleteEmployerUser']); //Delete employer user
 
-    // Jobs management
-
+    //Jobs management
+    Route::get('/jobs', [EmployerController::class, 'getCompanyJobs']); //Get company jobs
     Route::post('/jobs/create', [EmployerController::class, 'createJob']); //Create job posting
-
     Route::put('/jobs/update/{id}', [EmployerController::class, 'updateJob']); //Update job posting
-
     Route::delete('/jobs/delete/{id}', [EmployerController::class, 'deleteJob']); //Delete job posting
+    Route::put('/jobs/{id}/filled', [EmployerController::class, 'markJobFilled']); //Mark job as filled
 
     // Application management
 
     Route::get('/jobs/{jobId}', [EmployerController::class, 'getJobApplications']);
-
     Route::get('/profile/{applicationId}', [EmployerController::class, 'viewApplicantProfile']);
-
     Route::patch('/shortlist/{applicationId}', [EmployerController::class, 'shortlistCandidate']);
-
     Route::get('/shortlisted/{jobId}', [EmployerController::class, 'getShortlistedCandidates']);
 });
 

@@ -51,4 +51,11 @@ class Employer extends Authenticatable
         'is_featured',
         'password'
     ];
+
+    public function documents()
+    {
+        return $this->hasMany(DocumentVerification::class, 'employer_id');
+    }
+
+
 }

@@ -69,7 +69,7 @@ class PublicAPIController extends Controller
             $keyword = $request->input('keyword');
             $location = $request->input('location');
 
-            $jobs = Job::query()
+            $jobs = Job::query()->where('status', 'approved')->where('job_status', 'open')
 
                 ->when($keyword, function ($query) use ($keyword) {
                     $query->where('title', 'LIKE', '%' . $keyword . '%');
@@ -449,6 +449,44 @@ class PublicAPIController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch header data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Company details API
+
+    public function getCompanyPublicProfile($id)
+    {
+        try {
+            // 1. Fetch the employer (company) details
+            // We only fetch active/approved jobs for this public view
+            $company = Employer::with(['jobs' => function ($query) {
+                $query->where('job_status', 'open')
+                    ->where('status', 'approved')
+                    ->latest();
+            }])->find($id);
+
+            if (!$company) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Company not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Company profile and active jobs fetched',
+                'data' => [
+                    'company' => $company,
+                    'total_active_jobs' => $company->jobs->count(),
+                    'jobs' => $company->jobs
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch company details',
                 'error' => $e->getMessage()
             ], 500);
         }

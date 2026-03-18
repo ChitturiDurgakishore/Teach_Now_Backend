@@ -10,6 +10,7 @@ use App\Models\Job;
 use App\Models\JobSeeker;
 use App\Models\JobApplication;
 use App\Models\User;
+use App\Models\DocumentVerification;
 
 class AdminController extends Controller
 {
@@ -296,7 +297,8 @@ class AdminController extends Controller
 
             $employer = Employer::with([
                 'employerUsers',
-                'jobs'
+                'jobs',
+                'documents' // 🔥 added this
             ])->find($id);
 
             if (!$employer) {
@@ -322,9 +324,15 @@ class AdminController extends Controller
 
     // Verify Employer
 
-    public function verifyEmployer($id)
+    public function verifyEmployer(Request $request, $id)
     {
         try {
+
+            $request->validate([
+                'document_id' => 'required|exists:document_verifications,id',
+                'status' => 'required|in:approved,rejected',
+                'admin_remark' => 'nullable|string'
+            ]);
 
             $employer = Employer::find($id);
 
@@ -335,13 +343,39 @@ class AdminController extends Controller
                 ], 404);
             }
 
-            $employer->update([
-                'is_verified' => true
+            // 🔹 Find document
+            $document = DocumentVerification::where('id', $request->document_id)
+                ->where('employer_id', $id)
+                ->first();
+
+            if (!$document) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Document not found for this employer'
+                ], 404);
+            }
+
+            // 🔥 Update document status
+            $document->update([
+                'status' => $request->status,
+                'is_verified' => $request->status === 'approved',
+                'admin_remark' => $request->admin_remark
             ]);
+
+            // 🔥 If approved → mark employer verified
+            if ($request->status === 'approved') {
+                $employer->update([
+                    'is_verified' => true
+                ]);
+            }
 
             return response()->json([
                 'status' => true,
-                'message' => 'Employer verified successfully'
+                'message' => 'Verification updated successfully',
+                'data' => [
+                    'employer_verified' => $employer->is_verified,
+                    'document_status' => $document->status
+                ]
             ], 200);
         } catch (\Exception $e) {
 

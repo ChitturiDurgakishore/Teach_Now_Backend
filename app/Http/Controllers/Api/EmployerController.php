@@ -14,6 +14,7 @@ use App\Models\JobQuestion;
 use App\Models\JobAnswer;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Models\DocumentVerification;
 
 class EmployerController extends Controller
 {
@@ -592,6 +593,42 @@ class EmployerController extends Controller
             ], 500);
         }
     }
+    //mark job as filled
+
+    public function markJobFilled($id)
+    {
+        try {
+
+            $recruiter = Auth::guard('employer')->user();
+
+            $job = Job::where('id', $id)
+                ->where('created_by', $recruiter->id)
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            $job->update([
+                'job_status' => 'filled'
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job marked as filled'
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     // Delete Job for Company
 
@@ -823,5 +860,59 @@ class EmployerController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    //=======================================================================================
+
+    //Upload verification documents
+    public function uploadDocument(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'document_name' => 'required|string',
+                'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:4096'
+            ]);
+
+            $employer = Auth::guard('employer')->user();
+
+            // upload file
+            $filePath = $this->uploadFile(
+                $request->file('document_file'),
+                'documents'
+            );
+
+            $doc = DocumentVerification::create([
+                'employer_id' => $employer->id,
+                'document_name' => $request->document_name,
+                'document_file' => $filePath,
+                'status' => 'pending'
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Document uploaded successfully',
+                'data' => $doc
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Upload failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //View uploaded documents
+    public function getMyDocuments()
+    {
+        $employer = Auth::guard('employer')->user();
+
+        $docs = DocumentVerification::where('employer_id', $employer->id)->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $docs
+        ]);
     }
 }
