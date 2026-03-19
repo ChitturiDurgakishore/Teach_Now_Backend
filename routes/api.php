@@ -58,7 +58,6 @@ Route::prefix('open')->group(function () {
     // Search filter
 
     Route::get('/search/suggestions', [PublicAPIController::class, 'searchSuggestions']);
-
     Route::get('search/jobs/search', [PublicAPIController::class, 'searchJobs']);
 
     // Public APIs for frontend
@@ -80,7 +79,6 @@ Route::prefix('open')->group(function () {
 
     // Featured jobs and employers
     Route::get('home/featured-companies', [PublicAPIController::class, 'getFeaturedCompanies']);
-
     Route::get('home/featured-jobs', [PublicAPIController::class, 'getFeaturedJobs']);
 
 
@@ -90,9 +88,7 @@ Route::prefix('open')->group(function () {
     // Blogs
 
     Route::get('/blogs', [PublicAPIController::class, 'getBlogs']);
-
     Route::get('/blogs/latest', [PublicAPIController::class, 'getLatestBlogs']);
-
     Route::get('/blogs/{slug}', [PublicAPIController::class, 'getBlogBySlug']);
 });
 
@@ -242,11 +238,8 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     // Homepage Company Logos
 
     Route::get('company-logos', [AdminCMSController::class, 'getCompanyLogos']);
-
     Route::post('company-logos', [AdminCMSController::class, 'createCompanyLogo']);
-
     Route::put('company-logos/{id}', [AdminCMSController::class, 'updateCompanyLogo']);
-
     Route::delete('company-logos/{id}', [AdminCMSController::class, 'deleteCompanyLogo']);
 
     // FAQs
@@ -263,6 +256,13 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::put('blogs/{id}', [AdminCMSController::class, 'updateBlog']);
     Route::delete('blogs/{id}', [AdminCMSController::class, 'deleteBlog']);
     Route::patch('blogs/{id}/toggle', [AdminCMSController::class, 'toggleBlogStatus']);
+
+    // Skills management
+    Route::get('/skills', [AdminCMSController::class, 'getSkills']);
+    Route::post('/skills', [AdminCMSController::class, 'createSkill']);
+    Route::put('/skills/{id}', [AdminCMSController::class, 'updateSkill']);
+    Route::delete('/skills/{id}', [AdminCMSController::class, 'deleteSkill']);
+    Route::patch('/skills/{id}/toggle', [AdminCMSController::class, 'toggleSkill']);
 });
 
 
@@ -301,6 +301,7 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::get('/jobs/{jobId}', [EmployerController::class, 'getJobApplications']);
     Route::get('/profile/{applicationId}', [EmployerController::class, 'viewApplicantProfile']);
     Route::patch('/shortlist/{applicationId}', [EmployerController::class, 'shortlistCandidate']);
+    Route::patch('/reject/{applicationId}', [EmployerController::class, 'rejectCandidate']);
     Route::get('/shortlisted/{jobId}', [EmployerController::class, 'getShortlistedCandidates']);
 });
 
@@ -312,7 +313,6 @@ use App\Http\Controllers\Api\RecruiterController;
 Route::prefix('recruiter')->group(function () {
 
     Route::post('/login', [RecruiterController::class, 'login']);
-
     Route::middleware('auth:employer_user')->group(function () {
 
         Route::post('/logout', [RecruiterController::class, 'logout']);
@@ -325,23 +325,17 @@ Route::prefix('recruiter')->group(function () {
         // Jobs management
 
         Route::post('/jobs', [RecruiterController::class, 'createJob']); //Create job posting
-
         Route::put('/jobs/{id}', [RecruiterController::class, 'updateJob']); //Update job posting
-
         Route::put('/jobs/{id}/filled', [RecruiterController::class, 'markJobFilled']); //Mark job as filled
-
         Route::get('/jobs', [RecruiterController::class, 'getRecruiterJobs']); //Get recruiter jobs
 
         //Applications management
 
         Route::get('/jobs/{id}/applications', [RecruiterController::class, 'getJobApplications']);
-
         Route::get('/applications/{id}', [RecruiterController::class, 'viewApplicantProfile']);
-
         Route::post('/applications/{id}/shortlist', [RecruiterController::class, 'shortlistCandidate']);
-
+        Route::post('/applications/{id}/reject', [RecruiterController::class, 'rejectCandidate']);
         Route::get('/jobs/{id}/shortlisted', [RecruiterController::class, 'getShortlistedCandidates']);
-
         Route::get('/dashboard', [RecruiterController::class, 'dashboard']);
     });
 });
@@ -358,38 +352,27 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
     //Profile management
 
     Route::post('/profile', [JobSeekerController::class, 'createProfile']); //Create job seeker profile
-
     Route::get('/profile', [JobSeekerController::class, 'getProfile']); //Get job seeker profile
-
     Route::put('/profile', [JobSeekerController::class, 'updateProfile']); //Update job seeker profile
-
     Route::delete('/profile', [JobSeekerController::class, 'deleteProfile']); //Delete job seeker profile
 
     //Resume management
 
     Route::post('/resumes', [ResumeController::class, 'uploadResume']);
-
     Route::get('/resumes', [ResumeController::class, 'getResumes']);
-
     Route::put('/resumes/{id}/default', [ResumeController::class, 'setDefaultResume']);
-
     Route::delete('/resumes/{id}', [ResumeController::class, 'deleteResume']);
 
     // Jobs application management
     Route::post('/jobs/{id}/apply', [JobBrowseController::class, 'applyJob']);
-
     Route::get('/applications', [JobBrowseController::class, 'getAppliedJobs']);
-
     Route::delete('/applications/{id}', [JobBrowseController::class, 'withdrawApplication']);
-
     Route::get('/shortlisted', [JobBrowseController::class, 'getShortlistedJobs']);
 
     // Bookmark management
 
     Route::post('/jobs/{id}/bookmark', [JobBrowseController::class, 'bookmarkJob']);
-
     Route::delete('/jobs/{id}/bookmark', [JobBrowseController::class, 'removeBookmark']);
-
     Route::get('/bookmarks', [JobBrowseController::class, 'getBookmarkedJobs']);
 
     // Testimonials management

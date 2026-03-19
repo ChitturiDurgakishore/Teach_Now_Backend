@@ -1,8 +1,13 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\EmailTemplate;
 use Illuminate\Support\Facades\Mail;
+use App\Jobs\SendEmailJob;
+use Exception;
+use Illuminate\Database\QueryException;
+
 
 class MailService
 {
@@ -17,14 +22,10 @@ class MailService
         $subject = $template->subject;
         $body = $template->body;
 
-        // Replace variables
         foreach ($data as $key => $value) {
             $body = str_replace('{' . $key . '}', $value, $body);
         }
 
-        Mail::raw($body, function ($message) use ($toEmail, $subject) {
-            $message->to($toEmail)
-                    ->subject($subject);
-        });
+        SendEmailJob::dispatch($toEmail, $subject, $body);
     }
 }

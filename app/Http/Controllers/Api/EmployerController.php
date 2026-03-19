@@ -15,6 +15,9 @@ use App\Models\JobAnswer;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Models\DocumentVerification;
+use App\Services\MailService;
+use Illuminate\Support\Facades\Log;
+
 
 class EmployerController extends Controller
 {
@@ -56,7 +59,7 @@ class EmployerController extends Controller
                 'password' => 'required|min:6'
             ]);
 
-            // 🔥 Upload logo if exists
+            // 🔹 Upload logo
             $logoPath = null;
 
             if ($request->hasFile('company_logo')) {
@@ -66,6 +69,7 @@ class EmployerController extends Controller
                 );
             }
 
+            // 🔹 Create employer
             $employer = Employer::create([
                 'company_name' => $request->company_name,
                 'company_description' => $request->company_description,
@@ -81,12 +85,40 @@ class EmployerController extends Controller
                 'password' => Hash::make($request->password),
             ]);
 
+            // 🔥 MAIL (NON-BLOCKING)
+            try {
+
+                $mailService = new MailService();
+
+                $mailService->send('employer_welcome', [
+                    'name' => $employer->company_name,
+                    'email' => $employer->email
+                ], $employer->email);
+
+                Log::info('Employer welcome mail sent', [
+                    'employer_id' => $employer->id,
+                    'email' => $employer->email
+                ]);
+            } catch (\Exception $mailException) {
+
+                // ❗ Do NOT break registration
+                Log::error('Employer welcome mail failed', [
+                    'employer_id' => $employer->id,
+                    'email' => $employer->email,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Company created successfully',
                 'data' => $employer
             ], 201);
         } catch (\Exception $e) {
+
+            Log::error('Employer registration failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -248,12 +280,47 @@ class EmployerController extends Controller
                 'password' => Hash::make($request->password)
             ]);
 
+            // 🔥 MAILS (QUEUE + SAFE)
+            try {
+
+                $mailService = new MailService();
+
+                // ✅ 1. Mail to Recruiter
+                $mailService->send('recruiter_added', [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'company_name' => $employer->company_name
+                ], $user->email);
+
+                // ✅ 2. Mail to Employer
+                $mailService->send('recruiter_created_employer', [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'company_name' => $employer->company_name
+                ], $employer->email);
+
+                Log::info('Recruiter creation mails queued', [
+                    'recruiter_id' => $user->id,
+                    'employer_id' => $employer->id
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Recruiter mail failed', [
+                    'recruiter_id' => $user->id,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Recruiter created successfully',
                 'data' => $user
             ], 201);
         } catch (\Exception $e) {
+
+            Log::error('Recruiter creation failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -262,7 +329,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
 
     //Get Employer Users (Recruiters)
 
@@ -307,13 +373,51 @@ class EmployerController extends Controller
                 ], 404);
             }
 
+            // 🔥 Store details before delete (IMPORTANT)
+            $name = $user->name;
+            $email = $user->email;
+
             $user->delete();
+
+            // 🔥 MAILS (QUEUE + SAFE)
+            try {
+
+                $mailService = new MailService();
+
+                // ✅ 1. Mail to Recruiter
+                $mailService->send('recruiter_removed', [
+                    'name' => $name,
+                    'company_name' => $employer->company_name
+                ], $email);
+
+                // ✅ 2. Mail to Employer
+                $mailService->send('recruiter_deleted_employer', [
+                    'name' => $name,
+                    'email' => $email,
+                    'company_name' => $employer->company_name
+                ], $employer->email);
+
+                Log::info('Recruiter deletion mails queued', [
+                    'recruiter_email' => $email,
+                    'employer_id' => $employer->id
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Recruiter deletion mail failed', [
+                    'recruiter_email' => $email,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'Recruiter deleted successfully'
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Recruiter delete failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -759,7 +863,7 @@ class EmployerController extends Controller
     {
         try {
             // 1. Fetch the application with basics
-            $application = JobApplication::with(['jobSeeker.user', 'resume'])->find($applicationId);
+            $application = JobApplication::with(['jobSeeker.user','jobSeeker.skills:id,name', 'resume'])->find($applicationId);
 
             if (!$application) {
                 return response()->json([
@@ -796,7 +900,7 @@ class EmployerController extends Controller
     {
         try {
 
-            $application = JobApplication::find($applicationId);
+            $application = JobApplication::with(['job', 'jobSeeker.user'])->find($applicationId);
 
             if (!$application) {
                 return response()->json([
@@ -809,15 +913,102 @@ class EmployerController extends Controller
                 'status' => 'shortlisted'
             ]);
 
+            // 🔥 MAIL (QUEUE)
+            try {
+
+                $user = $application->jobSeeker->user;
+
+                $mailService = new MailService();
+
+                $mailService->send('candidate_shortlisted', [
+                    'name' => $user->name,
+                    'job_title' => $application->job->title
+                ], $user->email);
+
+                Log::info('Candidate shortlisted mail queued', [
+                    'application_id' => $applicationId
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Shortlist mail failed', [
+                    'application_id' => $applicationId,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Candidate shortlisted successfully'
             ], 200);
         } catch (\Exception $e) {
 
+            Log::error('Shortlisting failed', [
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'status' => false,
                 'message' => 'Shortlisting failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Reject Candidate
+
+    public function rejectCandidate($applicationId)
+    {
+        try {
+
+            $application = JobApplication::with(['job', 'jobSeeker.user'])->find($applicationId);
+
+            if (!$application) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Application not found'
+                ], 404);
+            }
+
+            $application->update([
+                'status' => 'rejected'
+            ]);
+
+            // 🔥 MAIL (QUEUE)
+            try {
+
+                $user = $application->jobSeeker->user;
+
+                $mailService = new MailService();
+
+                $mailService->send('candidate_rejected', [
+                    'name' => $user->name,
+                    'job_title' => $application->job->title
+                ], $user->email);
+
+                Log::info('Candidate rejected mail queued', [
+                    'application_id' => $applicationId
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Reject mail failed', [
+                    'application_id' => $applicationId,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Candidate rejected successfully'
+            ], 200);
+        } catch (\Exception $e) {
+
+            Log::error('Rejection failed', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Rejection failed',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -865,32 +1056,52 @@ class EmployerController extends Controller
     //=======================================================================================
 
     //Upload verification documents
+
+
     public function uploadDocument(Request $request)
     {
         try {
+
             $request->validate([
-                // Made name optional since we will auto-detect it
                 'document_name' => 'nullable|string',
-                'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240' // max 10MB
+                'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240'
             ]);
 
             $employer = Auth::guard('employer')->user();
             $file = $request->file('document_file');
 
-            // 1. Auto-detect the document name if not provided
-            // getClientOriginalName() returns the actual name of the file on the user's computer
             $docName = $request->document_name ?? $file->getClientOriginalName();
 
-            // 2. Upload using your existing helper
             $filePath = $this->uploadFile($file, 'documents');
 
-            // 3. Create the record
             $doc = DocumentVerification::create([
                 'employer_id' => $employer->id,
-                'document_name' => $docName, // Stored as 'my_resume.pdf' etc.
+                'document_name' => $docName,
                 'document_file' => $filePath,
                 'status' => 'pending'
             ]);
+
+            // 🔥 MAIL (QUEUED + SAFE)
+            try {
+
+                $mailService = new MailService();
+
+                $mailService->send('document_uploaded', [
+                    'name' => $employer->company_name,
+                    'document_name' => $docName
+                ], $employer->email);
+
+                Log::info('Document upload mail queued', [
+                    'employer_id' => $employer->id,
+                    'email' => $employer->email
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Document upload mail failed', [
+                    'employer_id' => $employer->id,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
 
             return response()->json([
                 'status' => true,
@@ -898,6 +1109,11 @@ class EmployerController extends Controller
                 'data' => $doc
             ]);
         } catch (\Exception $e) {
+
+            Log::error('Document upload failed', [
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'status' => false,
                 'message' => 'Upload failed',
@@ -905,6 +1121,8 @@ class EmployerController extends Controller
             ], 500);
         }
     }
+
+
     //View uploaded documents
     public function getMyDocuments()
     {

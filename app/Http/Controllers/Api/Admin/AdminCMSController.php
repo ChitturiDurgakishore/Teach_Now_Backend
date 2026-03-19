@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use App\Models\JobSeeker;
+use App\Models\Skill;
+
 
 class AdminCMSController extends Controller
 {
@@ -1611,5 +1613,161 @@ class AdminCMSController extends Controller
             'message' => 'Navbar visibility updated',
             'data' => $link
         ]);
+    }
+
+    // Skills Section Management
+
+    public function getSkills()
+    {
+        try {
+
+            $skills = Skill::orderBy('name')->get();
+
+            return response()->json([
+                'status' => true,
+                'total' => $skills->count(),
+                'data' => $skills
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch skills',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Update skill
+
+    public function createSkill(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'name' => 'required|string|max:100|unique:skills,name'
+            ]);
+
+            $skill = Skill::create([
+                'name' => strtolower(trim($request->name)),
+                'is_custom' => false
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Skill created successfully',
+                'data' => $skill
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Update Skills
+
+    public function updateSkill(Request $request, $id)
+    {
+        try {
+
+            $skill = Skill::find($id);
+
+            if (!$skill) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Skill not found'
+                ], 404);
+            }
+
+            $request->validate([
+                'name' => 'required|string|max:100|unique:skills,name,' . $id
+            ]);
+
+            $skill->update([
+                'name' => strtolower(trim($request->name))
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Skill updated successfully',
+                'data' => $skill
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete skills
+
+    public function deleteSkill($id)
+    {
+        try {
+
+            $skill = Skill::find($id);
+
+            if (!$skill) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Skill not found'
+                ], 404);
+            }
+
+            $skill->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Skill deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Toggle skill status
+
+    public function toggleSkill($id)
+    {
+        try {
+
+            $skill = Skill::find($id);
+
+            if (!$skill) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Skill not found'
+                ], 404);
+            }
+
+            $skill->update([
+                'is_active' => !$skill->is_active
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Skill status updated',
+                'data' => $skill
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

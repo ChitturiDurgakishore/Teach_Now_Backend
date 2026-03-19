@@ -11,6 +11,11 @@ use App\Models\JobSeeker;
 use App\Models\JobApplication;
 use App\Models\User;
 use App\Models\DocumentVerification;
+use App\Services\MailService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
 
 class AdminController extends Controller
 {
@@ -324,14 +329,14 @@ class AdminController extends Controller
 
     // Verify Employer
 
+
     public function verifyEmployer(Request $request, $id)
     {
         try {
 
             $request->validate([
-                'document_id' => 'required|exists:document_verifications,id',
                 'status' => 'required|in:approved,rejected',
-                'admin_remark' => 'nullable|string'
+                'admin_remark' => 'required_if:status,rejected|nullable|string'
             ]);
 
             $employer = Employer::find($id);
@@ -343,41 +348,53 @@ class AdminController extends Controller
                 ], 404);
             }
 
-            // 🔹 Find document
-            $document = DocumentVerification::where('id', $request->document_id)
-                ->where('employer_id', $id)
-                ->first();
-
-            if (!$document) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Document not found for this employer'
-                ], 404);
-            }
-
-            // 🔥 Update document status
-            $document->update([
-                'status' => $request->status,
-                'is_verified' => $request->status === 'approved',
-                'admin_remark' => $request->admin_remark
+            // 🔥 Update employer only
+            $employer->update([
+                'is_verified' => $request->status === 'approved'
             ]);
 
-            // 🔥 If approved → mark employer verified
-            if ($request->status === 'approved') {
-                $employer->update([
-                    'is_verified' => true
+            // 🔥 MAIL (QUEUE)
+            try {
+
+                $mailService = new MailService();
+
+                if ($request->status === 'approved') {
+
+                    $mailService->send('employer_verified', [
+                        'name' => $employer->company_name
+                    ], $employer->email);
+                } else {
+
+                    $mailService->send('employer_rejected', [
+                        'name' => $employer->company_name,
+                        'remark' => $request->admin_remark ?? 'Not specified'
+                    ], $employer->email);
+                }
+
+                Log::info('Employer verification mail queued', [
+                    'employer_id' => $employer->id,
+                    'status' => $request->status
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Employer verification mail failed', [
+                    'employer_id' => $employer->id,
+                    'error' => $mailException->getMessage()
                 ]);
             }
 
             return response()->json([
                 'status' => true,
-                'message' => 'Verification updated successfully',
+                'message' => 'Employer verification updated successfully',
                 'data' => [
-                    'employer_verified' => $employer->is_verified,
-                    'document_status' => $document->status
+                    'employer_verified' => $employer->is_verified
                 ]
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Employer verification failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -465,13 +482,42 @@ class AdminController extends Controller
                 ], 404);
             }
 
+            // 🔥 Store before delete
+            $name = $employer->company_name;
+            $email = $employer->email;
+
             $employer->delete();
+
+            // 🔥 MAIL (QUEUE + SAFE)
+            try {
+
+                $mailService = new MailService();
+
+                // ✅ Employer mail
+                $mailService->send('employer_deleted', [
+                    'name' => $name
+                ], $email);
+
+                Log::info('Employer deletion mail queued', [
+                    'employer_email' => $email
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Employer deletion mail failed', [
+                    'employer_email' => $email,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'Employer deleted successfully'
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Employer delete failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -542,6 +588,8 @@ class AdminController extends Controller
 
     //Disabling a Recruiter Account
 
+
+
     public function disableRecruiter($id)
     {
         try {
@@ -559,11 +607,44 @@ class AdminController extends Controller
                 'is_active' => 0
             ]);
 
+            // 🔥 MAIL (QUEUE)
+            try {
+
+                $mailService = new MailService();
+
+                // ✅ Recruiter mail
+                $mailService->send('recruiter_disabled', [
+                    'name' => $recruiter->name,
+                    'company_name' => $recruiter->employer->company_name
+                ], $recruiter->email);
+
+                // ✅ Employer mail
+                $mailService->send('recruiter_disabled_employer', [
+                    'name' => $recruiter->name,
+                    'email' => $recruiter->email,
+                    'company_name' => $recruiter->employer->company_name
+                ], $recruiter->employer->email);
+
+                Log::info('Recruiter disable mails queued', [
+                    'recruiter_id' => $recruiter->id
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Recruiter disable mail failed', [
+                    'recruiter_id' => $recruiter->id,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Recruiter disabled successfully'
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Disable recruiter failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -574,11 +655,13 @@ class AdminController extends Controller
     }
 
     //Delete a Recruiter Account
+
+
     public function deleteRecruiter($id)
     {
         try {
 
-            $recruiter = EmployerUser::find($id);
+            $recruiter = EmployerUser::with('employer')->find($id);
 
             if (!$recruiter) {
                 return response()->json([
@@ -587,13 +670,52 @@ class AdminController extends Controller
                 ], 404);
             }
 
+            // 🔥 Store before delete
+            $name = $recruiter->name;
+            $email = $recruiter->email;
+            $companyName = $recruiter->employer->company_name;
+            $employerEmail = $recruiter->employer->email;
+
             $recruiter->delete();
+
+            // 🔥 MAIL (QUEUE)
+            try {
+
+                $mailService = new MailService();
+
+                // ✅ Recruiter mail
+                $mailService->send('recruiter_removed', [
+                    'name' => $name,
+                    'company_name' => $companyName
+                ], $email);
+
+                // ✅ Employer mail
+                $mailService->send('recruiter_deleted_employer', [
+                    'name' => $name,
+                    'email' => $email,
+                    'company_name' => $companyName
+                ], $employerEmail);
+
+                Log::info('Recruiter delete mails queued', [
+                    'recruiter_email' => $email
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Recruiter delete mail failed', [
+                    'recruiter_email' => $email,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'Recruiter deleted successfully'
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Delete recruiter failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -602,7 +724,6 @@ class AdminController extends Controller
             ], 500);
         }
     }
-
     //======================================================================================
 
     //Job Seekers management for Admin

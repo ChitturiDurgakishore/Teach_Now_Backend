@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\HomepageTestimonial;
+use App\Models\Skill;
+
 
 class JobSeekerController extends Controller
 {
@@ -100,7 +102,10 @@ class JobSeekerController extends Controller
 
             $user = Auth::user();
 
-            $profile = JobSeeker::with('user')->where('user_id', $user->id)->first();
+            $profile = JobSeeker::with([
+                'user',
+                'skills' // 🔥 added
+            ])->where('user_id', $user->id)->first();
 
             if (!$profile) {
                 return response()->json([
@@ -149,7 +154,9 @@ class JobSeekerController extends Controller
                 'dob' => 'nullable|date',
                 'portfolio_website' => 'nullable|string',
                 'bio' => 'nullable|string',
-                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'skills' => 'nullable|array',
+                'skills.*' => 'string|max:100'
             ]);
 
             // 🔥 Handle profile photo update
@@ -178,6 +185,30 @@ class JobSeekerController extends Controller
                 'portfolio_website',
                 'bio'
             ]));
+            $skillIds = [];
+
+            if ($request->has('skills')) {
+
+                foreach ($request->skills as $skill) {
+
+                    // 🔹 If numeric → existing skill ID
+                    if (is_numeric($skill)) {
+                        $skillIds[] = $skill;
+                    }
+                    // 🔹 If string → create/find skill
+                    else {
+
+                        $newSkill = Skill::firstOrCreate(
+                            ['name' => strtolower(trim($skill))],
+                            ['is_custom' => true]
+                        );
+
+                        $skillIds[] = $newSkill->id;
+                    }
+                }
+
+                $profile->skills()->sync($skillIds);
+            }
 
             return response()->json([
                 'status' => true,

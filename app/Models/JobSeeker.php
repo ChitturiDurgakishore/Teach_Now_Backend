@@ -49,4 +49,9 @@ class JobSeeker extends Model
         'profile_photo',
         'slug'
     ];
+
+    public function skills()
+    {
+        return $this->belongsToMany(Skill::class, 'job_seeker_skills');
+    }
 }

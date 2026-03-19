@@ -11,6 +11,9 @@ use App\Models\Job;
 use App\Models\JobApplication;
 use App\Models\JobQuestion;
 use App\Models\JobAnswer;
+use App\Services\MailService;
+use Illuminate\Support\Facades\Log;
+
 
 class RecruiterController extends Controller
 {
@@ -114,6 +117,8 @@ class RecruiterController extends Controller
     }
 
     // Recruiter Job creation
+
+
     public function createJob(Request $request)
     {
         try {
@@ -130,7 +135,6 @@ class RecruiterController extends Controller
                 'job_type' => 'required|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
 
-                // questions validation
                 'questions' => 'nullable|array',
                 'questions.*.question' => 'required_with:questions|string',
                 'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
@@ -139,7 +143,7 @@ class RecruiterController extends Controller
 
             $recruiter = Auth::guard('employer_user')->user();
 
-            // Create Job
+            // 🔹 Create Job
             $job = Job::create([
                 'employer_id' => $recruiter->employer_id,
                 'created_by' => $recruiter->id,
@@ -157,11 +161,8 @@ class RecruiterController extends Controller
 
             $questionsCreated = [];
 
-            // Add questions if provided
             if ($request->has('questions')) {
-
                 foreach ($request->questions as $q) {
-
                     $question = JobQuestion::create([
                         'job_id' => $job->id,
                         'question' => $q['question'],
@@ -173,6 +174,36 @@ class RecruiterController extends Controller
                 }
             }
 
+            // 🔥 MAILS (QUEUE + SAFE)
+            try {
+
+                $mailService = new MailService();
+
+                // ✅ Recruiter mail
+                $mailService->send('job_created_recruiter', [
+                    'name' => $recruiter->name,
+                    'job_title' => $job->title
+                ], $recruiter->email);
+
+                // ✅ Employer mail
+                $mailService->send('job_created_employer', [
+                    'company_name' => $recruiter->employer->company_name,
+                    'job_title' => $job->title,
+                    'recruiter_name' => $recruiter->name
+                ], $recruiter->employer->email);
+
+                Log::info('Job creation mails queued', [
+                    'job_id' => $job->id,
+                    'recruiter_id' => $recruiter->id
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Job creation mail failed', [
+                    'job_id' => $job->id,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job created successfully',
@@ -182,6 +213,10 @@ class RecruiterController extends Controller
                 ]
             ], 201);
         } catch (\Exception $e) {
+
+            Log::error('Job creation failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -303,11 +338,45 @@ class RecruiterController extends Controller
                 'job_status' => 'filled'
             ]);
 
+            // 🔥 MAILS (QUEUE + SAFE)
+            try {
+
+                $mailService = new MailService();
+
+                // ✅ Recruiter mail
+                $mailService->send('job_filled_recruiter', [
+                    'name' => $recruiter->name,
+                    'job_title' => $job->title
+                ], $recruiter->email);
+
+                // ✅ Employer mail
+                $mailService->send('job_filled_employer', [
+                    'company_name' => $recruiter->employer->company_name,
+                    'job_title' => $job->title,
+                    'recruiter_name' => $recruiter->name
+                ], $recruiter->employer->email);
+
+                Log::info('Job filled mails queued', [
+                    'job_id' => $job->id,
+                    'recruiter_id' => $recruiter->id
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Job filled mail failed', [
+                    'job_id' => $job->id,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job marked as filled'
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Mark job filled failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -406,7 +475,7 @@ class RecruiterController extends Controller
     {
         try {
             // 1. Fetch the application with basics
-            $application = JobApplication::with(['jobSeeker.user', 'resume'])->find($applicationId);
+            $application = JobApplication::with(['jobSeeker.user', 'jobSeeker.skills:id,name','resume'])->find($applicationId);
 
             if (!$application) {
                 return response()->json([
@@ -439,11 +508,12 @@ class RecruiterController extends Controller
     }
 
     // Shortlist candidate
+
     public function shortlistCandidate($applicationId)
     {
         try {
 
-            $application = JobApplication::find($applicationId);
+            $application = JobApplication::with(['job', 'jobSeeker.user'])->find($applicationId);
 
             if (!$application) {
                 return response()->json([
@@ -456,11 +526,38 @@ class RecruiterController extends Controller
                 'status' => 'shortlisted'
             ]);
 
+            // 🔥 MAIL (QUEUE)
+            try {
+
+                $user = $application->jobSeeker->user;
+
+                $mailService = new MailService();
+
+                $mailService->send('candidate_shortlisted', [
+                    'name' => $user->name,
+                    'job_title' => $application->job->title
+                ], $user->email);
+
+                Log::info('Recruiter shortlisted mail queued', [
+                    'application_id' => $applicationId
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Recruiter shortlist mail failed', [
+                    'application_id' => $applicationId,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Candidate shortlisted successfully'
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('Recruiter shortlisting failed', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'status' => false,
@@ -470,6 +567,67 @@ class RecruiterController extends Controller
         }
     }
 
+    // Reject candidate
+
+
+
+    public function rejectCandidate($applicationId)
+    {
+        try {
+
+            $application = JobApplication::with(['job', 'jobSeeker.user'])->find($applicationId);
+
+            if (!$application) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Application not found'
+                ], 404);
+            }
+
+            $application->update([
+                'status' => 'rejected'
+            ]);
+
+            // 🔥 MAIL (QUEUE)
+            try {
+
+                $user = $application->jobSeeker->user;
+
+                $mailService = new MailService();
+
+                $mailService->send('candidate_rejected', [
+                    'name' => $user->name,
+                    'job_title' => $application->job->title
+                ], $user->email);
+
+                Log::info('Recruiter rejected mail queued', [
+                    'application_id' => $applicationId
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Recruiter reject mail failed', [
+                    'application_id' => $applicationId,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Candidate rejected successfully'
+            ], 200);
+        } catch (\Exception $e) {
+
+            Log::error('Recruiter rejection failed', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Rejection failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     // Shortlisted Candidates list
     public function getShortlistedCandidates($jobId)
     {
