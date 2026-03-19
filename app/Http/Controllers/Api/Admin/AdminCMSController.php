@@ -19,7 +19,10 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use App\Models\JobSeeker;
 use App\Models\Skill;
-
+use App\Models\JobCategory;
+use App\Models\JobType;
+use App\Models\Location;
+use App\Models\EmailTemplate;
 
 class AdminCMSController extends Controller
 {
@@ -1760,6 +1763,171 @@ class AdminCMSController extends Controller
                 'status' => true,
                 'message' => 'Skill status updated',
                 'data' => $skill
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    // Email Template Management
+    //    Get email templates
+    public function getEmailTemplates()
+    {
+        try {
+
+            $templates = EmailTemplate::orderBy('id', 'desc')->get();
+
+            return response()->json([
+                'status' => true,
+                'total' => $templates->count(),
+                'data' => $templates
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch templates',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Create or update email template
+
+    public function createEmailTemplate(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'name' => 'required|string|max:150',
+                'slug' => 'required|string|max:150|unique:email_templates,slug',
+                'subject' => 'required|string|max:255',
+                'body' => 'required|string'
+            ]);
+
+            $template = EmailTemplate::create([
+                'name' => $request->name,
+                'slug' => $request->slug,
+                'subject' => $request->subject,
+                'body' => $request->body,
+                'is_active' => true
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Template created successfully',
+                'data' => $template
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Update email template
+    public function updateEmailTemplate(Request $request, $id)
+    {
+        try {
+
+            $template = EmailTemplate::find($id);
+
+            if (!$template) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Template not found'
+                ], 404);
+            }
+
+            $request->validate([
+                'name' => 'required|string|max:150',
+                'subject' => 'required|string|max:255',
+                'body' => 'required|string'
+            ]);
+
+            $template->update([
+                'name' => $request->name,
+                'subject' => $request->subject,
+                'body' => $request->body
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Template updated successfully',
+                'data' => $template
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete email template
+    public function deleteEmailTemplate($id)
+    {
+        try {
+
+            $template = EmailTemplate::find($id);
+
+            if (!$template) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Template not found'
+                ], 404);
+            }
+
+            $template->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Template deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Toggle email template status
+
+    public function toggleEmailTemplate($id)
+    {
+        try {
+
+            $template = EmailTemplate::find($id);
+
+            if (!$template) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Template not found'
+                ], 404);
+            }
+
+            $template->update([
+                'is_active' => !$template->is_active
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Template status updated',
+                'data' => $template
             ]);
         } catch (\Exception $e) {
 
