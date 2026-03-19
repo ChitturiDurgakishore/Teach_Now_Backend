@@ -265,11 +265,11 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::patch('/skills/{id}/toggle', [AdminCMSController::class, 'toggleSkill']);
 
     // Email Templates management
-    Route::get('/email-templates', [AdminController::class, 'getEmailTemplates']);
-    Route::post('/email-templates', [AdminController::class, 'createEmailTemplate']);
-    Route::put('/email-templates/{id}', [AdminController::class, 'updateEmailTemplate']);
-    Route::delete('/email-templates/{id}', [AdminController::class, 'deleteEmailTemplate']);
-    Route::patch('/email-templates/{id}/toggle', [AdminController::class, 'toggleEmailTemplate']);
+    Route::get('/email-templates', [AdminCMSController::class, 'getEmailTemplates']);
+    Route::post('/email-templates', [AdminCMSController::class, 'createEmailTemplate']);
+    Route::put('/email-templates/{id}', [AdminCMSController::class, 'updateEmailTemplate']);
+    Route::delete('/email-templates/{id}', [AdminCMSController::class, 'deleteEmailTemplate']);
+    Route::patch('/email-templates/{id}/toggle', [AdminCMSController::class, 'toggleEmailTemplate']);
 });
 
 
