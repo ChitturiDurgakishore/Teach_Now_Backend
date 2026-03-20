@@ -59,17 +59,18 @@ class EmployerController extends Controller
                 'password' => 'required|min:6'
             ]);
 
-            // 🔹 Upload logo
+            // 🔥 Upload logo (FIXED)
             $logoPath = null;
 
             if ($request->hasFile('company_logo')) {
-                $logoPath = $this->uploadFile(
-                    $request->file('company_logo'),
-                    'company_logos'
-                );
+
+                $file = $request->file('company_logo');
+
+                $path = Storage::disk('public')->putFile('media/company_logos', $file);
+
+                $logoPath = 'storage/' . $path;
             }
 
-            // 🔹 Create employer
             $employer = Employer::create([
                 'company_name' => $request->company_name,
                 'company_description' => $request->company_description,
@@ -85,26 +86,17 @@ class EmployerController extends Controller
                 'password' => Hash::make($request->password),
             ]);
 
-            // 🔥 MAIL (NON-BLOCKING)
+            // MAIL (unchanged)
             try {
-
                 $mailService = new MailService();
 
                 $mailService->send('employer_welcome', [
                     'name' => $employer->company_name,
                     'email' => $employer->email
                 ], $employer->email);
-
-                Log::info('Employer welcome mail sent', [
-                    'employer_id' => $employer->id,
-                    'email' => $employer->email
-                ]);
             } catch (\Exception $mailException) {
-
-                // ❗ Do NOT break registration
                 Log::error('Employer welcome mail failed', [
                     'employer_id' => $employer->id,
-                    'email' => $employer->email,
                     'error' => $mailException->getMessage()
                 ]);
             }
@@ -127,7 +119,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
     // EMployer Feature
 
     public function toggleEmployerFeatured($id)
@@ -246,27 +237,34 @@ class EmployerController extends Controller
                 'map_link' => 'nullable|string'
             ]);
 
-            // 🔥 Handle logo update
+            $logoPath = $employer->company_logo;
+
+            // 🔥 Handle logo update (FIXED)
             if ($request->hasFile('company_logo')) {
 
                 // delete old logo
                 if ($employer->company_logo) {
-                    Storage::delete(str_replace('storage/', 'public/', $employer->company_logo));
+                    $oldPath = str_replace('storage/', 'public/', $employer->company_logo);
+
+                    if (Storage::exists($oldPath)) {
+                        Storage::delete($oldPath);
+                    }
                 }
 
                 // upload new logo
-                $employer->company_logo = $this->uploadFile(
-                    $request->file('company_logo'),
-                    'company_logos'
-                );
+                $file = $request->file('company_logo');
+
+                $path = Storage::disk('public')->putFile('media/company_logos', $file);
+
+                $logoPath = 'storage/' . $path;
             }
 
-            // update other fields
             $employer->update([
                 'company_name' => $request->company_name,
                 'company_description' => $request->company_description,
                 'industry' => $request->industry,
                 'website' => $request->website,
+                'company_logo' => $logoPath,
                 'address' => $request->address,
                 'phone' => $request->phone,
                 'country' => $request->country,
@@ -288,7 +286,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
 
     // Create Employer User (Recruiter)
 
