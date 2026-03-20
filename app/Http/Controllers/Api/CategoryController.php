@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Category;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Storage;
 
 
 class CategoryController extends Controller
@@ -38,15 +39,35 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:150'
+            'name' => 'required|string|max:150',
+            'icon' => 'nullable|image|mimes:jpg,jpeg,png,svg|max:2048',
+            'is_visible' => 'nullable|boolean',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string',
+            'meta_keywords' => 'nullable|string'
         ]);
 
         try {
+
+            $iconPath = null;
+
+            // 🔥 Handle icon upload
+            if ($request->hasFile('icon')) {
+
+                $file = $request->file('icon');
+
+                // store in storage/app/public/category_icons
+                $path = $file->store('category_icons', 'public');
+
+                // save public path
+                $iconPath = 'storage/' . $path;
+            }
+
             $category = Category::create([
                 'name'             => $request->name,
                 'slug'             => Str::slug($request->name),
-                'icon'             => $request->icon,
-                'is_visible'       => $request->is_visible,
+                'icon'             => $iconPath,
+                'is_visible'       => $request->is_visible ?? true,
                 'meta_title'       => $request->meta_title,
                 'meta_description' => $request->meta_description,
                 'meta_keywords'    => $request->meta_keywords,
@@ -58,6 +79,7 @@ class CategoryController extends Controller
                 'data'    => $category
             ], 201);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status'  => 400,
                 'message' => 'Failed to create category',
@@ -70,41 +92,65 @@ class CategoryController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            // 1. Find the category
+
+            // 🔹 Find category
             $category = Category::findOrFail($id);
 
-            // 2. Validate input
+            // 🔹 Validate
             $request->validate([
                 'name' => 'required|string|max:150',
-                'is_visible' => 'boolean'
+                'icon' => 'nullable|image|mimes:jpg,jpeg,png,svg|max:2048',
+                'is_visible' => 'nullable|boolean',
+                'is_featured' => 'nullable|boolean',
+                'meta_title' => 'nullable|string|max:255',
+                'meta_description' => 'nullable|string',
+                'meta_keywords' => 'nullable|string'
             ]);
 
-            // 3. Perform the update
+            $iconPath = $category->icon; // keep old by default
+
+            // 🔥 If new icon uploaded
+            if ($request->hasFile('icon')) {
+
+                // 🔥 Delete old image if exists
+                if ($category->icon) {
+                    $oldPath = str_replace('storage/', 'public/', $category->icon);
+                    if (Storage::exists($oldPath)) {
+                        Storage::delete($oldPath);
+                    }
+                }
+
+                // 🔥 Upload new image
+                $file = $request->file('icon');
+                $path = $file->store('category_icons', 'public');
+                $iconPath = 'storage/' . $path;
+            }
+
+            // 🔹 Update category
             $category->update([
                 'name'             => $request->name,
                 'slug'             => Str::slug($request->name),
-                'icon'             => $request->icon,
-                'is_visible'       => $request->is_visible,
+                'icon'             => $iconPath,
+                'is_visible'       => $request->is_visible ?? $category->is_visible,
+                'is_featured'      => $request->is_featured ?? $category->is_featured,
                 'meta_title'       => $request->meta_title,
                 'meta_description' => $request->meta_description,
                 'meta_keywords'    => $request->meta_keywords,
-                'is_featured'     => $request->is_featured,
             ]);
 
-            // 4. Return 200 OK
             return response()->json([
                 'status'  => 200,
                 'message' => 'Category updated successfully',
                 'data'    => $category
             ], 200);
         } catch (ModelNotFoundException $e) {
-            // Return 404 if the ID is wrong
+
             return response()->json([
                 'status'  => 404,
                 'message' => 'Category not found',
             ], 404);
         } catch (\Exception $e) {
-            // Return 400 for any other validation or database errors
+
             return response()->json([
                 'status'  => 400,
                 'message' => 'Update failed',
@@ -117,8 +163,20 @@ class CategoryController extends Controller
     public function destroy($id)
     {
         try {
+
             $category = Category::findOrFail($id);
 
+            // 🔥 Delete icon file if exists
+            if ($category->icon) {
+
+                $path = str_replace('storage/', 'public/', $category->icon);
+
+                if (Storage::exists($path)) {
+                    Storage::delete($path);
+                }
+            }
+
+            // 🔹 Delete category
             $category->delete();
 
             return response()->json([
@@ -126,11 +184,13 @@ class CategoryController extends Controller
                 'message' => 'Category deleted successfully'
             ], 200);
         } catch (ModelNotFoundException $e) {
+
             return response()->json([
                 'status'  => 404,
                 'message' => 'Category not found. It may have already been deleted.'
             ], 404);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status'  => 500,
                 'message' => 'An error occurred while deleting the category',

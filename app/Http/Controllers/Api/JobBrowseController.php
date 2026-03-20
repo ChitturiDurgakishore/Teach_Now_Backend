@@ -16,7 +16,7 @@ use App\Models\Location;
 use App\Models\User;
 use App\Models\JobQuestion;
 use App\Models\JobAnswer;
-    use App\Services\MailService;
+use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
 
 class JobBrowseController extends Controller
@@ -98,124 +98,115 @@ class JobBrowseController extends Controller
 
     // Job Application
 
-
-public function applyJob(Request $request, $jobId)
-{
-    try {
-
-        $request->validate([
-            'answers' => 'nullable|array',
-            'answers.*.question_id' => 'required|exists:job_questions,id',
-            'answers.*.candidate_answer' => 'required'
-        ]);
-
-        $user = Auth::user();
-
-        $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
-
-        if (!$jobSeeker) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Profile not found'
-            ], 404);
-        }
-
-        $job = Job::where('id', $jobId)
-            ->where('status', 'approved')
-            ->where('job_status', 'open')
-            ->first();
-
-        if (!$job) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Job not available'
-            ], 404);
-        }
-
-        $existing = JobApplication::where('job_id', $jobId)
-            ->where('job_seeker_id', $jobSeeker->id)
-            ->first();
-
-        if ($existing) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Already applied for this job'
-            ], 409);
-        }
-
-        $resume = Resume::where('job_seeker_id', $jobSeeker->id)
-            ->where('is_default', true)
-            ->first();
-
-        if (!$resume) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Default resume not found'
-            ], 404);
-        }
-
-        // 🔹 Create Application
-        $application = JobApplication::create([
-            'job_id' => $jobId,
-            'job_seeker_id' => $jobSeeker->id,
-            'resume_id' => $resume->id,
-            'status' => 'applied'
-        ]);
-
-        // 🔹 Save Answers
-        if ($request->has('answers')) {
-            foreach ($request->answers as $ans) {
-                JobAnswer::create([
-                    'job_question_id' => $ans['question_id'],
-                    'job_id' => $jobId,
-                    'job_seeker_id' => $jobSeeker->id,
-                    'candidate_answer' => $ans['candidate_answer']
-                ]);
-            }
-        }
-
-        // 🔥 MAIL (QUEUE + SAFE)
+    public function applyJob(Request $request, $jobId)
+    {
         try {
 
-            $mailService = new MailService();
-
-            $mailService->send('job_applied', [
-                'name' => $user->name,
-                'job_title' => $job->title
-            ], $user->email);
-
-            Log::info('Job applied mail queued', [
-                'job_id' => $jobId,
-                'job_seeker_id' => $jobSeeker->id
+            $request->validate([
+                'answers' => 'nullable|array',
+                'answers.*.question_id' => 'required|exists:job_questions,id',
+                'answers.*.candidate_answer' => 'required'
             ]);
 
-        } catch (\Exception $mailException) {
+            $user = Auth::user();
 
-            Log::error('Job applied mail failed', [
+            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+
+            if (!$jobSeeker) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Profile not found'
+                ], 404);
+            }
+
+            $job = Job::where('id', $jobId)
+                ->where('status', 'approved')
+                ->where('job_status', 'open')
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not available'
+                ], 404);
+            }
+
+            $existing = JobApplication::where('job_id', $jobId)
+                ->where('job_seeker_id', $jobSeeker->id)
+                ->first();
+
+            if ($existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Already applied for this job'
+                ], 409);
+            }
+
+            // 🔥 Resume is OPTIONAL now
+            $resume = Resume::where('job_seeker_id', $jobSeeker->id)
+                ->where('is_default', true)
+                ->first();
+
+            // 🔹 Create Application
+            $application = JobApplication::create([
                 'job_id' => $jobId,
-                'error' => $mailException->getMessage()
+                'job_seeker_id' => $jobSeeker->id,
+                'resume_id' => $resume ? $resume->id : null, // ✅ FIX
+                'status' => 'applied'
             ]);
+
+            // 🔹 Save Answers
+            if ($request->has('answers')) {
+                foreach ($request->answers as $ans) {
+                    JobAnswer::create([
+                        'job_question_id' => $ans['question_id'],
+                        'job_id' => $jobId,
+                        'job_seeker_id' => $jobSeeker->id,
+                        'candidate_answer' => $ans['candidate_answer']
+                    ]);
+                }
+            }
+
+            // 🔥 MAIL (QUEUE + SAFE)
+            try {
+
+                $mailService = new MailService();
+
+                $mailService->send('job_applied', [
+                    'name' => $user->name,
+                    'job_title' => $job->title
+                ], $user->email);
+
+                Log::info('Job applied mail queued', [
+                    'job_id' => $jobId,
+                    'job_seeker_id' => $jobSeeker->id
+                ]);
+            } catch (\Exception $mailException) {
+
+                Log::error('Job applied mail failed', [
+                    'job_id' => $jobId,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job applied successfully',
+                'data' => $application
+            ], 201);
+        } catch (\Exception $e) {
+
+            Log::error('Job application failed', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Application failed',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Job applied successfully',
-            'data' => $application
-        ], 201);
-
-    } catch (\Exception $e) {
-
-        Log::error('Job application failed', [
-            'error' => $e->getMessage()
-        ]);
-
-        return response()->json([
-            'status' => false,
-            'message' => 'Application failed',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
     //Get applied Jobs
 
     public function getAppliedJobs()
