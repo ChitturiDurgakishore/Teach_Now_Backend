@@ -136,7 +136,7 @@ class EmployerController extends Controller
 
             $employer = Employer::findOrFail($id);
 
-            $employer->is_featured = !$employer->is_featured;
+            $employer->company_featured = !$employer->company_featured;
             $employer->save();
 
             return response()->json([
