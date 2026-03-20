@@ -57,7 +57,7 @@ class CategoryController extends Controller
                 $file = $request->file('icon');
 
                 // store in storage/app/public/category_icons
-                $path = $file->store('media/category_icons', 'public');
+                $path = $file->store('media/categories', 'public');
 
                 // save public path
                 $iconPath = 'storage/' . $path;
@@ -122,7 +122,7 @@ class CategoryController extends Controller
 
                 // 🔥 Upload new image
                 $file = $request->file('icon');
-                $path = $file->store('media/category_icons', 'public');
+                $path = $file->store('media/categories', 'public');
                 $iconPath = 'storage/' . $path;
             }
 
