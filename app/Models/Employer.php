@@ -49,7 +49,8 @@ class Employer extends Authenticatable
         'meta_keywords',
         'is_verified',
         'is_featured',
-        'password'
+        'password',
+        'company_verified'
     ];
 
     public function documents()
