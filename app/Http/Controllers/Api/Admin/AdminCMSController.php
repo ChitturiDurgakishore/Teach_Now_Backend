@@ -1450,7 +1450,7 @@ class AdminCMSController extends Controller
             }
 
             $blog->update([
-                'is_active' => !$blog->is_active
+                'is_featured' => !$blog->is_featured
             ]);
 
             return response()->json([
