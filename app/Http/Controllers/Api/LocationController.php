@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 
+
+
 class LocationController extends Controller
 {
 
@@ -52,6 +54,8 @@ class LocationController extends Controller
     }
 
     // Create location (Admin)
+
+
     public function store(Request $request)
     {
         try {
@@ -65,14 +69,16 @@ class LocationController extends Controller
                 'meta_keywords' => 'nullable|string'
             ]);
 
-            // 🔥 Handle image upload
+            // 🔥 Handle image upload (FIXED)
             $imagePath = null;
 
             if ($request->hasFile('image')) {
-                $imagePath = $this->uploadFile(
-                    $request->file('image'),
-                    'locations'
-                );
+
+                $file = $request->file('image');
+
+                $path = Storage::disk('public')->putFile('media/locations', $file);
+
+                $imagePath = 'storage/' . $path;
             }
 
             $location = Location::create([
@@ -122,26 +128,34 @@ class LocationController extends Controller
                 'meta_keywords' => 'nullable|string'
             ]);
 
-            // 🔥 Handle image update
+            $imagePath = $location->image; // keep old by default
+
+            // 🔥 Handle image update (FIXED)
             if ($request->hasFile('image')) {
 
                 // delete old image
                 if ($location->image) {
-                    Storage::delete(str_replace('storage/', 'public/', $location->image));
+                    $oldPath = str_replace('storage/', 'public/', $location->image);
+
+                    if (Storage::exists($oldPath)) {
+                        Storage::delete($oldPath);
+                    }
                 }
 
-                // upload new image
-                $location->image = $this->uploadFile(
-                    $request->file('image'),
-                    'locations'
-                );
+                // upload new image (FORCED PUBLIC DISK ✅)
+                $file = $request->file('image');
+
+                $path = Storage::disk('public')->putFile('media/locations', $file);
+
+                $imagePath = 'storage/' . $path;
             }
 
-            // update other fields
+            // update
             $location->update([
                 'name' => $request->name,
                 'slug' => Str::slug($request->name),
                 'country' => $request->country ?? $location->country,
+                'image' => $imagePath,
                 'meta_title' => $request->meta_title,
                 'meta_description' => $request->meta_description,
                 'meta_keywords' => $request->meta_keywords,
@@ -172,15 +186,23 @@ class LocationController extends Controller
         }
     }
 
-
     // Delete location
     public function destroy($id)
     {
         try {
-            // 1. Find the record
+            // 1. Find record
             $location = Location::findOrFail($id);
 
-            // 2. Attempt to delete
+            // 🔥 Delete image from storage
+            if ($location->image) {
+                $path = str_replace('storage/', 'public/', $location->image);
+
+                if (Storage::exists($path)) {
+                    Storage::delete($path);
+                }
+            }
+
+            // 🔥 Soft delete (recommended)
             $location->delete();
 
             return response()->json([
@@ -188,23 +210,22 @@ class LocationController extends Controller
                 'message' => 'Location deleted successfully'
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            // Handle case where ID doesn't exist
+
             return response()->json([
                 'status' => false,
                 'message' => 'Location not found or already deleted.'
             ], 404);
         } catch (\Illuminate\Database\QueryException $e) {
-            // Handle database-specific errors (like foreign key constraints)
+
             Log::error("Database Error on Delete [ID: $id]: " . $e->getMessage());
 
             return response()->json([
                 'status' => false,
                 'message' => 'Cannot delete this location because it is being used by other records.',
                 'error' => config('app.debug') ? $e->getMessage() : null
-            ], 409); // 409 Conflict is appropriate here
-
+            ], 409);
         } catch (\Exception $e) {
-            // Catch-all for anything else
+
             Log::error("General Error on Delete [ID: $id]: " . $e->getMessage());
 
             return response()->json([
