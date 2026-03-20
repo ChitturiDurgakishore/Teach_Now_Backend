@@ -253,7 +253,7 @@ class PublicAPIController extends Controller
     {
         try {
 
-            $companies = Employer::where('is_verified', 1)->where('is_featured', 1)->where('company_verified', 1)
+            $companies = Employer::where('is_verified', 1)->where('is_featured', 1)->where('company_featured', 1)
                 ->select('id', 'company_name', 'company_logo', 'slug')
                 ->get();
 
