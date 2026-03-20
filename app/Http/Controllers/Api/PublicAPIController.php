@@ -352,6 +352,7 @@ class PublicAPIController extends Controller
         }
     }
 
+    // Blogs
     public function getBlogBySlug($id)
     {
         try {
