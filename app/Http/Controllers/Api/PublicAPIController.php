@@ -332,7 +332,7 @@ class PublicAPIController extends Controller
     {
         try {
 
-            $blogs = Blog::where('is_active', true)
+            $blogs = Blog::where('is_active', true)->where('is_featured', true)
                 ->latest()
                 ->paginate(10);
 
@@ -367,9 +367,39 @@ class PublicAPIController extends Controller
                 ], 404);
             }
 
+            // 🔥 Extract keywords
+            $keywords = [];
+
+            if ($blog->meta_keywords) {
+                $keywords = array_map('trim', explode(',', strtolower($blog->meta_keywords)));
+            }
+
+            // 🔥 Find similar blogs
+            $similarBlogs = Blog::where('id', '!=', $id)
+                ->where('is_active', true)
+                ->when(!empty($keywords), function ($query) use ($keywords) {
+
+                    foreach ($keywords as $keyword) {
+                        $query->orWhere('meta_keywords', 'LIKE', '%' . $keyword . '%');
+                    }
+                })
+                ->latest()
+                ->take(5)
+                ->get();
+
+            //Latest blogs
+            $LatestBlogs = Blog::where('is_active', true)
+                ->latest()
+                ->limit(4)
+                ->get();
+
             return response()->json([
                 'status' => true,
-                'data' => $blog
+                'data' => [
+                    'blog' => $blog,
+                    'similar_blogs' => $similarBlogs,
+                    'latest_blogs' => $LatestBlogs
+                ]
             ], 200);
         } catch (\Exception $e) {
 
