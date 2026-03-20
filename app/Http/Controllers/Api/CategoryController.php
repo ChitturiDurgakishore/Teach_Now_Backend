@@ -16,7 +16,7 @@ class CategoryController extends Controller
     // Get all categories (PUBLIC)
     public function index()
     {
-        $categories = Category::where('is_featured', true)->get();
+        $categories = Category::where('is_visible', true)->get();
 
         return response()->json([
             'status' => true,
