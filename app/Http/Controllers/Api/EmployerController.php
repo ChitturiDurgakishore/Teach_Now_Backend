@@ -128,6 +128,38 @@ class EmployerController extends Controller
         }
     }
 
+    // EMployer Feature
+
+    public function toggleEmployerFeatured($id)
+    {
+        try {
+
+            $employer = Employer::findOrFail($id);
+
+            $employer->is_featured = !$employer->is_featured;
+            $employer->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Employer feature status updated successfully',
+                'data' => $employer
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Employer not found'
+            ], 404);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update employer feature status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     // Employer Login
 
@@ -772,6 +804,38 @@ class EmployerController extends Controller
         }
     }
 
+    //Job featuring
+
+    public function toggleJobFeatured($id)
+    {
+        try {
+
+            $job = Job::findOrFail($id);
+
+            $job->featured = !$job->featured;
+            $job->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job feature status updated successfully',
+                'data' => $job
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Job not found'
+            ], 404);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update job feature status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     //Applications for Company Jobs
 
     public function getApplications()
@@ -863,7 +927,7 @@ class EmployerController extends Controller
     {
         try {
             // 1. Fetch the application with basics
-            $application = JobApplication::with(['jobSeeker.user','jobSeeker.skills:id,name', 'resume'])->find($applicationId);
+            $application = JobApplication::with(['jobSeeker.user', 'jobSeeker.skills:id,name', 'resume'])->find($applicationId);
 
             if (!$application) {
                 return response()->json([

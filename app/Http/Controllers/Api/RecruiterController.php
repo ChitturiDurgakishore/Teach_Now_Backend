@@ -316,6 +316,37 @@ class RecruiterController extends Controller
         }
     }
 
+    //Feature job
+    public function toggleJobFeatured($id)
+    {
+        try {
+
+            $job = Job::findOrFail($id);
+
+            $job->featured = !$job->featured;
+            $job->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job feature status updated successfully',
+                'data' => $job
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Job not found'
+            ], 404);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update job feature status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // Mark job as filled
     public function markJobFilled($id)
     {
@@ -475,7 +506,7 @@ class RecruiterController extends Controller
     {
         try {
             // 1. Fetch the application with basics
-            $application = JobApplication::with(['jobSeeker.user', 'jobSeeker.skills:id,name','resume'])->find($applicationId);
+            $application = JobApplication::with(['jobSeeker.user', 'jobSeeker.skills:id,name', 'resume'])->find($applicationId);
 
             if (!$application) {
                 return response()->json([

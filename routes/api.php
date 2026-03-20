@@ -310,6 +310,10 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::patch('/shortlist/{applicationId}', [EmployerController::class, 'shortlistCandidate']);
     Route::patch('/reject/{applicationId}', [EmployerController::class, 'rejectCandidate']);
     Route::get('/shortlisted/{jobId}', [EmployerController::class, 'getShortlistedCandidates']);
+
+    // Featuring
+    Route::post('/job/{id}/toggle-feature', [EmployerController::class, 'toggleJobFeatured']);
+    Route::post('/{id}/toggle-feature', [EmployerController::class, 'toggleEmployerFeatured']);
 });
 
 // ----------------------------------------------------------------------------------
@@ -336,6 +340,8 @@ Route::prefix('recruiter')->group(function () {
         Route::put('/jobs/{id}/filled', [RecruiterController::class, 'markJobFilled']); //Mark job as filled
         Route::get('/jobs', [RecruiterController::class, 'getRecruiterJobs']); //Get recruiter jobs
 
+        // Feature JOb
+        Route::post('/job/{id}/toggle-feature', [RecruiterController::class, 'toggleJobFeatured']);
         //Applications management
 
         Route::get('/jobs/{id}/applications', [RecruiterController::class, 'getJobApplications']);
