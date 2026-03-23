@@ -56,7 +56,7 @@ Route::prefix('open')->group(function () {
     // Open Routes for job browsing and viewing job details
 
     Route::get('/jobs', [JobBrowseController::class, 'browseJobs']);
-    Route::get('/jobs/{id}', [JobBrowseController::class, 'viewJob']);
+    Route::get('/jobs/{slug}', [JobBrowseController::class, 'viewJob']);
 
     // Search filter
 

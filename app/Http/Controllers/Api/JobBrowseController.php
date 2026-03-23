@@ -49,11 +49,12 @@ class JobBrowseController extends Controller
 
     //Open route for job seekers to view details of a specific job
 
-    public function viewJob($id)
+    public function viewJob($slug)
     {
         try {
+            $job_slug=Job::where('slug', $slug)->first();
             // 1. Fetch the main job
-            $job = Job::where('id', $id)
+            $job = Job::where('id', $job_slug->id)
                 ->where('status', 'approved')
                 ->first();
 
@@ -65,11 +66,11 @@ class JobBrowseController extends Controller
             }
 
             // 2. Fetch job questions
-            $questions = JobQuestion::where('job_id', $id)->get();
+            $questions = JobQuestion::where('job_id', $job_slug->id)->get();
 
             // 3. Fetch Similar Jobs
             // We use "orWhere" to find matches in Title, Location, or Experience
-            $similarJobs = Job::where('id', '!=', $id) // Exclude current job
+            $similarJobs = Job::where('id', '!=', $job_slug->id) // Exclude current job
                 ->where('status', 'approved')
                 ->where(function ($query) use ($job) {
                     $query->where('title', 'LIKE', '%' . $job->title . '%')
