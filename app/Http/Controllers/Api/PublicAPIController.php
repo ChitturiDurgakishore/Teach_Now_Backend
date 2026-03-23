@@ -206,8 +206,16 @@ class PublicAPIController extends Controller
     public function getJobsByCategory($slug)
     {
         try {
+            $category = Category::where('slug', $slug)->first();
 
-            $jobs = Job::where('slug', $slug)
+            if (!$category) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Category not found'
+                ], 404);
+            }
+
+            $jobs = Job::where('category_id', $category->id)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->latest()
