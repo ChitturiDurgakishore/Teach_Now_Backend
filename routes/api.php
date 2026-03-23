@@ -48,7 +48,7 @@ Route::prefix('open')->group(function () {
     //Categories jobs
     Route::get('/category/{slug}', [PublicAPIController::class, 'getJobsByCategory']);
     Route::get('/locations', [LocationController::class, 'index']);  //Locations
-
+    Route::get('/location/{slug}/jobs', [PublicAPIController::class, 'getJobsByLocation']);
 
     // Company details and jobs
     Route::get('/company/{slug}/profile', [PublicAPIController::class, 'getCompanyPublicProfile']);

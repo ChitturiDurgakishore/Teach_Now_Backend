@@ -17,7 +17,7 @@ use App\Models\FAQ;
 use App\Models\Blog;
 use App\Models\Category;
 use App\Models\SearchLog;
-
+use App\Models\Location;
 
 class PublicAPIController extends Controller
 {
@@ -631,6 +631,43 @@ class PublicAPIController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch company details',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Location based job search API
+    public function getJobsByLocation($slug)
+    {
+        try {
+
+            // 🔥 Step 1: get location from slug
+            $location = Location::where('slug', $slug)->first();
+
+            if (!$location) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Location not found'
+                ], 404);
+            }
+
+            // 🔥 Step 2: filter jobs (using location name)
+            $jobs = Job::where('location', 'LIKE', '%' . $location->name . '%')
+                ->where('status', 'approved')
+                ->where('job_status', 'open')
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'location' => $location->name,
+                'data' => $jobs
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch jobs',
                 'error' => $e->getMessage()
             ], 500);
         }
