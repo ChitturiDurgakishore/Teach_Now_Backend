@@ -562,7 +562,7 @@ class EmployerController extends Controller
                 'job_type' => 'required|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
                 'keywords' => 'nullable|string', // 🔥 NEW
-
+                'gender' => 'nullable|in:male,female,both',
                 // questions validation
                 'questions' => 'nullable|array',
                 'questions.*.question' => 'required_with:questions|string',
@@ -593,7 +593,8 @@ class EmployerController extends Controller
                 'experience_required' => $request->experience_required,
                 'job_type' => $request->job_type,
                 'application_deadline' => $request->application_deadline,
-                'keywords' => $request->keywords // ✅ NEW
+                'keywords' => $request->keywords ,// ✅ NEW
+                'gender' => $request->gender ?? 'both',
             ]);
 
             $questionsCreated = [];
@@ -651,6 +652,7 @@ class EmployerController extends Controller
                 'job_type' => 'nullable|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
                 'keywords' => 'nullable|string', // 🔥 NEW
+                'gender' => 'nullable|in:male,female,both',
 
                 'questions' => 'nullable|array',
                 'questions.*.id' => 'nullable|exists:job_questions,id',
@@ -691,7 +693,8 @@ class EmployerController extends Controller
                 'experience_required',
                 'job_type',
                 'application_deadline',
-                'keywords' // ✅ NEW
+                'keywords' ,// ✅ NEW
+                'gender'
             ]));
 
             $questionsUpdated = [];

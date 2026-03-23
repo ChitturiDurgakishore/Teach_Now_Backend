@@ -68,69 +68,80 @@ class PublicAPIController extends Controller
 
             $keyword = $request->input('keyword');
             $location = $request->input('location');
+            $categoryId = $request->input('category_id');
+            $jobType = $request->input('job_type');
+            $experience = $request->input('experience');
+            $salaryMin = $request->input('salary_min');
+            $salaryMax = $request->input('salary_max');
+            $gender = $request->input('gender');
 
             $query = Job::query()
                 ->where('status', 'approved')
                 ->where('job_status', 'open');
 
-            // 🔥 PRIORITY SEARCH
+            // 🔥 KEYWORD SEARCH (keywords + title ONLY)
             if ($keyword) {
 
                 $keywords = explode(' ', $keyword);
 
                 $query->where(function ($q) use ($keywords) {
-
                     foreach ($keywords as $word) {
-                        $q->orWhere('keywords', 'LIKE', "%$word%")     // 🥇 highest priority
-                            ->orWhere('title', 'LIKE', "%$word%")        // 🥈 medium
-                            ->orWhere('description', 'LIKE', "%$word%"); // 🥉 lowest
+                        $q->orWhere('keywords', 'LIKE', "%$word%") // 🥇 highest
+                            ->orWhere('title', 'LIKE', "%$word%");   // 🥈 second
                     }
                 });
 
-                // 🔥 ORDER BY MATCH PRIORITY
+                // 🔥 PRIORITY ORDER
                 $query->orderByRaw("
                 CASE
                     WHEN keywords LIKE ? THEN 1
                     WHEN title LIKE ? THEN 2
-                    WHEN description LIKE ? THEN 3
-                    ELSE 4
+                    ELSE 3
                 END
             ", [
-                    "%$keyword%",
                     "%$keyword%",
                     "%$keyword%"
                 ]);
             }
 
-            // 🔥 LOCATION PRIORITY
+            // 🔥 CATEGORY
+            if ($categoryId) {
+                $query->where('category_id', $categoryId);
+            }
+
+            // 🔥 LOCATION
             if ($location) {
-                $query->orderByRaw("
-                CASE
-                    WHEN location LIKE ? THEN 1
-                    ELSE 2
-                END
-            ", ['%' . $location . '%']);
+                $query->where('location', 'LIKE', "%$location%");
+            }
+
+            // 🔥 JOB TYPE
+            if ($jobType) {
+                $query->where('job_type', $jobType);
+            }
+
+            // 🔥 EXPERIENCE
+            if ($experience !== null) {
+                $query->where('experience_required', '<=', $experience);
+            }
+
+            // 🔥 SALARY RANGE
+            if ($salaryMin) {
+                $query->where('salary_max', '>=', $salaryMin);
+            }
+
+            if ($salaryMax) {
+                $query->where('salary_min', '<=', $salaryMax);
+            }
+
+            // 🔥 GENDER
+            if ($gender) {
+                $query->where(function ($q) use ($gender) {
+                    $q->where('gender', $gender)
+                        ->orWhere('gender', 'both');
+                });
             }
 
             $jobs = $query->latest()->paginate(10);
-
-            // 🔥 SIMILAR JOBS (based on same category or keyword)
-            $similarJobs = [];
-
-            if ($jobs->count() > 0) {
-
-                $firstJob = $jobs->first();
-
-                $similarJobs = Job::where('id', '!=', $firstJob->id)
-                    ->where('status', 'approved')
-                    ->where('job_status', 'open')
-                    ->where(function ($q) use ($firstJob) {
-                        $q->where('category_id', $firstJob->category_id)
-                            ->orWhere('keywords', 'LIKE', "%{$firstJob->keywords}%");
-                    })
-                    ->limit(5)
-                    ->get();
-            }
 
             // 🔥 SEARCH LOG
             SearchLog::create([
@@ -152,8 +163,7 @@ class PublicAPIController extends Controller
                 'total_jobs' => $jobs->total(),
                 'current_page' => $jobs->currentPage(),
                 'last_page' => $jobs->lastPage(),
-                'data' => $jobs->items(),
-                'similar_jobs' => $similarJobs // 🔥 NEW
+                'data' => $jobs->items()
             ], 200);
         } catch (\Exception $e) {
 
