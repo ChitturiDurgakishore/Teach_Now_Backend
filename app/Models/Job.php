@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Job extends Model
 {
-    //
     public function employer()
     {
         return $this->belongsTo(Employer::class);
@@ -29,17 +29,15 @@ class Job extends Model
 
     public function jobApplications()
     {
-        // This links the 'id' of this job to the 'job_id' in the job_applications table
         return $this->hasMany(JobApplication::class, 'job_id');
     }
 
     public function jobQuestions()
     {
-        // This assumes your questions table has a 'job_id' column
         return $this->hasMany(JobQuestion::class, 'job_id');
     }
 
-    public $fillable = [
+    protected $fillable = [
         'employer_id',
         'created_by',
         'category_id',
@@ -63,4 +61,38 @@ class Job extends Model
         'keywords',
         'gender'
     ];
+
+    // 🔥 UNIQUE SLUG GENERATOR
+    public static function generateUniqueSlug($title)
+    {
+        $slug = Str::slug($title);
+        $originalSlug = $slug;
+        $count = 1;
+
+        while (static::where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $count;
+            $count++;
+        }
+
+        return $slug;
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // 🔥 On Create
+        static::creating(function ($model) {
+            if (empty($model->slug)) {
+                $model->slug = self::generateUniqueSlug($model->title);
+            }
+        });
+
+        // 🔥 On Update
+        static::updating(function ($model) {
+            if ($model->isDirty('title')) {
+                $model->slug = self::generateUniqueSlug($model->title);
+            }
+        });
+    }
 }

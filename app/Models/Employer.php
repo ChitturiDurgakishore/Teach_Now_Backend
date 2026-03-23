@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Employer extends Authenticatable
 {
@@ -26,12 +26,18 @@ class Employer extends Authenticatable
     {
         return $this->hasMany(Payment::class);
     }
+
     public function employerUsers()
     {
         return $this->hasMany(EmployerUser::class, 'employer_id');
     }
-    protected $fillable = [
 
+    public function documents()
+    {
+        return $this->hasMany(DocumentVerification::class, 'employer_id');
+    }
+
+    protected $fillable = [
         'company_name',
         'company_description',
         'industry',
@@ -53,10 +59,37 @@ class Employer extends Authenticatable
         'company_verified'
     ];
 
-    public function documents()
+    // 🔥 UNIQUE SLUG GENERATOR
+    public static function generateUniqueSlug($name)
     {
-        return $this->hasMany(DocumentVerification::class, 'employer_id');
+        $slug = Str::slug($name);
+        $originalSlug = $slug;
+        $count = 1;
+
+        while (static::where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $count;
+            $count++;
+        }
+
+        return $slug;
     }
 
+    protected static function boot()
+    {
+        parent::boot();
 
+        // 🔥 On Create
+        static::creating(function ($model) {
+            if (empty($model->slug)) {
+                $model->slug = self::generateUniqueSlug($model->company_name);
+            }
+        });
+
+        // 🔥 On Update
+        static::updating(function ($model) {
+            if ($model->isDirty('company_name')) {
+                $model->slug = self::generateUniqueSlug($model->company_name);
+            }
+        });
+    }
 }
