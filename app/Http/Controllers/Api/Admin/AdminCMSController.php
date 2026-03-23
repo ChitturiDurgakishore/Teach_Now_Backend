@@ -35,7 +35,7 @@ class AdminCMSController extends Controller
     {
         $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
 
-        $path = $file->storeAs("media/$folder", $filename);
+        $path = $file->storeAs("storage/media/$folder", $filename);
 
         return str_replace('public/', 'storage/', $path);
     }
