@@ -136,6 +136,7 @@ class RecruiterController extends Controller
                 'experience_required' => 'nullable|integer',
                 'job_type' => 'required|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
+                'keywords' => 'nullable|string', // 🔥 NEW
 
                 'questions' => 'nullable|array',
                 'questions.*.question' => 'required_with:questions|string',
@@ -145,7 +146,7 @@ class RecruiterController extends Controller
 
             $recruiter = Auth::guard('employer_user')->user();
 
-            // 🔹 Create Job
+            // 🔥 Create Job
             $job = Job::create([
                 'employer_id' => $recruiter->employer_id,
                 'created_by' => $recruiter->id,
@@ -158,7 +159,8 @@ class RecruiterController extends Controller
                 'location' => $request->location,
                 'experience_required' => $request->experience_required,
                 'job_type' => $request->job_type,
-                'application_deadline' => $request->application_deadline
+                'application_deadline' => $request->application_deadline,
+                'keywords' => $request->keywords
             ]);
 
             $questionsCreated = [];
@@ -176,28 +178,21 @@ class RecruiterController extends Controller
                 }
             }
 
-            // 🔥 MAILS (QUEUE + SAFE)
+            // 🔥 MAILS
             try {
 
                 $mailService = new MailService();
 
-                // ✅ Recruiter mail
                 $mailService->send('job_created_recruiter', [
                     'name' => $recruiter->name,
                     'job_title' => $job->title
                 ], $recruiter->email);
 
-                // ✅ Employer mail
                 $mailService->send('job_created_employer', [
                     'company_name' => $recruiter->employer->company_name,
                     'job_title' => $job->title,
                     'recruiter_name' => $recruiter->name
                 ], $recruiter->employer->email);
-
-                Log::info('Job creation mails queued', [
-                    'job_id' => $job->id,
-                    'recruiter_id' => $recruiter->id
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Job creation mail failed', [
@@ -244,6 +239,7 @@ class RecruiterController extends Controller
                 'experience_required' => 'nullable|integer',
                 'job_type' => 'nullable|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
+                'keywords' => 'nullable|string', // 🔥 NEW
 
                 // questions validation
                 'questions' => 'nullable|array',
@@ -265,7 +261,7 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
-            // Update job fields
+            // 🔥 Update job fields (INCLUDING keywords)
             $job->update($request->only([
                 'title',
                 'description',
@@ -276,12 +272,13 @@ class RecruiterController extends Controller
                 'location',
                 'experience_required',
                 'job_type',
-                'application_deadline'
+                'application_deadline',
+                'keywords' // ✅ NEW
             ]));
 
             $questionsUpdated = [];
 
-            // Update questions if provided
+            // 🔥 Update questions if provided
             if ($request->has('questions')) {
 
                 // remove old questions

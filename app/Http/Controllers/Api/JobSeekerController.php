@@ -272,41 +272,35 @@ class JobSeekerController extends Controller
                 'display_order' => 'nullable|integer'
             ]);
 
+            // 🔥 Only normal user (job seeker)
             $user = Auth::user();
 
-            $photo = null;
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
 
-            // 🔥 1. Check Job Seeker
+            // 🔥 Get JobSeeker profile
             $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
 
-            if ($jobSeeker && $jobSeeker->profile_photo) {
-                $photo = $jobSeeker->profile_photo;
+            if (!$jobSeeker) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only job seekers can create testimonials'
+                ], 403);
             }
 
-            // 🔥 2. Check Recruiter (Employer User)
-            if (!$photo) {
-                $recruiter = EmployerUser::where('user_id', $user->id)->first();
-
-                if ($recruiter && $recruiter->employer && $recruiter->employer->company_logo) {
-                    $photo = $recruiter->employer->company_logo;
-                }
-            }
-
-            // 🔥 3. Check Employer directly
-            if (!$photo) {
-                $employer = Employer::where('user_id', $user->id)->first();
-
-                if ($employer && $employer->company_logo) {
-                    $photo = $employer->company_logo;
-                }
-            }
+            // 🔥 Get profile photo
+            $photo = $jobSeeker->profile_photo ?? null;
 
             $testimonial = HomepageTestimonial::create([
                 'name' => $request->name,
                 'designation' => $request->designation,
                 'company' => $request->company,
                 'message' => $request->message,
-                'photo' => $photo, // ✅ auto-filled based on role
+                'photo' => $photo,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
                 'user_id' => $user->id

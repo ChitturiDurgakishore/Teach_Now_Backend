@@ -561,6 +561,7 @@ class EmployerController extends Controller
                 'experience_required' => 'nullable|integer',
                 'job_type' => 'required|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
+                'keywords' => 'nullable|string', // 🔥 NEW
 
                 // questions validation
                 'questions' => 'nullable|array',
@@ -571,10 +572,17 @@ class EmployerController extends Controller
 
             $employer = Auth::guard('employer')->user();
 
-            // Create Job
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            // 🔥 Create Job (with keywords)
             $job = Job::create([
                 'employer_id' => $employer->id,
-                'created_by' => $employer->id, // employer created
+                'created_by' => $employer->id,
                 'category_id' => $request->category_id,
                 'title' => $request->title,
                 'description' => $request->description,
@@ -584,12 +592,13 @@ class EmployerController extends Controller
                 'location' => $request->location,
                 'experience_required' => $request->experience_required,
                 'job_type' => $request->job_type,
-                'application_deadline' => $request->application_deadline
+                'application_deadline' => $request->application_deadline,
+                'keywords' => $request->keywords // ✅ NEW
             ]);
 
             $questionsCreated = [];
 
-            // Add questions if provided
+            // 🔥 Add questions if provided
             if ($request->has('questions')) {
 
                 foreach ($request->questions as $q) {
@@ -625,6 +634,7 @@ class EmployerController extends Controller
 
     // Update Job for Company
 
+
     public function updateJob(Request $request, $id)
     {
         try {
@@ -640,6 +650,7 @@ class EmployerController extends Controller
                 'experience_required' => 'nullable|integer',
                 'job_type' => 'nullable|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
+                'keywords' => 'nullable|string', // 🔥 NEW
 
                 'questions' => 'nullable|array',
                 'questions.*.id' => 'nullable|exists:job_questions,id',
@@ -649,6 +660,13 @@ class EmployerController extends Controller
             ]);
 
             $employer = Auth::guard('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
 
             $job = Job::where('id', $id)
                 ->where('employer_id', $employer->id)
@@ -661,7 +679,7 @@ class EmployerController extends Controller
                 ], 404);
             }
 
-            // Update Job
+            // 🔥 Update Job (INCLUDING keywords)
             $job->update($request->only([
                 'title',
                 'description',
@@ -672,12 +690,13 @@ class EmployerController extends Controller
                 'location',
                 'experience_required',
                 'job_type',
-                'application_deadline'
+                'application_deadline',
+                'keywords' // ✅ NEW
             ]));
 
             $questionsUpdated = [];
 
-            // Handle questions
+            // 🔥 Handle questions
             if ($request->has('questions')) {
 
                 foreach ($request->questions as $q) {
@@ -726,6 +745,7 @@ class EmployerController extends Controller
             ], 500);
         }
     }
+
     //mark job as filled
 
     public function markJobFilled($id)
@@ -1197,5 +1217,5 @@ class EmployerController extends Controller
         ]);
     }
 
-//    testimonials wrote in recruiter controller - common for both recruiter and employer
+    //    testimonials wrote in recruiter controller - common for both recruiter and employer
 }
