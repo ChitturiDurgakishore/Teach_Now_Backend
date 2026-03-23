@@ -6,5 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
-    protected $fillable = ['name', 'slug','icon', 'is_visible', 'meta_title', 'meta_description', 'meta_keywords','is_featured'];
+    protected $fillable = ['name', 'slug', 'icon', 'is_visible', 'meta_title', 'meta_description', 'meta_keywords', 'is_featured'];
+    public function jobs()
+    {
+        return $this->hasMany(Job::class);
+    }
 }

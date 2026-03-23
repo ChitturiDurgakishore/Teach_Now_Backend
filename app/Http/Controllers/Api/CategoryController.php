@@ -16,12 +16,17 @@ class CategoryController extends Controller
     // Get all categories (PUBLIC)
     public function index()
     {
-        $categories = Category::where('is_visible', true)->get();
+        $categories = Category::where('is_visible', true)
+            ->whereHas('jobs', function ($query) {
+                $query->where('status', 'approved')
+                    ->where('job_status', 'open');
+            })
+            ->get();
 
         return response()->json([
             'status' => true,
             'data' => $categories
-        ]);
+        ], 200);
     }
 
 
