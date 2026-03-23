@@ -79,26 +79,53 @@ class PublicAPIController extends Controller
                 ->where('status', 'approved')
                 ->where('job_status', 'open');
 
-            // 🔥 KEYWORD SEARCH (keywords + title ONLY)
+            // 🔥 SMART SEARCH
             if ($keyword) {
 
-                $keywords = explode(' ', $keyword);
+                $keywords = array_filter(explode(' ', $keyword));
 
-                $query->where(function ($q) use ($keywords) {
-                    foreach ($keywords as $word) {
-                        $q->orWhere('keywords', 'LIKE', "%$word%") // 🥇 highest
-                            ->orWhere('title', 'LIKE', "%$word%");   // 🥈 second
+                $query->where(function ($q) use ($keywords, $keyword) {
+
+                    // ✅ 1. FULL TITLE MATCH
+                    $q->where('title', 'LIKE', "%$keyword%");
+
+                    // ✅ 2. SLUG MATCH
+                    $q->orWhere('slug', 'LIKE', "%$keyword%");
+
+                    // ✅ 3. MULTI WORD MATCH (at least 2 words)
+                    if (count($keywords) > 1) {
+
+                        $q->orWhere(function ($subQ) use ($keywords) {
+
+                            foreach ($keywords as $word) {
+                                $subQ->where(function ($inner) use ($word) {
+                                    $inner->where('keywords', 'LIKE', "%$word%")
+                                        ->orWhere('title', 'LIKE', "%$word%");
+                                });
+                            }
+                        });
+                    } else {
+
+                        // ✅ 4. SINGLE WORD FALLBACK
+                        $word = $keywords[0] ?? null;
+
+                        if ($word) {
+                            $q->orWhere('keywords', 'LIKE', "%$word%")
+                                ->orWhere('title', 'LIKE', "%$word%");
+                        }
                     }
                 });
 
-                // 🔥 PRIORITY ORDER
+                // 🔥 PRIORITY ORDERING
                 $query->orderByRaw("
                 CASE
-                    WHEN keywords LIKE ? THEN 1
-                    WHEN title LIKE ? THEN 2
-                    ELSE 3
+                    WHEN title LIKE ? THEN 1
+                    WHEN slug LIKE ? THEN 2
+                    WHEN keywords LIKE ? THEN 3
+                    ELSE 4
                 END
             ", [
+                    "%$keyword%",
                     "%$keyword%",
                     "%$keyword%"
                 ]);
