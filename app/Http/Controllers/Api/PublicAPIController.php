@@ -79,38 +79,43 @@ class PublicAPIController extends Controller
                 ->where('status', 'approved')
                 ->where('job_status', 'open');
 
-            // 🔥 STRICT SEARCH LOGIC
+            // 🔥 SMART SEARCH (FIXED)
             if ($keyword) {
+
+                $keyword = strtolower($keyword);
+
+                $normalizedKeyword = str_replace(' ', '-', $keyword); // for slug
+                $compactKeyword = str_replace(' ', '', $keyword);     // for hinditeacher case
 
                 $keywords = array_values(array_filter(explode(' ', $keyword)));
                 $wordCount = count($keywords);
 
-                $query->where(function ($q) use ($keywords, $keyword, $wordCount) {
+                $query->where(function ($q) use ($keywords, $keyword, $normalizedKeyword, $compactKeyword, $wordCount) {
 
-                    // ✅ FULL TITLE MATCH (highest priority)
+                    // ✅ 1. TITLE MATCH
                     $q->where('title', 'LIKE', "%$keyword%");
 
-                    // ✅ SLUG MATCH
-                    $q->orWhere('slug', 'LIKE', "%$keyword%");
+                    // ✅ 2. SLUG MATCH (hindi-teacher)
+                    $q->orWhere('slug', 'LIKE', "%$normalizedKeyword%");
 
-                    // ✅ REQUIRE MULTI WORD MATCH (STRICT AND)
+                    // ✅ 3. REMOVE SPACE MATCH (hinditeacher)
+                    $q->orWhereRaw("REPLACE(LOWER(title), ' ', '') LIKE ?", ["%$compactKeyword%"]);
+
+                    // ✅ 4. MULTI WORD STRICT MATCH
                     if ($wordCount >= 2) {
 
                         $q->orWhere(function ($subQ) use ($keywords) {
 
-                            $subQ->where(function ($innerQ) use ($keywords) {
-
-                                foreach ($keywords as $word) {
-                                    $innerQ->where(function ($q2) use ($word) {
-                                        $q2->where('keywords', 'LIKE', "%$word%")
-                                            ->orWhere('title', 'LIKE', "%$word%");
-                                    });
-                                }
-                            });
+                            foreach ($keywords as $word) {
+                                $subQ->where(function ($inner) use ($word) {
+                                    $inner->where('keywords', 'LIKE', "%$word%")
+                                        ->orWhere('title', 'LIKE', "%$word%");
+                                });
+                            }
                         });
                     } else {
 
-                        // ✅ Single word → only allow TITLE match (strict)
+                        // ✅ Single word → only title (safe)
                         $word = $keywords[0] ?? null;
 
                         if ($word) {
@@ -119,27 +124,27 @@ class PublicAPIController extends Controller
                     }
                 });
 
-                // 🔥 PRIORITY ORDERING
+                // 🔥 PRIORITY ORDER
                 $query->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
                     WHEN slug LIKE ? THEN 2
-                    WHEN keywords LIKE ? THEN 3
+                    WHEN REPLACE(LOWER(title), ' ', '') LIKE ? THEN 3
                     ELSE 4
                 END
             ", [
                     "%$keyword%",
-                    "%$keyword%",
-                    "%$keyword%"
+                    "%$normalizedKeyword%",
+                    "%$compactKeyword%"
                 ]);
             }
 
-            // 🔥 CATEGORY FILTER
+            // 🔥 CATEGORY
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
             }
 
-            // 🔥 LOCATION FILTER
+            // 🔥 LOCATION
             if ($location) {
                 $query->where('location', 'LIKE', "%$location%");
             }
@@ -163,7 +168,7 @@ class PublicAPIController extends Controller
                 $query->where('salary_min', '<=', $salaryMax);
             }
 
-            // 🔥 GENDER FILTER
+            // 🔥 GENDER
             if ($gender) {
                 $query->where(function ($q) use ($gender) {
                     $q->where('gender', $gender)
