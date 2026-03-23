@@ -45,7 +45,10 @@ Route::prefix('open')->group(function () {
     //Dashboard APIs Combination for optimization
 
     Route::get('/categories', [CategoryController::class, 'index']);  //Categories
+    //Categories jobs
+    Route::get('/jobs/category/{categoryId}', [PublicAPIController::class, 'getJobsByCategory']);
     Route::get('/locations', [LocationController::class, 'index']);  //Locations
+
 
     // Company details and jobs
     Route::get('/company/{id}/profile', [PublicAPIController::class, 'getCompanyPublicProfile']);

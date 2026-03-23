@@ -117,6 +117,31 @@ class PublicAPIController extends Controller
         }
     }
 
+    // Category search API
+    public function getJobsByCategory($categoryId)
+    {
+        try {
+
+            $jobs = Job::where('category_id', $categoryId)
+                ->where('status', 'approved')
+                ->where('job_status', 'open')
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $jobs
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch jobs',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
 
     //HeroSection API
