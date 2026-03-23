@@ -21,6 +21,10 @@ class CategoryController extends Controller
                 $query->where('status', 'approved')
                     ->where('job_status', 'open');
             })
+            ->withCount(['jobs' => function ($query) {
+                $query->where('status', 'approved')
+                    ->where('job_status', 'open');
+            }])
             ->get();
 
         return response()->json([
