@@ -203,11 +203,11 @@ class PublicAPIController extends Controller
     }
 
     // Category search API
-    public function getJobsByCategory($categoryId)
+    public function getJobsByCategory($slug)
     {
         try {
 
-            $jobs = Job::where('category_id', $categoryId)
+            $jobs = Job::where('slug', $slug)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->latest()

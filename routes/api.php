@@ -46,7 +46,7 @@ Route::prefix('open')->group(function () {
 
     Route::get('/categories', [CategoryController::class, 'index']);  //Categories
     //Categories jobs
-    Route::get('/category/{categoryId}', [PublicAPIController::class, 'getJobsByCategory']);
+    Route::get('/category/{slug}', [PublicAPIController::class, 'getJobsByCategory']);
     Route::get('/locations', [LocationController::class, 'index']);  //Locations
 
 
