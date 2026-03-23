@@ -361,13 +361,13 @@ Route::prefix('recruiter')->group(function () {
         Route::get('/jobs/{id}/shortlisted', [RecruiterController::class, 'getShortlistedCandidates']);
         Route::get('/shortlisted', [RecruiterController::class, 'getAllShortlistedCandidates']); //Get all shortlisted candidates
         Route::get('/dashboard', [RecruiterController::class, 'dashboard']);
-    });
 
-    //Testimonials management
-    Route::get('testimonials', [RecruiterController::class, 'getTestimonials']);
-    Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
-    Route::put('testimonials/{id}', [RecruiterController::class, 'updateTestimonial']);
-    Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
+        //Testimonials management
+        Route::get('testimonials', [RecruiterController::class, 'getTestimonials']);
+        Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
+        Route::put('testimonials/{id}', [RecruiterController::class, 'updateTestimonial']);
+        Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
+    });
 });
 
 

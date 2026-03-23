@@ -862,8 +862,19 @@ class RecruiterController extends Controller
     public function getTestimonials()
     {
         try {
+
             $user = Auth::user();
-            $testimonials = HomepageTestimonial::where('user_id', $user->id)->orderBy('display_order')->get();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $testimonials = HomepageTestimonial::where('user_id', $user->id)
+                ->orderBy('display_order')
+                ->get();
 
             return response()->json([
                 'status' => true,
