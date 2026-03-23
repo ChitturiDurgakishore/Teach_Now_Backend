@@ -69,12 +69,26 @@ class PublicAPIController extends Controller
             $keyword = $request->input('keyword');
             $location = $request->input('location');
 
-            $jobs = Job::query()->where('status', 'approved')->where('job_status', 'open')
+            $jobs = Job::query()
+                ->where('status', 'approved')
+                ->where('job_status', 'open')
 
+                // 🔥 KEYWORD SEARCH (title + description + keywords)
                 ->when($keyword, function ($query) use ($keyword) {
-                    $query->where('title', 'LIKE', '%' . $keyword . '%');
+
+                    $keywords = explode(' ', $keyword);
+
+                    $query->where(function ($q) use ($keywords) {
+
+                        foreach ($keywords as $word) {
+                            $q->orWhere('title', 'LIKE', "%$word%")
+                                ->orWhere('description', 'LIKE', "%$word%")
+                                ->orWhere('keywords', 'LIKE', "%$word%");
+                        }
+                    });
                 })
 
+                // 🔥 LOCATION PRIORITY
                 ->when($location, function ($query) use ($location) {
                     $query->orderByRaw("
                     CASE
@@ -86,11 +100,13 @@ class PublicAPIController extends Controller
 
                 ->latest()
                 ->paginate(10);
+
+            // 🔥 SEARCH LOG (safe user handling)
             SearchLog::create([
                 'keyword' => $keyword,
                 'location' => $location,
                 'ip_address' => $request->header('X-Forwarded-For') ?? $request->ip(),
-                'user_id' => auth()->id() //
+                'user_id' => auth()->id() ?? null
             ]);
 
             if ($jobs->total() == 0) {
