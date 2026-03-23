@@ -1002,14 +1002,15 @@ class AdminCMSController extends Controller
                 'meta_keywords' => 'nullable|string'
             ]);
 
-            // 🔥 Upload logo
-            $path = Storage::disk('public')->putFile('media/company_logo', $request->file('company_logo'));
-
-                $logoPath = 'storage/' . $path;
+            // 🔥 Use common upload helper (FIXED)
+            $logoPath = $this->uploadFile(
+                $request->file('company_logo'),
+                'company_logos'
+            );
 
             $logo = HomepageCompanyLogo::create([
                 'company_name' => $request->company_name,
-                'company_logo' => $logoPath,
+                'company_logo' => $logoPath, // ✅ consistent path
                 'slug' => $request->slug,
                 'company_url' => $request->company_url,
                 'display_order' => $request->display_order ?? 0,
@@ -1072,19 +1073,23 @@ class AdminCMSController extends Controller
                 // 🔥 Handle logo update
                 if ($request->hasFile('company_logo')) {
 
-                    // delete old file
+                    // ✅ Safe delete old file
                     if ($logo->company_logo) {
-                        Storage::delete(str_replace('storage/', 'public/', $logo->company_logo));
+                        $oldPath = str_replace('storage/', 'public/', $logo->company_logo);
+
+                        if (Storage::exists($oldPath)) {
+                            Storage::delete($oldPath);
+                        }
                     }
 
-                    // upload new file
+                    // ✅ Upload new file (standardized)
                     $logo->company_logo = $this->uploadFile(
                         $request->file('company_logo'),
                         'company_logos'
                     );
                 }
 
-                // update other fields
+                // 🔥 Update other fields
                 $logo->update([
                     'company_name' => $request->company_name,
                     'slug' => $request->slug,

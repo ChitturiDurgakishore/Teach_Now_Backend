@@ -12,6 +12,7 @@ use App\Models\HomepageTestimonial;
 use App\Models\Skill;
 use App\Models\EmployerUser;
 use App\Models\Employer;
+use App\Models\JobSeekerEducation;
 
 class JobSeekerController extends Controller
 {
@@ -104,6 +105,7 @@ class JobSeekerController extends Controller
             $user = Auth::user();
 
             $profile = JobSeeker::with([
+                'educations',
                 'user',
                 'skills' // 🔥 added
             ])->where('user_id', $user->id)->first();
@@ -428,6 +430,130 @@ class JobSeekerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Deletion failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function addEducation(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'degree' => 'required|string',
+                'institution' => 'required|string',
+                'field_of_study' => 'nullable|string',
+                'start_year' => 'nullable|digits:4',
+                'end_year' => 'nullable|digits:4',
+                'grade' => 'nullable|string',
+                'is_current' => 'nullable|boolean'
+            ]);
+
+            $jobSeeker = JobSeeker::where('user_id', auth()->id())->first();
+
+            if (!$jobSeeker) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Profile not found'
+                ], 404);
+            }
+
+            $education = JobSeekerEducation::create([
+                'job_seeker_id' => $jobSeeker->id,
+                'degree' => $request->degree,
+                'institution' => $request->institution,
+                'field_of_study' => $request->field_of_study,
+                'start_year' => $request->start_year,
+                'end_year' => $request->end_year,
+                'grade' => $request->grade,
+                'is_current' => $request->is_current ?? false
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Education added successfully',
+                'data' => $education
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to add education',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateEducation(Request $request, $id)
+    {
+        try {
+
+            $jobSeeker = JobSeeker::where('user_id', auth()->id())->first();
+
+            $education = JobSeekerEducation::where('id', $id)
+                ->where('job_seeker_id', $jobSeeker->id)
+                ->first();
+
+            if (!$education) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Education not found'
+                ], 404);
+            }
+
+            $education->update($request->only([
+                'degree',
+                'institution',
+                'field_of_study',
+                'start_year',
+                'end_year',
+                'grade',
+                'is_current'
+            ]));
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Education updated successfully',
+                'data' => $education
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteEducation($id)
+    {
+        try {
+
+            $jobSeeker = JobSeeker::where('user_id', auth()->id())->first();
+
+            $education = JobSeekerEducation::where('id', $id)
+                ->where('job_seeker_id', $jobSeeker->id)
+                ->first();
+
+            if (!$education) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Education not found'
+                ], 404);
+            }
+
+            $education->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Education deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
                 'error' => $e->getMessage()
             ], 500);
         }

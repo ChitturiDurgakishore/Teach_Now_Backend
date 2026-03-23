@@ -35,6 +35,10 @@ class JobSeeker extends Model
     {
         return $this->hasMany(JobApplication::class, 'job_seeker_id');
     }
+    public function educations()
+    {
+        return $this->hasMany(JobSeekerEducation::class);
+    }
 
     protected $fillable = [
         'user_id',

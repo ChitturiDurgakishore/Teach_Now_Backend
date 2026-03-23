@@ -14,6 +14,9 @@ use App\Http\Controllers\Api\PublicAPIController;
 use App\Models\Employer;
 use App\Models\FAQ;
 use App\Http\Controllers\Api\RecruiterController;
+use App\Http\Controllers\Api\JobSeekerController;
+use App\Http\Controllers\Api\ResumeController;
+
 
 Route::prefix('auth')->group(function () {
 
@@ -342,6 +345,7 @@ Route::prefix('recruiter')->group(function () {
 
         Route::get('/profile', [RecruiterController::class, 'getProfile']); //Get recruiter profile
 
+
         // Jobs management
 
         Route::post('/jobs', [RecruiterController::class, 'createJob']); //Create job posting
@@ -374,8 +378,8 @@ Route::prefix('recruiter')->group(function () {
 // ----------------------------------------------------------------------------------
 // Job-Seeker routes
 
-use App\Http\Controllers\Api\JobSeekerController;
-use App\Http\Controllers\Api\ResumeController;
+
+
 
 Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(function () {
 
@@ -385,6 +389,12 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
     Route::get('/profile', [JobSeekerController::class, 'getProfile']); //Get job seeker profile
     Route::put('/profile', [JobSeekerController::class, 'updateProfile']); //Update job seeker profile
     Route::delete('/profile', [JobSeekerController::class, 'deleteProfile']); //Delete job seeker profile
+
+    // Education management
+
+    Route::post('/education', [JobSeekerController::class, 'addEducation']);
+    Route::put('/education/{id}', [JobSeekerController::class, 'updateEducation']);
+    Route::delete('/education/{id}', [JobSeekerController::class, 'deleteEducation']);
 
     //Resume management
 
