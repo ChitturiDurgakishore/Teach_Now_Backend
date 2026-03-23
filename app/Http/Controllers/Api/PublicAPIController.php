@@ -69,39 +69,70 @@ class PublicAPIController extends Controller
             $keyword = $request->input('keyword');
             $location = $request->input('location');
 
-            $jobs = Job::query()
+            $query = Job::query()
                 ->where('status', 'approved')
-                ->where('job_status', 'open')
+                ->where('job_status', 'open');
 
-                // 🔥 KEYWORD SEARCH (title + description + keywords)
-                ->when($keyword, function ($query) use ($keyword) {
+            // 🔥 PRIORITY SEARCH
+            if ($keyword) {
 
-                    $keywords = explode(' ', $keyword);
+                $keywords = explode(' ', $keyword);
 
-                    $query->where(function ($q) use ($keywords) {
+                $query->where(function ($q) use ($keywords) {
 
-                        foreach ($keywords as $word) {
-                            $q->orWhere('title', 'LIKE', "%$word%")
-                                ->orWhere('description', 'LIKE', "%$word%")
-                                ->orWhere('keywords', 'LIKE', "%$word%");
-                        }
-                    });
-                })
+                    foreach ($keywords as $word) {
+                        $q->orWhere('keywords', 'LIKE', "%$word%")     // 🥇 highest priority
+                            ->orWhere('title', 'LIKE', "%$word%")        // 🥈 medium
+                            ->orWhere('description', 'LIKE', "%$word%"); // 🥉 lowest
+                    }
+                });
 
-                // 🔥 LOCATION PRIORITY
-                ->when($location, function ($query) use ($location) {
-                    $query->orderByRaw("
-                    CASE
-                        WHEN location LIKE ? THEN 1
-                        ELSE 2
-                    END
-                ", ['%' . $location . '%']);
-                })
+                // 🔥 ORDER BY MATCH PRIORITY
+                $query->orderByRaw("
+                CASE
+                    WHEN keywords LIKE ? THEN 1
+                    WHEN title LIKE ? THEN 2
+                    WHEN description LIKE ? THEN 3
+                    ELSE 4
+                END
+            ", [
+                    "%$keyword%",
+                    "%$keyword%",
+                    "%$keyword%"
+                ]);
+            }
 
-                ->latest()
-                ->paginate(10);
+            // 🔥 LOCATION PRIORITY
+            if ($location) {
+                $query->orderByRaw("
+                CASE
+                    WHEN location LIKE ? THEN 1
+                    ELSE 2
+                END
+            ", ['%' . $location . '%']);
+            }
 
-            // 🔥 SEARCH LOG (safe user handling)
+            $jobs = $query->latest()->paginate(10);
+
+            // 🔥 SIMILAR JOBS (based on same category or keyword)
+            $similarJobs = [];
+
+            if ($jobs->count() > 0) {
+
+                $firstJob = $jobs->first();
+
+                $similarJobs = Job::where('id', '!=', $firstJob->id)
+                    ->where('status', 'approved')
+                    ->where('job_status', 'open')
+                    ->where(function ($q) use ($firstJob) {
+                        $q->where('category_id', $firstJob->category_id)
+                            ->orWhere('keywords', 'LIKE', "%{$firstJob->keywords}%");
+                    })
+                    ->limit(5)
+                    ->get();
+            }
+
+            // 🔥 SEARCH LOG
             SearchLog::create([
                 'keyword' => $keyword,
                 'location' => $location,
@@ -121,7 +152,8 @@ class PublicAPIController extends Controller
                 'total_jobs' => $jobs->total(),
                 'current_page' => $jobs->currentPage(),
                 'last_page' => $jobs->lastPage(),
-                'data' => $jobs->items()
+                'data' => $jobs->items(),
+                'similar_jobs' => $similarJobs // 🔥 NEW
             ], 200);
         } catch (\Exception $e) {
 
