@@ -471,11 +471,11 @@ class PublicAPIController extends Controller
     }
 
     // Blogs
-    public function getBlogBySlug($id)
+    public function getBlogBySlug($slug)
     {
         try {
-
-            $blog = Blog::where('id', $id)
+            $blog_slug = Blog::where('slug', $slug)->first();
+            $blog = Blog::where('id', $blog_slug->id)
                 ->where('is_active', true)
                 ->first();
 
@@ -494,7 +494,7 @@ class PublicAPIController extends Controller
             }
 
             // 🔥 Find similar blogs
-            $similarBlogs = Blog::where('id', '!=', $id)
+            $similarBlogs = Blog::where('id', '!=', $blog_slug->id)
                 ->where('is_active', true)
                 ->when(!empty($keywords), function ($query) use ($keywords) {
 
