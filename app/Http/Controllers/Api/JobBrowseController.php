@@ -52,10 +52,11 @@ class JobBrowseController extends Controller
     public function viewJob($slug)
     {
         try {
-            $job_slug=Job::where('slug', $slug)->first();
-            // 1. Fetch the main job
-            $job = Job::where('id', $job_slug->id)
+
+            // 🔥 1. Get job directly by slug
+            $job = Job::where('slug', $slug)
                 ->where('status', 'approved')
+                ->where('job_status', 'open')
                 ->first();
 
             if (!$job) {
@@ -65,19 +66,50 @@ class JobBrowseController extends Controller
                 ], 404);
             }
 
-            // 2. Fetch job questions
-            $questions = JobQuestion::where('job_id', $job_slug->id)->get();
+            // 🔥 2. Questions
+            $questions = JobQuestion::where('job_id', $job->id)->get();
 
-            // 3. Fetch Similar Jobs
-            // We use "orWhere" to find matches in Title, Location, or Experience
-            $similarJobs = Job::where('id', '!=', $job_slug->id) // Exclude current job
+            // 🔥 Prepare keywords for matching
+            $title = strtolower($job->title);
+            $slugFormatted = strtolower($job->slug);
+            $titleWords = array_filter(explode(' ', $title));
+
+            // 🔥 3. Similar Jobs (SMART MATCH)
+            $similarJobs = Job::where('id', '!=', $job->id)
                 ->where('status', 'approved')
-                ->where(function ($query) use ($job) {
-                    $query->where('title', 'LIKE', '%' . $job->title . '%')
-                        ->orWhere('location', $job->location)
-                        ->orWhere('experience_required', $job->experience_required);
+                ->where('job_status', 'open')
+                ->where(function ($query) use ($title, $slugFormatted, $titleWords) {
+
+                    // ✅ Full title match
+                    $query->where('title', 'LIKE', "%$title%")
+
+                        // ✅ Slug match
+                        ->orWhere('slug', 'LIKE', "%$slugFormatted%")
+
+                        // ✅ Remove space match (hinditeacher type)
+                        ->orWhereRaw("REPLACE(LOWER(title), ' ', '') LIKE ?", [
+                            str_replace(' ', '', $title)
+                        ]);
+
+                    // ✅ Word-based matching (at least 1 strong word)
+                    foreach ($titleWords as $word) {
+                        if (strlen($word) > 3) { // avoid small words like "a", "to"
+                            $query->orWhere('title', 'LIKE', "%$word%")
+                                ->orWhere('keywords', 'LIKE', "%$word%");
+                        }
+                    }
                 })
-                ->limit(5) // Get top 5 similar jobs
+                ->orderByRaw("
+                CASE
+                    WHEN title LIKE ? THEN 1
+                    WHEN slug LIKE ? THEN 2
+                    ELSE 3
+                END
+            ", [
+                    "%$title%",
+                    "%$slugFormatted%"
+                ])
+                ->limit(5)
                 ->get();
 
             return response()->json([
@@ -89,6 +121,7 @@ class JobBrowseController extends Controller
                 ]
             ], 200);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch job',
