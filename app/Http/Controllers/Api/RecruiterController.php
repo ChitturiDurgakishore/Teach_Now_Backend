@@ -790,6 +790,7 @@ class RecruiterController extends Controller
     }
 
     // Testimonails for recruiter dashboard
+
     public function createTestimonial(Request $request)
     {
         try {
@@ -799,8 +800,9 @@ class RecruiterController extends Controller
                 'display_order' => 'nullable|integer'
             ]);
 
-            // 🔥 Get recruiter/employer user
-            $user = Auth::guard('employer')->user();
+            // 🔥 Detect logged-in user (recruiter OR employer)
+            $user = Auth::guard('employer_user')->user()
+                ?? Auth::guard('employer')->user();
 
             if (!$user) {
                 return response()->json([
@@ -809,22 +811,46 @@ class RecruiterController extends Controller
                 ], 403);
             }
 
-            // 🔥 Get employer using employer_id
-            $employer = Employer::find($user->employer_id);
+            $name = null;
+            $designation = null;
+            $company = null;
+            $photo = null;
 
-            if (!$employer) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Employer not found'
-                ], 404);
+            // 🔥 Recruiter flow
+            if (Auth::guard('employer_user')->check()) {
+
+                $employer = Employer::find($user->employer_id);
+
+                if (!$employer) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Employer not found'
+                    ], 404);
+                }
+
+                $name = $user->name;
+                $designation = 'Recruiter';
+                $company = $employer->company_name;
+                $photo = $employer->company_logo;
+            }
+
+            // 🔥 Employer flow
+            elseif (Auth::guard('employer')->check()) {
+
+                $employer = $user;
+
+                $name = $employer->company_name;
+                $designation = 'Employer';
+                $company = $employer->company_name;
+                $photo = $employer->company_logo;
             }
 
             $testimonial = HomepageTestimonial::create([
-                'name' => $user->name, // recruiter name
-                'designation' => 'Recruiter',
-                'company' => $employer->company_name,
+                'name' => $name,
+                'designation' => $designation,
+                'company' => $company,
                 'message' => $request->message,
-                'photo' => $employer->company_logo,
+                'photo' => $photo,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
                 'user_id' => $user->id
@@ -844,6 +870,7 @@ class RecruiterController extends Controller
             ], 500);
         }
     }
+
     // Get Testimonials
 
     public function getTestimonials()
@@ -882,7 +909,17 @@ class RecruiterController extends Controller
     public function updateTestimonial(Request $request, $id)
     {
         try {
-            $user = Auth::user();
+
+            // 🔥 Detect logged-in user (recruiter OR employer)
+            $user = Auth::guard('employer_user')->user()
+                ?? Auth::guard('employer')->user();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only employers/recruiters allowed'
+                ], 403);
+            }
 
             $testimonial = HomepageTestimonial::find($id);
 
@@ -893,41 +930,51 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
-            $photo = $testimonial->photo; // keep existing by default
-
-            // 🔥 Get Job Seeker photo
-            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
-
-            if ($jobSeeker && $jobSeeker->profile_photo) {
-                $photo = $jobSeeker->profile_photo;
+            // 🔥 Optional: ensure user owns testimonial
+            if ($testimonial->user_id != $user->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
             }
 
-            // 🔥 Recruiter (Employer User)
-            if (!$photo) {
-                $recruiter = EmployerUser::where('user_id', $user->id)->first();
+            $name = $testimonial->name;
+            $designation = $testimonial->designation;
+            $company = $testimonial->company;
+            $photo = $testimonial->photo;
 
-                if ($recruiter && $recruiter->employer && $recruiter->employer->company_logo) {
-                    $photo = $recruiter->employer->company_logo;
-                }
-            }
+            // 🔥 Recruiter flow
+            if (Auth::guard('employer_user')->check()) {
 
-            // 🔥 Employer directly
-            if (!$photo) {
-                $employer = Employer::where('user_id', $user->id)->first();
+                $employer = Employer::find($user->employer_id);
 
-                if ($employer && $employer->company_logo) {
+                if ($employer) {
+                    $name = $user->name;
+                    $designation = 'Recruiter';
+                    $company = $employer->company_name;
                     $photo = $employer->company_logo;
                 }
             }
 
+            // 🔥 Employer flow
+            elseif (Auth::guard('employer')->check()) {
+
+                $employer = $user;
+
+                $name = $employer->company_name;
+                $designation = 'Employer';
+                $company = $employer->company_name;
+                $photo = $employer->company_logo;
+            }
+
+            // 🔥 Update (ONLY message + order from request)
             $testimonial->update([
-                'name' => $request->name ?? $testimonial->name,
-                'designation' => $request->designation ?? $testimonial->designation,
-                'company' => $request->company ?? $testimonial->company,
+                'name' => $name,
+                'designation' => $designation,
+                'company' => $company,
                 'message' => $request->message ?? $testimonial->message,
-                'photo' => $photo, // ✅ auto controlled
+                'photo' => $photo,
                 'display_order' => $request->display_order ?? $testimonial->display_order,
-                'user_id' => $user->id
             ]);
 
             return response()->json([
