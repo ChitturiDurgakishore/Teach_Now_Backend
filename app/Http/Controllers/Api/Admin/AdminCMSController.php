@@ -37,7 +37,7 @@ class AdminCMSController extends Controller
 
         $path = $file->storeAs("storage/media/$folder", $filename);
 
-        return str_replace('storage/', $path);
+        return 'storage/' . $path;
     }
 
     // Get Hero section
