@@ -799,58 +799,32 @@ class RecruiterController extends Controller
                 'display_order' => 'nullable|integer'
             ]);
 
-            // 🔥 Support both recruiter & employer guards
-            $user = Auth::guard('employer')->user() ?? Auth::user();
+            // 🔥 Get recruiter/employer user
+            $user = Auth::guard('employer')->user();
 
             if (!$user) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Unauthenticated'
-                ], 401);
-            }
-
-            $name = null;
-            $company = null;
-            $designation = null;
-            $photo = null;
-
-            // 🔥 1. Recruiter (Employer User)
-            $recruiter = EmployerUser::where('user_id', $user->id)->first();
-
-            if ($recruiter && $recruiter->employer) {
-
-                $name = $recruiter->name ?? $recruiter->employer->company_name;
-                $company = $recruiter->employer->company_name;
-                $designation = 'Recruiter';
-                $photo = $recruiter->employer->company_logo;
-            }
-
-            // 🔥 2. Employer directly
-            if (!$name) {
-                $employer = Employer::where('user_id', $user->id)->first();
-
-                if ($employer) {
-                    $name = $employer->company_name;
-                    $company = $employer->company_name;
-                    $designation = 'Employer';
-                    $photo = $employer->company_logo;
-                }
-            }
-
-            // ❌ If neither recruiter nor employer
-            if (!$name) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Only employers or recruiters can create testimonials'
+                    'message' => 'Only employers/recruiters allowed'
                 ], 403);
             }
 
+            // 🔥 Get employer using employer_id
+            $employer = Employer::find($user->employer_id);
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Employer not found'
+                ], 404);
+            }
+
             $testimonial = HomepageTestimonial::create([
-                'name' => $name,
-                'designation' => $designation,
-                'company' => $company,
+                'name' => $user->name, // recruiter name
+                'designation' => 'Recruiter',
+                'company' => $employer->company_name,
                 'message' => $request->message,
-                'photo' => $photo,
+                'photo' => $employer->company_logo,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
                 'user_id' => $user->id
@@ -870,7 +844,6 @@ class RecruiterController extends Controller
             ], 500);
         }
     }
-
     // Get Testimonials
 
     public function getTestimonials()
