@@ -599,18 +599,19 @@ class PublicAPIController extends Controller
 
     // Company details API
 
-    public function getCompanyPublicProfile($id)
+    public function getCompanyPublicProfile($slug)
     {
         try {
+            $companyDetails = Employer::where('slug', $slug)->first();
             // 1. Fetch the employer (company) details
             // We only fetch active/approved jobs for this public view
             $company = Employer::with(['jobs' => function ($query) {
                 $query->where('job_status', 'open')
                     ->where('status', 'approved')
                     ->latest();
-            }])->find($id);
+            }])->find($companyDetails->id);
 
-            if (!$company) {
+            if (!$companyDetails) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Company not found'
@@ -621,7 +622,7 @@ class PublicAPIController extends Controller
                 'status' => true,
                 'message' => 'Company profile and active jobs fetched',
                 'data' => [
-                    'company' => $company,
+                    'company' => $companyDetails,
                     'total_active_jobs' => $company->jobs->count(),
                     'jobs' => $company->jobs
                 ]

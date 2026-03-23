@@ -51,7 +51,7 @@ Route::prefix('open')->group(function () {
 
 
     // Company details and jobs
-    Route::get('/company/{id}/profile', [PublicAPIController::class, 'getCompanyPublicProfile']);
+    Route::get('/company/{slug}/profile', [PublicAPIController::class, 'getCompanyPublicProfile']);
 
     // Open Routes for job browsing and viewing job details
 
