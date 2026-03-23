@@ -79,39 +79,42 @@ class PublicAPIController extends Controller
                 ->where('status', 'approved')
                 ->where('job_status', 'open');
 
-            // 🔥 SMART SEARCH
+            // 🔥 STRICT SEARCH LOGIC
             if ($keyword) {
 
-                $keywords = array_filter(explode(' ', $keyword));
+                $keywords = array_values(array_filter(explode(' ', $keyword)));
+                $wordCount = count($keywords);
 
-                $query->where(function ($q) use ($keywords, $keyword) {
+                $query->where(function ($q) use ($keywords, $keyword, $wordCount) {
 
-                    // ✅ 1. FULL TITLE MATCH
+                    // ✅ FULL TITLE MATCH (highest priority)
                     $q->where('title', 'LIKE', "%$keyword%");
 
-                    // ✅ 2. SLUG MATCH
+                    // ✅ SLUG MATCH
                     $q->orWhere('slug', 'LIKE', "%$keyword%");
 
-                    // ✅ 3. MULTI WORD MATCH (at least 2 words)
-                    if (count($keywords) > 1) {
+                    // ✅ REQUIRE MULTI WORD MATCH (STRICT AND)
+                    if ($wordCount >= 2) {
 
                         $q->orWhere(function ($subQ) use ($keywords) {
 
-                            foreach ($keywords as $word) {
-                                $subQ->where(function ($inner) use ($word) {
-                                    $inner->where('keywords', 'LIKE', "%$word%")
-                                        ->orWhere('title', 'LIKE', "%$word%");
-                                });
-                            }
+                            $subQ->where(function ($innerQ) use ($keywords) {
+
+                                foreach ($keywords as $word) {
+                                    $innerQ->where(function ($q2) use ($word) {
+                                        $q2->where('keywords', 'LIKE', "%$word%")
+                                            ->orWhere('title', 'LIKE', "%$word%");
+                                    });
+                                }
+                            });
                         });
                     } else {
 
-                        // ✅ 4. SINGLE WORD FALLBACK
+                        // ✅ Single word → only allow TITLE match (strict)
                         $word = $keywords[0] ?? null;
 
                         if ($word) {
-                            $q->orWhere('keywords', 'LIKE', "%$word%")
-                                ->orWhere('title', 'LIKE', "%$word%");
+                            $q->orWhere('title', 'LIKE', "%$word%");
                         }
                     }
                 });
@@ -131,12 +134,12 @@ class PublicAPIController extends Controller
                 ]);
             }
 
-            // 🔥 CATEGORY
+            // 🔥 CATEGORY FILTER
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
             }
 
-            // 🔥 LOCATION
+            // 🔥 LOCATION FILTER
             if ($location) {
                 $query->where('location', 'LIKE', "%$location%");
             }
@@ -160,7 +163,7 @@ class PublicAPIController extends Controller
                 $query->where('salary_min', '<=', $salaryMax);
             }
 
-            // 🔥 GENDER
+            // 🔥 GENDER FILTER
             if ($gender) {
                 $query->where(function ($q) use ($gender) {
                     $q->where('gender', $gender)
