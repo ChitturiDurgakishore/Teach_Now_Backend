@@ -1003,10 +1003,9 @@ class AdminCMSController extends Controller
             ]);
 
             // 🔥 Upload logo
-            $logoPath = $this->uploadFile(
-                $request->file('company_logo'),
-                'company_logos'
-            );
+            $path = Storage::disk('public')->putFile('media/company_logo', $request->file('company_logo'));
+
+                $logoPath = 'storage/' . $path;
 
             $logo = HomepageCompanyLogo::create([
                 'company_name' => $request->company_name,

@@ -444,6 +444,33 @@ class RecruiterController extends Controller
         }
     }
 
+    // Get all applications for recruiter's jobs
+
+    public function getApplications()
+    {
+        try {
+            $recruiter = Auth::guard('employer_user')->user();
+
+            $applications = JobApplication::whereHas('job', function ($q) use ($recruiter) {
+                $q->where('created_by', $recruiter->id);
+            })
+            ->with(['jobSeeker', 'job:id,title'])
+            ->latest()
+            ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $applications
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch applications',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     // Get applications for a specific job
 
@@ -676,6 +703,33 @@ class RecruiterController extends Controller
             ], 200);
         } catch (\Exception $e) {
 
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch shortlisted candidates',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get all shortlisted candidates across all jobs
+    public function getAllShortlistedCandidates()
+    {
+        try {
+            $recruiter = Auth::guard('employer_user')->user();
+
+            $shortlisted = JobApplication::whereHas('job', function ($q) use ($recruiter) {
+                $q->where('created_by', $recruiter->id);
+            })
+            ->where('status', 'shortlisted')
+            ->with(['jobSeeker', 'job:id,title'])
+            ->latest()
+            ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $shortlisted
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch shortlisted candidates',

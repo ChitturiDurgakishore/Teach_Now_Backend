@@ -344,11 +344,13 @@ Route::prefix('recruiter')->group(function () {
         Route::post('/job/{id}/toggle-feature', [RecruiterController::class, 'toggleJobFeatured']);
         //Applications management
 
+        Route::get('/applications', [RecruiterController::class, 'getApplications']); //Get all applications for recruiter
         Route::get('/jobs/{id}/applications', [RecruiterController::class, 'getJobApplications']);
         Route::get('/applications/{id}', [RecruiterController::class, 'viewApplicantProfile']);
         Route::post('/applications/{id}/shortlist', [RecruiterController::class, 'shortlistCandidate']);
         Route::post('/applications/{id}/reject', [RecruiterController::class, 'rejectCandidate']);
         Route::get('/jobs/{id}/shortlisted', [RecruiterController::class, 'getShortlistedCandidates']);
+        Route::get('/shortlisted', [RecruiterController::class, 'getAllShortlistedCandidates']); //Get all shortlisted candidates
         Route::get('/dashboard', [RecruiterController::class, 'dashboard']);
     });
 });
