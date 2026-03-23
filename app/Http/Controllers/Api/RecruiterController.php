@@ -795,48 +795,62 @@ class RecruiterController extends Controller
         try {
 
             $request->validate([
-                'name' => 'required|string|max:150',
-                'designation' => 'nullable|string|max:150',
-                'company' => 'nullable|string|max:150',
                 'message' => 'required|string',
                 'display_order' => 'nullable|integer'
             ]);
 
-            $user = Auth::user();
+            // 🔥 Support both recruiter & employer guards
+            $user = Auth::guard('employer')->user() ?? Auth::user();
 
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $name = null;
+            $company = null;
+            $designation = null;
             $photo = null;
 
-            // 🔥 1. Check Job Seeker
-            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+            // 🔥 1. Recruiter (Employer User)
+            $recruiter = EmployerUser::where('user_id', $user->id)->first();
 
-            if ($jobSeeker && $jobSeeker->profile_photo) {
-                $photo = $jobSeeker->profile_photo;
+            if ($recruiter && $recruiter->employer) {
+
+                $name = $recruiter->name ?? $recruiter->employer->company_name;
+                $company = $recruiter->employer->company_name;
+                $designation = 'Recruiter';
+                $photo = $recruiter->employer->company_logo;
             }
 
-            // 🔥 2. Check Recruiter (Employer User)
-            if (!$photo) {
-                $recruiter = EmployerUser::where('user_id', $user->id)->first();
-
-                if ($recruiter && $recruiter->employer && $recruiter->employer->company_logo) {
-                    $photo = $recruiter->employer->company_logo;
-                }
-            }
-
-            // 🔥 3. Check Employer directly
-            if (!$photo) {
+            // 🔥 2. Employer directly
+            if (!$name) {
                 $employer = Employer::where('user_id', $user->id)->first();
 
-                if ($employer && $employer->company_logo) {
+                if ($employer) {
+                    $name = $employer->company_name;
+                    $company = $employer->company_name;
+                    $designation = 'Employer';
                     $photo = $employer->company_logo;
                 }
             }
 
+            // ❌ If neither recruiter nor employer
+            if (!$name) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only employers or recruiters can create testimonials'
+                ], 403);
+            }
+
             $testimonial = HomepageTestimonial::create([
-                'name' => $request->name,
-                'designation' => $request->designation,
-                'company' => $request->company,
+                'name' => $name,
+                'designation' => $designation,
+                'company' => $company,
                 'message' => $request->message,
-                'photo' => $photo, // ✅ auto-filled based on role
+                'photo' => $photo,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
                 'user_id' => $user->id
