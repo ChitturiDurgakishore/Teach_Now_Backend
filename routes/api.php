@@ -13,7 +13,7 @@ use App\Http\Controllers\Api\Admin\AdminCMSController;
 use App\Http\Controllers\Api\PublicAPIController;
 use App\Models\Employer;
 use App\Models\FAQ;
-
+use App\Http\Controllers\Api\RecruiterController;
 
 Route::prefix('auth')->group(function () {
 
@@ -317,12 +317,18 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     // Featuring
     Route::post('/job/{id}/toggle-feature', [EmployerController::class, 'toggleJobFeatured']);
     Route::post('/{id}/toggle-feature', [EmployerController::class, 'toggleEmployerFeatured']);
+
+    // Testimonials management
+    Route::get('testimonials', [RecruiterController::class, 'getTestimonials']);
+    Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
+    Route::put('testimonials/{id}', [RecruiterController::class, 'updateTestimonial']);
+    Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
 });
 
 // ----------------------------------------------------------------------------------
 // Recruiter routes
 
-use App\Http\Controllers\Api\RecruiterController;
+
 
 Route::prefix('recruiter')->group(function () {
 
@@ -356,6 +362,12 @@ Route::prefix('recruiter')->group(function () {
         Route::get('/shortlisted', [RecruiterController::class, 'getAllShortlistedCandidates']); //Get all shortlisted candidates
         Route::get('/dashboard', [RecruiterController::class, 'dashboard']);
     });
+
+    //Testimonials management
+    Route::get('testimonials', [RecruiterController::class, 'getTestimonials']);
+    Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
+    Route::put('testimonials/{id}', [RecruiterController::class, 'updateTestimonial']);
+    Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
 });
 
 
@@ -397,6 +409,7 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
     Route::get('testimonials', [JobSeekerController::class, 'getTestimonials']);
     Route::post('testimonials', [JobSeekerController::class, 'createTestimonial']);
     Route::put('testimonials/{id}', [JobSeekerController::class, 'updateTestimonial']);
+    Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
 });
 
 

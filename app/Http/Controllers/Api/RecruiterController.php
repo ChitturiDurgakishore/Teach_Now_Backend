@@ -13,7 +13,9 @@ use App\Models\JobQuestion;
 use App\Models\JobAnswer;
 use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
-
+use App\Models\JobSeeker;
+use App\Models\HomepageTestimonial;
+use App\Models\Employer;
 
 class RecruiterController extends Controller
 {
@@ -454,9 +456,9 @@ class RecruiterController extends Controller
             $applications = JobApplication::whereHas('job', function ($q) use ($recruiter) {
                 $q->where('created_by', $recruiter->id);
             })
-            ->with(['jobSeeker', 'job:id,title'])
-            ->latest()
-            ->get();
+                ->with(['jobSeeker', 'job:id,title'])
+                ->latest()
+                ->get();
 
             return response()->json([
                 'status' => true,
@@ -720,10 +722,10 @@ class RecruiterController extends Controller
             $shortlisted = JobApplication::whereHas('job', function ($q) use ($recruiter) {
                 $q->where('created_by', $recruiter->id);
             })
-            ->where('status', 'shortlisted')
-            ->with(['jobSeeker', 'job:id,title'])
-            ->latest()
-            ->get();
+                ->where('status', 'shortlisted')
+                ->with(['jobSeeker', 'job:id,title'])
+                ->latest()
+                ->get();
 
             return response()->json([
                 'status' => true,
@@ -782,6 +784,189 @@ class RecruiterController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Dashboard fetch failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Testimonails for recruiter dashboard
+    public function createTestimonial(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'name' => 'required|string|max:150',
+                'designation' => 'nullable|string|max:150',
+                'company' => 'nullable|string|max:150',
+                'message' => 'required|string',
+                'display_order' => 'nullable|integer'
+            ]);
+
+            $user = Auth::user();
+
+            $photo = null;
+
+            // 🔥 1. Check Job Seeker
+            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+
+            if ($jobSeeker && $jobSeeker->profile_photo) {
+                $photo = $jobSeeker->profile_photo;
+            }
+
+            // 🔥 2. Check Recruiter (Employer User)
+            if (!$photo) {
+                $recruiter = EmployerUser::where('user_id', $user->id)->first();
+
+                if ($recruiter && $recruiter->employer && $recruiter->employer->company_logo) {
+                    $photo = $recruiter->employer->company_logo;
+                }
+            }
+
+            // 🔥 3. Check Employer directly
+            if (!$photo) {
+                $employer = Employer::where('user_id', $user->id)->first();
+
+                if ($employer && $employer->company_logo) {
+                    $photo = $employer->company_logo;
+                }
+            }
+
+            $testimonial = HomepageTestimonial::create([
+                'name' => $request->name,
+                'designation' => $request->designation,
+                'company' => $request->company,
+                'message' => $request->message,
+                'photo' => $photo, // ✅ auto-filled based on role
+                'display_order' => $request->display_order ?? 0,
+                'is_active' => true,
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Testimonial created successfully',
+                'data' => $testimonial
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get Testimonials
+
+    public function getTestimonials()
+    {
+        try {
+            $user = Auth::user();
+            $testimonials = HomepageTestimonial::where('user_id', $user->id)->orderBy('display_order')->get();
+
+            return response()->json([
+                'status' => true,
+                'total' => $testimonials->count(),
+                'data' => $testimonials
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch testimonials',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //update testimonial
+    public function updateTestimonial(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+
+            $testimonial = HomepageTestimonial::find($id);
+
+            if (!$testimonial) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Testimonial not found'
+                ], 404);
+            }
+
+            $photo = $testimonial->photo; // keep existing by default
+
+            // 🔥 Get Job Seeker photo
+            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+
+            if ($jobSeeker && $jobSeeker->profile_photo) {
+                $photo = $jobSeeker->profile_photo;
+            }
+
+            // 🔥 Recruiter (Employer User)
+            if (!$photo) {
+                $recruiter = EmployerUser::where('user_id', $user->id)->first();
+
+                if ($recruiter && $recruiter->employer && $recruiter->employer->company_logo) {
+                    $photo = $recruiter->employer->company_logo;
+                }
+            }
+
+            // 🔥 Employer directly
+            if (!$photo) {
+                $employer = Employer::where('user_id', $user->id)->first();
+
+                if ($employer && $employer->company_logo) {
+                    $photo = $employer->company_logo;
+                }
+            }
+
+            $testimonial->update([
+                'name' => $request->name ?? $testimonial->name,
+                'designation' => $request->designation ?? $testimonial->designation,
+                'company' => $request->company ?? $testimonial->company,
+                'message' => $request->message ?? $testimonial->message,
+                'photo' => $photo, // ✅ auto controlled
+                'display_order' => $request->display_order ?? $testimonial->display_order,
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Testimonial updated successfully',
+                'data' => $testimonial
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete testimonial
+    public function deleteTestimonial($id)
+    {
+        try {
+            $testimonial = HomepageTestimonial::find($id);
+            if (!$testimonial) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Testimonial not found'
+                ], 404);
+            }
+            $testimonial->delete();
+            return response()->json([
+                'status' => true,
+                'message' => 'Testimonial deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Deletion failed',
                 'error' => $e->getMessage()
             ], 500);
         }

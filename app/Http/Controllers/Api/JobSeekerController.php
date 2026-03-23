@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\HomepageTestimonial;
 use App\Models\Skill;
-
+use App\Models\EmployerUser;
+use App\Models\Employer;
 
 class JobSeekerController extends Controller
 {
@@ -273,22 +274,42 @@ class JobSeekerController extends Controller
 
             $user = Auth::user();
 
-            // 🔥 Get JobSeeker profile (you can extend later for employer)
+            $photo = null;
+
+            // 🔥 1. Check Job Seeker
             $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
 
-            $photo = $jobSeeker && $jobSeeker->profile_photo
-                ? $jobSeeker->profile_photo
-                : null;
+            if ($jobSeeker && $jobSeeker->profile_photo) {
+                $photo = $jobSeeker->profile_photo;
+            }
+
+            // 🔥 2. Check Recruiter (Employer User)
+            if (!$photo) {
+                $recruiter = EmployerUser::where('user_id', $user->id)->first();
+
+                if ($recruiter && $recruiter->employer && $recruiter->employer->company_logo) {
+                    $photo = $recruiter->employer->company_logo;
+                }
+            }
+
+            // 🔥 3. Check Employer directly
+            if (!$photo) {
+                $employer = Employer::where('user_id', $user->id)->first();
+
+                if ($employer && $employer->company_logo) {
+                    $photo = $employer->company_logo;
+                }
+            }
 
             $testimonial = HomepageTestimonial::create([
                 'name' => $request->name,
                 'designation' => $request->designation,
                 'company' => $request->company,
                 'message' => $request->message,
-                'photo' => $photo, // ✅ auto-filled
+                'photo' => $photo, // ✅ auto-filled based on role
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
-                'user_id' => $user->id // Track who created it
+                'user_id' => $user->id
             ]);
 
             return response()->json([
@@ -331,6 +352,7 @@ class JobSeekerController extends Controller
     {
         try {
             $user = Auth::user();
+
             $testimonial = HomepageTestimonial::find($id);
 
             if (!$testimonial) {
@@ -340,12 +362,39 @@ class JobSeekerController extends Controller
                 ], 404);
             }
 
+            $photo = $testimonial->photo; // keep existing by default
+
+            // 🔥 Get Job Seeker photo
+            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+
+            if ($jobSeeker && $jobSeeker->profile_photo) {
+                $photo = $jobSeeker->profile_photo;
+            }
+
+            // 🔥 Recruiter (Employer User)
+            if (!$photo) {
+                $recruiter = EmployerUser::where('user_id', $user->id)->first();
+
+                if ($recruiter && $recruiter->employer && $recruiter->employer->company_logo) {
+                    $photo = $recruiter->employer->company_logo;
+                }
+            }
+
+            // 🔥 Employer directly
+            if (!$photo) {
+                $employer = Employer::where('user_id', $user->id)->first();
+
+                if ($employer && $employer->company_logo) {
+                    $photo = $employer->company_logo;
+                }
+            }
+
             $testimonial->update([
                 'name' => $request->name ?? $testimonial->name,
                 'designation' => $request->designation ?? $testimonial->designation,
                 'company' => $request->company ?? $testimonial->company,
                 'message' => $request->message ?? $testimonial->message,
-                'photo' => $request->photo ?? $testimonial->photo,
+                'photo' => $photo, // ✅ auto controlled
                 'display_order' => $request->display_order ?? $testimonial->display_order,
                 'user_id' => $user->id
             ]);
@@ -360,6 +409,31 @@ class JobSeekerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete testimonial
+    public function deleteTestimonial($id)
+    {
+        try {
+            $testimonial = HomepageTestimonial::find($id);
+            if (!$testimonial) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Testimonial not found'
+                ], 404);
+            }
+            $testimonial->delete();
+            return response()->json([
+                'status' => true,
+                'message' => 'Testimonial deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Deletion failed',
                 'error' => $e->getMessage()
             ], 500);
         }

@@ -1196,4 +1196,6 @@ class EmployerController extends Controller
             'data' => $docs
         ]);
     }
+
+//    testimonials wrote in recruiter controller - common for both recruiter and employer
 }
