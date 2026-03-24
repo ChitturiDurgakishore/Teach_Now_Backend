@@ -1984,7 +1984,7 @@ class AdminCMSController extends Controller
                 'is_visible' => 'nullable|boolean',
                 'is_featured' => 'nullable|boolean'
             ]);
-
+            dd($request->all(), $request->file());
             // 🔥 Uploads (using file() instead of hasFile)
             $pdf = $request->file('pdf')
                 ? $this->uploadFile($request->file('pdf'), 'resources/files')
