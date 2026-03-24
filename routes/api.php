@@ -284,7 +284,7 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
 
     // Teaching Resources management
     Route::get('/resources', [AdminCMSController::class, 'getResources']);
-    Route::post('/admin/resources', [AdminCMSController::class, 'createResource']);
+    Route::post('/resources', [AdminCMSController::class, 'createResource']);
 });
 
 
