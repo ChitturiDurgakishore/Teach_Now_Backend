@@ -23,6 +23,7 @@ use App\Models\JobCategory;
 use App\Models\JobType;
 use App\Models\Location;
 use App\Models\EmailTemplate;
+use App\Models\TeachingResource;
 
 class AdminCMSController extends Controller
 {
@@ -854,7 +855,7 @@ class AdminCMSController extends Controller
                 'icon' => $iconPath,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
-                'slug'=>$request->slug ?? Str::slug($request->title)
+                'slug' => $request->slug ?? Str::slug($request->title)
             ]);
 
             return response()->json([
@@ -1951,6 +1952,104 @@ class AdminCMSController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Teaching Resources
+
+    public function createResource(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+
+                'pdf' => 'nullable|file|mimes:pdf,ppt,pptx|max:10240',
+                'resource_photo' => 'nullable|image|max:2048',
+
+                'author_name' => 'nullable|string|max:150',
+                'author_photo' => 'nullable|image|max:2048',
+
+                'total_pages' => 'nullable|integer',
+                'answer_include' => 'nullable|in:included,not_included',
+                'read_time' => 'nullable|integer',
+
+                'meta_title' => 'nullable|string|max:255',
+                'meta_description' => 'nullable|string',
+                'meta_keywords' => 'nullable|string',
+
+                'is_visible' => 'nullable|boolean',
+                'is_featured' => 'nullable|boolean'
+            ]);
+
+            // Uploads
+            $pdf = $request->hasFile('pdf')
+                ? $this->uploadFile($request->file('pdf'), 'resources/files')
+                : null;
+
+            $resourcePhoto = $request->hasFile('resource_photo')
+                ? $this->uploadFile($request->file('resource_photo'), 'resources/images')
+                : null;
+
+            $authorPhoto = $request->hasFile('author_photo')
+                ? $this->uploadFile($request->file('author_photo'), 'resources/authors')
+                : null;
+
+            $resource = TeachingResource::create([
+                'title' => $request->title,
+                'description' => $request->description,
+
+                'pdf' => $pdf,
+                'resource_photo' => $resourcePhoto,
+
+                'author_name' => $request->author_name,
+                'author_photo' => $authorPhoto,
+
+                'total_pages' => $request->total_pages,
+                'answer_include' => $request->answer_include ?? 'not_included',
+                'read_time' => $request->read_time,
+
+                'meta_title' => $request->meta_title,
+                'meta_description' => $request->meta_description,
+                'meta_keywords' => $request->meta_keywords,
+
+                'is_visible' => $request->is_visible ?? true,
+                'is_featured' => $request->is_featured ?? false
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Resource created successfully',
+                'data' => $resource
+            ], 201);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Creation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getResources()
+    {
+        try {
+
+            $resources = TeachingResource::all();
+
+            return response()->json([
+                'status' => true,
+                'data' => $resources
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch resources',
                 'error' => $e->getMessage()
             ], 500);
         }

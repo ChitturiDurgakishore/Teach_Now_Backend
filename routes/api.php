@@ -97,6 +97,10 @@ Route::prefix('open')->group(function () {
     Route::get('/blogs', [PublicAPIController::class, 'getBlogs']);
     Route::get('/blogs/latest', [PublicAPIController::class, 'getLatestBlogs']);
     Route::get('/blogs/{slug}', [PublicAPIController::class, 'getBlogBySlug']);
+
+    //Teacher Resources
+    Route::get('/resources/{slug}', [PublicAPIController::class, 'viewResource']);
+
 });
 
 
@@ -277,6 +281,10 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::put('/email-templates/{id}', [AdminCMSController::class, 'updateEmailTemplate']);
     Route::delete('/email-templates/{id}', [AdminCMSController::class, 'deleteEmailTemplate']);
     Route::patch('/email-templates/{id}/toggle', [AdminCMSController::class, 'toggleEmailTemplate']);
+
+    // Teaching Resources management
+    Route::get('/resources', [AdminCMSController::class, 'getResources']);
+    Route::post('/admin/resources', [AdminCMSController::class, 'createResource']);
 });
 
 

@@ -718,4 +718,35 @@ class PublicAPIController extends Controller
             ], 500);
         }
     }
+
+    // Teaching resources
+
+    public function viewResource($slug)
+    {
+        try {
+
+            $resource = TeachingResource::where('slug', $slug)
+                ->where('is_visible', true)
+                ->first();
+
+            if (!$resource) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Resource not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $resource
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch resource',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
