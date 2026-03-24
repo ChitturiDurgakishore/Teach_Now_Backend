@@ -33,14 +33,15 @@ class PublicAPIController extends Controller
     {
         try {
 
-            $keyword = $request->keyword;
-
-            $jobTitles = Job::where('title', 'LIKE', "%{$keyword}%")
+            // 🔥 Get all job titles
+            $jobTitles = Job::where('status', 'approved')
+                ->where('job_status', 'open')
                 ->pluck('title');
 
-            $categories = Category::where('name', 'LIKE', "%{$keyword}%")
-                ->pluck('name');
+            // 🔥 Get all category names
+            $categories = Category::pluck('name');
 
+            // 🔥 Merge + remove duplicates
             $suggestions = $jobTitles
                 ->merge($categories)
                 ->unique()
