@@ -737,9 +737,34 @@ class PublicAPIController extends Controller
                 ], 404);
             }
 
+            // 🔥 Extract keywords from slug
+            $keywords = explode('-', $resource->slug);
+
+            // 🔥 Build query for similar resources
+            $similarQuery = TeachingResource::where('is_visible', true)
+                ->where('id', '!=', $resource->id);
+
+            foreach ($keywords as $word) {
+                $similarQuery->orWhere('slug', 'LIKE', "%{$word}%");
+            }
+
+            $similarResources = $similarQuery
+                ->latest()
+                ->take(6)
+                ->get([
+                    'id',
+                    'title',
+                    'slug',
+                    'resource_photo',
+                    'read_time'
+                ]);
+
             return response()->json([
                 'status' => true,
-                'data' => $resource
+                'data' => [
+                    'resource' => $resource,
+                    'similar_resources' => $similarResources
+                ]
             ]);
         } catch (\Exception $e) {
 
