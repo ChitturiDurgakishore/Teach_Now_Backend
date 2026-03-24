@@ -43,19 +43,22 @@ class PublicAPIController extends Controller
             // 🔥 Categories
             $categories = Category::pluck('name');
 
-            // 🔥 Locations (from locations table)
-            $locations = Location::pluck('name');
+            // 🔥 Locations
+            $locations = Location::pluck('name')
+                ->unique()
+                ->values();
 
-            // 🔥 Merge all
+            // 🔥 Merge titles + categories
             $suggestions = $jobTitles
-                ->merge($categories)->unique();
-
+                ->merge($categories)
+                ->unique()
+                ->values();
 
             return response()->json([
                 'status' => true,
                 'data' => [
-                    'titles' => $suggestions->unique->values(),
-                    'locations' => $locations->unique()->values()
+                    'suggestions' => $suggestions,
+                    'locations' => $locations
                 ]
             ]);
         } catch (\Exception $e) {
