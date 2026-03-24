@@ -754,7 +754,7 @@ class PublicAPIController extends Controller
     {
         try {
 
-            $resources = TeachingResource::where('is_visible',true)->where('is_active',true)->get();
+            $resources = TeachingResource::where('is_visible',true)->where('is_featured',true)->get();
 
             return response()->json([
                 'status' => true,
