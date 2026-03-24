@@ -198,7 +198,7 @@ class PublicAPIController extends Controller
                 'keyword' => $keyword,
                 'location' => $location,
                 'ip_address' => $request->header('X-Forwarded-For') ?? $request->ip(),
-                'user_id' => auth()->id() ?? null
+                'user_id' => auth()->user() ? auth()->user()->id : null
             ]);
 
             if ($jobs->total() == 0) {
@@ -224,6 +224,7 @@ class PublicAPIController extends Controller
             ], 500);
         }
     }
+
 
     // Category search API
     public function getJobsByCategory($slug)
@@ -754,7 +755,7 @@ class PublicAPIController extends Controller
     {
         try {
 
-            $resources = TeachingResource::where('is_visible',true)->where('is_featured',true)->get();
+            $resources = TeachingResource::where('is_visible', true)->where('is_featured', true)->get();
 
             return response()->json([
                 'status' => true,

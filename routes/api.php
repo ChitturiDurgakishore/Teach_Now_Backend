@@ -45,6 +45,7 @@ Route::prefix('auth')->group(function () {
 
 Route::prefix('open')->group(function () {
 
+
     //Dashboard APIs Combination for optimization
 
     Route::get('/categories', [CategoryController::class, 'index']);  //Categories
