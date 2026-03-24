@@ -853,7 +853,8 @@ class AdminCMSController extends Controller
                 'url' => $request->url,
                 'icon' => $iconPath,
                 'display_order' => $request->display_order ?? 0,
-                'is_active' => true
+                'is_active' => true,
+                'slug'=>$request->slug ?? Str::slug($request->title)
             ]);
 
             return response()->json([

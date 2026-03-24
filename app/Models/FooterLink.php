@@ -13,7 +13,8 @@ class FooterLink extends Model
         'order',
         'display_order',
         'is_active',
-        'icon'
+        'icon',
+        'slug'
     ];
     public function section()
     {
