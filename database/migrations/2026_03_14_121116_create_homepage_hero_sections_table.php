@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('background_image')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->string('trust_text')->nullable();
         });
     }
 
