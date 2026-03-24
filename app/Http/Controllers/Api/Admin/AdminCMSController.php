@@ -1968,8 +1968,8 @@ class AdminCMSController extends Controller
                 'description' => 'nullable|string',
 
                 'pdf' => 'nullable|file|mimes:pdf,ppt,pptx|max:10240',
-                'resource_photo' => 'nullable|image|max:5120', // ✅ FIXED
-                'author_photo' => 'nullable|image|max:5120',   // ✅ FIXED
+                'resource_photo' => 'nullable|image|max:5120',
+                'author_photo' => 'nullable|image|max:5120',
 
                 'author_name' => 'nullable|string|max:150',
 
@@ -1985,17 +1985,22 @@ class AdminCMSController extends Controller
                 'is_featured' => 'nullable|boolean'
             ]);
 
-            $pdf = $request->file('pdf')
-                ? $this->uploadFile($request->file('pdf'), 'resources/files')
-                : null;
+            // ✅ EXACT SAME PATTERN AS WORKING FUNCTION
 
-            $resourcePhoto = $request->file('resource_photo')
-                ? $this->uploadFile($request->file('resource_photo'), 'resources/images')
-                : null;
+            $pdf = null;
+            if ($request->hasFile('pdf')) {
+                $pdf = $this->uploadFile($request->file('pdf'), 'resources/files');
+            }
 
-            $authorPhoto = $request->file('author_photo')
-                ? $this->uploadFile($request->file('author_photo'), 'resources/authors')
-                : null;
+            $resourcePhoto = null;
+            if ($request->hasFile('resource_photo')) {
+                $resourcePhoto = $this->uploadFile($request->file('resource_photo'), 'resources/images');
+            }
+
+            $authorPhoto = null;
+            if ($request->hasFile('author_photo')) {
+                $authorPhoto = $this->uploadFile($request->file('author_photo'), 'resources/authors');
+            }
 
             $resource = TeachingResource::create([
                 'title' => $request->title,
