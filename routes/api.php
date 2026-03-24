@@ -286,8 +286,8 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::get('/resources', [AdminCMSController::class, 'getResources']);
     Route::post('/resources', [AdminCMSController::class, 'createResource']);
     Route::put('/resources/update/{id}', [AdminCMSController::class, 'updateResource']);
-    Route::delete('/admin/resources/{id}', [AdminCMSController::class, 'deleteResource']);
-    Route::patch('/admin/resources/{id}/toggle-visibility', [AdminCMSController::class, 'toggleResourceVisibility']);
+    Route::delete('resources/{id}', [AdminCMSController::class, 'deleteResource']);
+    Route::patch('resources/{id}/toggle-visibility', [AdminCMSController::class, 'toggleResourceVisibility']);
 });
 
 
