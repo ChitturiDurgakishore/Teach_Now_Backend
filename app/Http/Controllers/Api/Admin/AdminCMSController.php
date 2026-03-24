@@ -1968,10 +1968,10 @@ class AdminCMSController extends Controller
                 'description' => 'nullable|string',
 
                 'pdf' => 'nullable|file|mimes:pdf,ppt,pptx|max:10240',
-                'resource_photo' => 'nullable|image|max:2048',
+                'resource_photo' => 'nullable|image|max:10240',
 
                 'author_name' => 'nullable|string|max:150',
-                'author_photo' => 'nullable|image|max:2048',
+                'author_photo' => 'nullable|image|max:10240',
 
                 'total_pages' => 'nullable|integer',
                 'answer_include' => 'nullable|in:included,not_included',
