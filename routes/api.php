@@ -101,7 +101,6 @@ Route::prefix('open')->group(function () {
     //Teacher Resources
     Route::get('/resources/{slug}', [PublicAPIController::class, 'viewResource']);
     Route::get('/resources', [PublicAPIController::class, 'listResources']);
-
 });
 
 
@@ -286,6 +285,9 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     // Teaching Resources management
     Route::get('/resources', [AdminCMSController::class, 'getResources']);
     Route::post('/resources', [AdminCMSController::class, 'createResource']);
+    Route::put('/resources/update/{id}', [AdminCMSController::class, 'updateResource']);
+    Route::delete('/admin/resources/{id}', [AdminCMSController::class, 'deleteResource']);
+    Route::patch('/admin/resources/{id}/toggle-visibility', [AdminCMSController::class, 'toggleResourceVisibility']);
 });
 
 

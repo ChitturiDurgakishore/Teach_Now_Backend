@@ -2053,4 +2053,192 @@ class AdminCMSController extends Controller
             ], 500);
         }
     }
+
+    // Update Resource
+
+    public function updateResource(Request $request, $id)
+    {
+        try {
+
+            $resource = TeachingResource::find($id);
+
+            if (!$resource) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Resource not found'
+                ], 404);
+            }
+
+            $request->validate([
+                'title' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+
+                'pdf' => 'nullable|file|mimes:pdf,ppt,pptx|max:10240',
+                'resource_photo' => 'nullable|image|max:5120',
+                'author_photo' => 'nullable|image|max:5120',
+
+                'author_name' => 'nullable|string|max:150',
+
+                'total_pages' => 'nullable|integer',
+                'answer_include' => 'nullable|in:included,not_included',
+                'read_time' => 'nullable|integer',
+
+                'meta_title' => 'nullable|string|max:255',
+                'meta_description' => 'nullable|string',
+                'meta_keywords' => 'nullable|string',
+
+                'is_visible' => 'nullable|boolean',
+                'is_featured' => 'nullable|boolean'
+            ]);
+
+            // 🔥 PDF update
+            if ($request->hasFile('pdf')) {
+
+                // delete old
+                if ($resource->pdf) {
+                    Storage::delete(str_replace('storage/', '', $resource->pdf));
+                }
+
+                $resource->pdf = $this->uploadFile(
+                    $request->file('pdf'),
+                    'resources/files'
+                );
+            }
+
+            // 🔥 Resource photo update
+            if ($request->hasFile('resource_photo')) {
+
+                if ($resource->resource_photo) {
+                    Storage::delete(str_replace('storage/', '', $resource->resource_photo));
+                }
+
+                $resource->resource_photo = $this->uploadFile(
+                    $request->file('resource_photo'),
+                    'resources/images'
+                );
+            }
+
+            // 🔥 Author photo update
+            if ($request->hasFile('author_photo')) {
+
+                if ($resource->author_photo) {
+                    Storage::delete(str_replace('storage/', '', $resource->author_photo));
+                }
+
+                $resource->author_photo = $this->uploadFile(
+                    $request->file('author_photo'),
+                    'resources/authors'
+                );
+            }
+
+            // 🔥 Update other fields
+            $resource->update($request->only([
+                'title',
+                'description',
+                'author_name',
+                'total_pages',
+                'answer_include',
+                'read_time',
+                'meta_title',
+                'meta_description',
+                'meta_keywords',
+                'is_visible',
+                'is_featured'
+            ]));
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Resource updated successfully',
+                'data' => $resource
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Delete Resource
+
+    public function deleteResource($id)
+    {
+        try {
+
+            $resource = TeachingResource::find($id);
+
+            if (!$resource) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Resource not found'
+                ], 404);
+            }
+
+            // 🔥 Delete files
+            if ($resource->pdf) {
+                Storage::delete(str_replace('storage/', '', $resource->pdf));
+            }
+
+            if ($resource->resource_photo) {
+                Storage::delete(str_replace('storage/', '', $resource->resource_photo));
+            }
+
+            if ($resource->author_photo) {
+                Storage::delete(str_replace('storage/', '', $resource->author_photo));
+            }
+
+            // 🔥 Delete record
+            $resource->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Resource deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Toggle
+    public function toggleResourceVisibility($id)
+    {
+        try {
+
+            $resource = TeachingResource::find($id);
+
+            if (!$resource) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Resource not found'
+                ], 404);
+            }
+
+            // 🔥 Toggle
+            $resource->is_visible = !$resource->is_visible;
+            $resource->save();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Visibility updated successfully',
+                'data' => [
+                    'id' => $resource->id,
+                    'is_visible' => $resource->is_visible
+                ]
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
