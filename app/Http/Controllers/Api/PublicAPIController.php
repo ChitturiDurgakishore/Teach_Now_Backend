@@ -584,7 +584,7 @@ class PublicAPIController extends Controller
                     'meta_description',
                     'meta_keywords',
                     'meta_title'
-                ]);
+                ])->latest();
 
             return response()->json([
                 'status' => true,
