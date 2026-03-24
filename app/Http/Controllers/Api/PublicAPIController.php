@@ -574,26 +574,22 @@ class PublicAPIController extends Controller
                 ->with('childrenRecursive') // 🔥 key change
                 ->get();
 
-            $logos = HomepageCompanyLogo::where('is_active', true)
-                ->orderBy('display_order')
-                ->get([
-                    'company_name',
-                    'company_logo',
-                    'slug',
-                    'company_url',
-                    'meta_description',
-                    'meta_keywords',
-                    'meta_title'
-                ])->latest();
+            $logo = HomepageCompanyLogo::where('is_active', true)->latest()
+                ->first([
+                'company_name',
+                'company_logo',
+                'slug',
+                'company_url',
+                'meta_description',
+                'meta_keywords',
+                'meta_title'
+            ]);;
 
             return response()->json([
                 'status' => true,
                 'data' => [
                     'menus' => $menus,
-                    'companies' => [
-                        'total' => $logos->count(),
-                        'list' => $logos
-                    ]
+                    'companies' => $logo,
                 ]
             ]);
         } catch (\Exception $e) {
