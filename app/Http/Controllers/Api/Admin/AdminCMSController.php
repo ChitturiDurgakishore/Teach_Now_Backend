@@ -1968,10 +1968,10 @@ class AdminCMSController extends Controller
                 'description' => 'nullable|string',
 
                 'pdf' => 'nullable|file|mimes:pdf,ppt,pptx|max:10240',
-                'resource_photo' => 'nullable|image|max:10240',
+                'resource_photo' => 'nullable|image|max:5120', // ✅ FIXED
+                'author_photo' => 'nullable|image|max:5120',   // ✅ FIXED
 
                 'author_name' => 'nullable|string|max:150',
-                'author_photo' => 'nullable|image|max:10240',
 
                 'total_pages' => 'nullable|integer',
                 'answer_include' => 'nullable|in:included,not_included',
@@ -1984,8 +1984,7 @@ class AdminCMSController extends Controller
                 'is_visible' => 'nullable|boolean',
                 'is_featured' => 'nullable|boolean'
             ]);
-            dd($request->all(), $request->file());
-            // 🔥 Uploads (using file() instead of hasFile)
+
             $pdf = $request->file('pdf')
                 ? $this->uploadFile($request->file('pdf'), 'resources/files')
                 : null;
@@ -2001,21 +2000,16 @@ class AdminCMSController extends Controller
             $resource = TeachingResource::create([
                 'title' => $request->title,
                 'description' => $request->description,
-
                 'pdf' => $pdf,
                 'resource_photo' => $resourcePhoto,
-
                 'author_name' => $request->author_name,
                 'author_photo' => $authorPhoto,
-
                 'total_pages' => $request->total_pages,
                 'answer_include' => $request->answer_include ?? 'not_included',
                 'read_time' => $request->read_time,
-
                 'meta_title' => $request->meta_title,
                 'meta_description' => $request->meta_description,
                 'meta_keywords' => $request->meta_keywords,
-
                 'is_visible' => $request->is_visible ?? true,
                 'is_featured' => $request->is_featured ?? false
             ]);
