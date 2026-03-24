@@ -390,7 +390,7 @@ class PublicAPIController extends Controller
                     'title' => $title,
                     'keyword' => $item->keyword,
                     'location' => $item->location,
-                    'url' => '/jobs' . '?keyword=' . urlencode($item->keyword) . '&location=' . urlencode($item->location)
+                    'url' => 'open/search/jobs/search' . '?keyword=' . urlencode($item->keyword) . '&location=' . urlencode($item->location)
                 ];
             });
 
