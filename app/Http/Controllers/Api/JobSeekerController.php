@@ -109,7 +109,7 @@ class JobSeekerController extends Controller
                 'user',
                 'skills' // 🔥 added
             ])->where('user_id', $user->id)->first();
-
+            $skills=Skill::all();
             if (!$profile) {
                 return response()->json([
                     'status' => false,
@@ -119,7 +119,8 @@ class JobSeekerController extends Controller
 
             return response()->json([
                 'status' => true,
-                'data' => $profile
+                'data' => $profile,
+                'skills' => $skills
             ], 200);
         } catch (\Exception $e) {
 
