@@ -101,7 +101,8 @@ class AdminCMSController extends Controller
                     'subtitle' => $request->subtitle,
                     'button_text' => $request->button_text,
                     'button_link' => $request->button_link,
-                    'background_image' => $imagePath
+                    'background_image' => $imagePath,
+                    'trust_text' => $request->trust_text
                 ]);
             } else {
 
@@ -110,7 +111,8 @@ class AdminCMSController extends Controller
                     'subtitle' => $request->subtitle,
                     'button_text' => $request->button_text,
                     'button_link' => $request->button_link,
-                    'background_image' => $imagePath ?? $hero->background_image
+                    'background_image' => $imagePath ?? $hero->background_image,
+                    'trust_text' => $request->trust_text ?? $hero->trust_text
                 ]);
             }
 
