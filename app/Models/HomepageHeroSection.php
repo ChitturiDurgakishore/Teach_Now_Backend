@@ -12,6 +12,7 @@ class HomepageHeroSection extends Model
         'button_text',
         'button_link',
         'background_image',
-        'is_active'
+        'is_active',
+        'trust_text'
     ];
 }
