@@ -370,9 +370,36 @@ class PublicAPIController extends Controller
                 ->orderBy('display_order')
                 ->get(['id', 'title']);
 
+            // 🔥 Top searches (keyword + location combination)
+            $topSearchesRaw = SearchLog::select('keyword', 'location')
+                ->whereNotNull('keyword')
+                ->where('keyword', '!=', '')
+                ->whereNotNull('location')
+                ->where('location', '!=', '')
+                ->groupBy('keyword', 'location')
+                ->orderByRaw('COUNT(*) DESC')
+                ->limit(6)
+                ->get();
+
+            // 🔥 Format output
+            $topSearches = $topSearchesRaw->map(function ($item) {
+
+                $title = $item->keyword . ' jobs in ' . $item->location;
+
+                return [
+                    'title' => $title,
+                    'keyword' => $item->keyword,
+                    'location' => $item->location,
+                    'url' => url('/jobs') . '?keyword=' . urlencode($item->keyword) . '&location=' . urlencode($item->location)
+                ];
+            });
+
             return response()->json([
                 'status' => true,
-                'data' => $sections
+                'data' => [
+                    'sections' => $sections,
+                    'top_searches' => $topSearches
+                ]
             ], 200);
         } catch (\Exception $e) {
 
