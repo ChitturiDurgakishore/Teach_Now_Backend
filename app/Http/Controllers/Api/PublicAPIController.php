@@ -18,6 +18,8 @@ use App\Models\Blog;
 use App\Models\Category;
 use App\Models\SearchLog;
 use App\Models\Location;
+use App\Models\PopularTitle;
+
 
 class PublicAPIController extends Controller
 {
@@ -33,23 +35,28 @@ class PublicAPIController extends Controller
     {
         try {
 
-            // 🔥 Get all job titles
+            // 🔥 Job titles
             $jobTitles = Job::where('status', 'approved')
                 ->where('job_status', 'open')
                 ->pluck('title');
 
-            // 🔥 Get all category names
+            // 🔥 Categories
             $categories = Category::pluck('name');
 
-            // 🔥 Merge + remove duplicates
+            // 🔥 Locations (from locations table)
+            $locations = Location::pluck('name');
+
+            // 🔥 Merge all
             $suggestions = $jobTitles
-                ->merge($categories)
-                ->unique()
-                ->values();
+                ->merge($categories)->unique();
+
 
             return response()->json([
                 'status' => true,
-                'data' => $suggestions
+                'data' => [
+                    'titles' => $suggestions->unique->values(),
+                    'locations' => $locations->unique()->values()
+                ]
             ]);
         } catch (\Exception $e) {
 
@@ -576,14 +583,14 @@ class PublicAPIController extends Controller
 
             $logo = HomepageCompanyLogo::where('is_active', true)->latest()
                 ->first([
-                'company_name',
-                'company_logo',
-                'slug',
-                'company_url',
-                'meta_description',
-                'meta_keywords',
-                'meta_title'
-            ]);;
+                    'company_name',
+                    'company_logo',
+                    'slug',
+                    'company_url',
+                    'meta_description',
+                    'meta_keywords',
+                    'meta_title'
+                ]);;
 
             return response()->json([
                 'status' => true,

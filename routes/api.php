@@ -68,6 +68,7 @@ Route::prefix('open')->group(function () {
 
     // Public APIs for frontend
 
+
     //hero Section API
     Route::get('/home/hero-section', [PublicAPIController::class, 'getHeroSectionData']);
 
