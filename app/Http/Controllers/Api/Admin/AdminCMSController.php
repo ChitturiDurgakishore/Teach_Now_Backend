@@ -1985,16 +1985,16 @@ class AdminCMSController extends Controller
                 'is_featured' => 'nullable|boolean'
             ]);
 
-            // Uploads
-            $pdf = $request->hasFile('pdf')
+            // 🔥 Uploads (using file() instead of hasFile)
+            $pdf = $request->file('pdf')
                 ? $this->uploadFile($request->file('pdf'), 'resources/files')
                 : null;
 
-            $resourcePhoto = $request->hasFile('resource_photo')
+            $resourcePhoto = $request->file('resource_photo')
                 ? $this->uploadFile($request->file('resource_photo'), 'resources/images')
                 : null;
 
-            $authorPhoto = $request->hasFile('author_photo')
+            $authorPhoto = $request->file('author_photo')
                 ? $this->uploadFile($request->file('author_photo'), 'resources/authors')
                 : null;
 
