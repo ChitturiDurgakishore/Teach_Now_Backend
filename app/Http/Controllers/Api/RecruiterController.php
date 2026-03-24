@@ -142,7 +142,8 @@ class RecruiterController extends Controller
                 'questions.*.question' => 'required_with:questions|string',
                 'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
                 'questions.*.recruiter_answer' => 'nullable|string',
-                'gender' => 'nullable|in:male,female,both'
+                'gender' => 'nullable|in:male,female,both',
+                'experience_type' => 'required|in:fresher,experienced',
             ]);
 
             $recruiter = Auth::guard('employer_user')->user();
@@ -163,6 +164,7 @@ class RecruiterController extends Controller
                 'application_deadline' => $request->application_deadline,
                 'keywords' => $request->keywords,
                 'gender' => $request->gender ?? 'both',
+                'experience_type' => $request->experience_type,
             ]);
 
             $questionsCreated = [];
@@ -247,7 +249,8 @@ class RecruiterController extends Controller
                 'questions' => 'nullable|array',
                 'questions.*.question' => 'required_with:questions|string',
                 'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
-                'questions.*.recruiter_answer' => 'nullable|string'
+                'questions.*.recruiter_answer' => 'nullable|string',
+                'experience_type' => 'required|in:fresher,experienced',
             ]);
 
             $recruiter = Auth::guard('employer_user')->user();
@@ -276,7 +279,8 @@ class RecruiterController extends Controller
                 'job_type',
                 'application_deadline',
                 'keywords', // ✅ NEW
-                'gender' // ✅ NEW
+                'gender' ,// ✅ NEW,
+                'experience_type'
             ]));
 
             $questionsUpdated = [];

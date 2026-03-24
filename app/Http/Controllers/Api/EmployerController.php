@@ -567,7 +567,8 @@ class EmployerController extends Controller
                 'questions' => 'nullable|array',
                 'questions.*.question' => 'required_with:questions|string',
                 'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
-                'questions.*.recruiter_answer' => 'nullable|string'
+                'questions.*.recruiter_answer' => 'nullable|string',
+                'experience_type' => 'required|in:fresher,experienced',
             ]);
 
             $employer = Auth::guard('employer')->user();
@@ -595,6 +596,7 @@ class EmployerController extends Controller
                 'application_deadline' => $request->application_deadline,
                 'keywords' => $request->keywords ,// ✅ NEW
                 'gender' => $request->gender ?? 'both',
+                'experience_type' => $request->experience_type,
             ]);
 
             $questionsCreated = [];
@@ -658,7 +660,8 @@ class EmployerController extends Controller
                 'questions.*.id' => 'nullable|exists:job_questions,id',
                 'questions.*.question' => 'required_with:questions|string',
                 'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
-                'questions.*.recruiter_answer' => 'nullable|string'
+                'questions.*.recruiter_answer' => 'nullable|string',
+                'experience_type' => 'required|in:fresher,experienced',
             ]);
 
             $employer = Auth::guard('employer')->user();
@@ -694,7 +697,8 @@ class EmployerController extends Controller
                 'job_type',
                 'application_deadline',
                 'keywords' ,// ✅ NEW
-                'gender'
+                'gender',
+                'experience_type'
             ]));
 
             $questionsUpdated = [];

@@ -85,7 +85,7 @@ class PublicAPIController extends Controller
             $salaryMin = $request->input('salary_min');
             $salaryMax = $request->input('salary_max');
             $gender = $request->input('gender');
-
+            $experience_type = $request->input('experience_type');
             $query = Job::query()
                 ->where('status', 'approved')
                 ->where('job_status', 'open');
@@ -185,6 +185,10 @@ class PublicAPIController extends Controller
                     $q->where('gender', $gender)
                         ->orWhere('gender', 'both');
                 });
+            }
+
+            if ($experience_type) {
+                $query->where('experience_type', $experience_type);
             }
 
             $jobs = $query->latest()->paginate(10);

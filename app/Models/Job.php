@@ -59,7 +59,8 @@ class Job extends Model
         'meta_description',
         'meta_keywords',
         'keywords',
-        'gender'
+        'gender',
+        'experience_type'
     ];
 
     // 🔥 UNIQUE SLUG GENERATOR
