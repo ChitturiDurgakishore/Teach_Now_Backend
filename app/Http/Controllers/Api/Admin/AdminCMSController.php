@@ -833,15 +833,25 @@ class AdminCMSController extends Controller
                 'section_id' => 'required|exists:footer_sections,id',
                 'title' => 'required|string|max:150',
                 'url' => 'required|string|max:255',
-                'icon' => 'nullable|string',
+                'icon' => 'nullable|image|mimes:jpg,jpeg,png,svg|max:2048',
                 'display_order' => 'nullable|integer'
             ]);
+
+            // 🔥 Upload icon using helper
+            $iconPath = null;
+
+            if ($request->hasFile('icon')) {
+                $iconPath = $this->uploadFile(
+                    $request->file('icon'),
+                    'footer_icons'
+                );
+            }
 
             $link = FooterLink::create([
                 'section_id' => $request->section_id,
                 'title' => $request->title,
                 'url' => $request->url,
-                'icon' => $request->icon,
+                'icon' => $iconPath,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true
             ]);
@@ -1043,110 +1053,108 @@ class AdminCMSController extends Controller
 
 
     public function updateCompanyLogo(Request $request, $id = null)
-{
-    try {
+    {
+        try {
 
-        $request->validate([
-            'company_name' => 'required|string|max:255',
-            'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'slug' => 'nullable|string',
-            'company_url' => 'nullable|string',
-            'display_order' => 'nullable|integer',
-            'is_featured' => 'nullable|boolean',
-            'is_verified' => 'nullable|boolean',
-            'is_active' => 'nullable|boolean',
-            'meta_title' => 'nullable|string',
-            'meta_description' => 'nullable|string',
-            'meta_keywords' => 'nullable|string'
-        ]);
+            $request->validate([
+                'company_name' => 'required|string|max:255',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'slug' => 'nullable|string',
+                'company_url' => 'nullable|string',
+                'display_order' => 'nullable|integer',
+                'is_featured' => 'nullable|boolean',
+                'is_verified' => 'nullable|boolean',
+                'is_active' => 'nullable|boolean',
+                'meta_title' => 'nullable|string',
+                'meta_description' => 'nullable|string',
+                'meta_keywords' => 'nullable|string'
+            ]);
 
-        if ($id) {
+            if ($id) {
 
-            // 🔍 Find existing
-            $logo = HomepageCompanyLogo::find($id);
+                // 🔍 Find existing
+                $logo = HomepageCompanyLogo::find($id);
 
-            if (!$logo) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Company logo not found'
-                ], 404);
-            }
-
-            // 🔥 Handle logo update
-            if ($request->hasFile('company_logo')) {
-
-                // ✅ Safe delete old file
-                if ($logo->company_logo) {
-                    $oldPath = str_replace('storage/', 'public/', $logo->company_logo);
-
-                    if (Storage::exists($oldPath)) {
-                        Storage::delete($oldPath);
-                    }
+                if (!$logo) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Company logo not found'
+                    ], 404);
                 }
 
-                // ✅ Upload new file (standardized)
-                $logo->company_logo = $this->uploadFile(
-                    $request->file('company_logo'),
-                    'company_logos'
-                );
+                // 🔥 Handle logo update
+                if ($request->hasFile('company_logo')) {
+
+                    // ✅ Safe delete old file
+                    if ($logo->company_logo) {
+                        $oldPath = str_replace('storage/', 'public/', $logo->company_logo);
+
+                        if (Storage::exists($oldPath)) {
+                            Storage::delete($oldPath);
+                        }
+                    }
+
+                    // ✅ Upload new file (standardized)
+                    $logo->company_logo = $this->uploadFile(
+                        $request->file('company_logo'),
+                        'company_logos'
+                    );
+                }
+
+                // 🔥 Update other fields
+                $logo->update([
+                    'company_name' => $request->company_name,
+                    'slug' => $request->slug,
+                    'company_url' => $request->company_url,
+                    'display_order' => $request->display_order ?? 0,
+                    'is_featured' => $request->is_featured ?? false,
+                    'is_verified' => $request->is_verified ?? false,
+                    'is_active' => $request->is_active ?? true,
+                    'meta_title' => $request->meta_title,
+                    'meta_description' => $request->meta_description,
+                    'meta_keywords' => $request->meta_keywords
+                ]);
+            } else {
+
+                // 🔥 Create new
+                $logoPath = null;
+
+                if ($request->hasFile('company_logo')) {
+                    $logoPath = $this->uploadFile(
+                        $request->file('company_logo'),
+                        'company_logos'
+                    );
+                }
+
+                $logo = HomepageCompanyLogo::create([
+                    'company_name' => $request->company_name,
+                    'company_logo' => $logoPath,
+                    'slug' => $request->slug,
+                    'company_url' => $request->company_url,
+                    'display_order' => $request->display_order ?? 0,
+                    'is_featured' => $request->is_featured ?? false,
+                    'is_verified' => $request->is_verified ?? false,
+                    'is_active' => $request->is_active ?? true,
+                    'meta_title' => $request->meta_title,
+                    'meta_description' => $request->meta_description,
+                    'meta_keywords' => $request->meta_keywords
+                ]);
             }
 
-            // 🔥 Update other fields
-            $logo->update([
-                'company_name' => $request->company_name,
-                'slug' => $request->slug,
-                'company_url' => $request->company_url,
-                'display_order' => $request->display_order ?? 0,
-                'is_featured' => $request->is_featured ?? false,
-                'is_verified' => $request->is_verified ?? false,
-                'is_active' => $request->is_active ?? true,
-                'meta_title' => $request->meta_title,
-                'meta_description' => $request->meta_description,
-                'meta_keywords' => $request->meta_keywords
-            ]);
+            return response()->json([
+                'status' => true,
+                'message' => 'Company logo saved successfully',
+                'data' => $logo
+            ], 200);
+        } catch (\Exception $e) {
 
-        } else {
-
-            // 🔥 Create new
-            $logoPath = null;
-
-            if ($request->hasFile('company_logo')) {
-                $logoPath = $this->uploadFile(
-                    $request->file('company_logo'),
-                    'company_logos'
-                );
-            }
-
-            $logo = HomepageCompanyLogo::create([
-                'company_name' => $request->company_name,
-                'company_logo' => $logoPath,
-                'slug' => $request->slug,
-                'company_url' => $request->company_url,
-                'display_order' => $request->display_order ?? 0,
-                'is_featured' => $request->is_featured ?? false,
-                'is_verified' => $request->is_verified ?? false,
-                'is_active' => $request->is_active ?? true,
-                'meta_title' => $request->meta_title,
-                'meta_description' => $request->meta_description,
-                'meta_keywords' => $request->meta_keywords
-            ]);
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Company logo saved successfully',
-            'data' => $logo
-        ], 200);
-
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'status' => false,
-            'message' => 'Operation failed',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     public function deleteCompanyLogo($id)
     {
