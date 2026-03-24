@@ -100,6 +100,7 @@ Route::prefix('open')->group(function () {
 
     //Teacher Resources
     Route::get('/resources/{slug}', [PublicAPIController::class, 'viewResource']);
+    Route::get('/resources', [PublicAPIController::class, 'listResources']);
 
 });
 

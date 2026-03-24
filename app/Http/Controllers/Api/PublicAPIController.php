@@ -19,7 +19,7 @@ use App\Models\Category;
 use App\Models\SearchLog;
 use App\Models\Location;
 use App\Models\PopularTitle;
-
+use App\Models\TeachingResource;
 
 class PublicAPIController extends Controller
 {
@@ -745,6 +745,26 @@ class PublicAPIController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch resource',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function listResources()
+    {
+        try {
+
+            $resources = TeachingResource::where('is_visible',true)->where('is_active',true)->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $resources
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch resources',
                 'error' => $e->getMessage()
             ], 500);
         }
