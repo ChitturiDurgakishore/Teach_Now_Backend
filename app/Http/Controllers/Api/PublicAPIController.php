@@ -421,16 +421,18 @@ class PublicAPIController extends Controller
     public function getFeaturedCompanies()
     {
         try {
+
             $companies = Employer::where('is_verified', 1)
                 ->where('is_featured', 1)
                 ->where('company_featured', 1)
+                ->select('id', 'company_name', 'company_logo', 'slug', 'city') // ✅ keep before
                 ->withCount([
                     'jobs as jobs_count' => function ($query) {
                         $query->where('status', 'approved')
                             ->where('job_status', 'open');
                     }
-                ])
-                ->select('id', 'company_name', 'company_logo', 'slug', 'city')
+                ]) // ✅ after select
+                ->orderByDesc('jobs_count') // 🔥 optional (best UX)
                 ->get();
 
             return response()->json([
@@ -439,6 +441,7 @@ class PublicAPIController extends Controller
                 'data' => $companies
             ], 200);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch featured companies',
