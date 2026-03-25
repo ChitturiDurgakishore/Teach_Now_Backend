@@ -824,4 +824,36 @@ class PublicAPIController extends Controller
             ], 500);
         }
     }
+
+    //Filter
+
+    public function getFilters()
+    {
+        try {
+
+            $categories = Category::select('id', 'name', 'slug')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+
+            $locations = Location::select('id', 'name')
+                ->orderBy('name')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'categories' => $categories,
+                    'locations' => $locations
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch filters',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

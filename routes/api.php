@@ -66,7 +66,7 @@ Route::prefix('open')->group(function () {
 
     Route::get('/search/suggestions', [PublicAPIController::class, 'searchSuggestions']);
     Route::get('search/jobs/search', [PublicAPIController::class, 'searchJobs']);
-
+    Route::get('/filters', [PublicAPIController::class, 'getFilters']);
     // Public APIs for frontend
 
 
