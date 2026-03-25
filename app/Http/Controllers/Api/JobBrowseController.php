@@ -55,7 +55,9 @@ class JobBrowseController extends Controller
         try {
 
             // 🔥 1. Get job directly by slug
-            $job = Job::where('slug', $slug)
+            $job = Job::with([
+                'employer:id,company_name,company_logo,slug,city'
+            ])->where('slug', $slug)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->first();
