@@ -270,7 +270,7 @@ class PublicAPIController extends Controller
             $hero = HomepageHeroSection::where('is_active', true)->first();
 
             // 🔹 CTA Section
-            $cta = HomepageCtaSection::where('is_active', true)->first();
+            $cta = HomepageCtaSection::where('is_active', true)->get();
 
             return response()->json([
                 'status' => true,
