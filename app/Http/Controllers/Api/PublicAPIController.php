@@ -832,7 +832,7 @@ class PublicAPIController extends Controller
         try {
 
             $categories = Category::select('id', 'name', 'slug')
-                ->where('is_active', true)
+                ->where('is_visible', true)
                 ->orderBy('name')
                 ->get();
 
