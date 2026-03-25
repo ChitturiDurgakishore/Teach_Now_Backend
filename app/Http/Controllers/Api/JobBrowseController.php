@@ -78,7 +78,9 @@ class JobBrowseController extends Controller
             $titleWords = array_filter(explode(' ', $title));
 
             // 🔥 3. Similar Jobs (SMART MATCH)
-            $similarJobs = Job::where('id', '!=', $job->id)
+            $similarJobs = Job::with([
+                'employer:id,company_name,company_logo,slug,city'
+            ])->where('id', '!=', $job->id)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->where(function ($query) use ($title, $slugFormatted, $titleWords) {
