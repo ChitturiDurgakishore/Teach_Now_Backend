@@ -93,7 +93,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 KEYWORD SEARCH (FIXED LOGIC)
+        | 🔥 KEYWORD SEARCH (SMART + FLEXIBLE)
         |--------------------------------------------------------------------------
         */
             if ($keyword) {
@@ -102,27 +102,48 @@ class PublicAPIController extends Controller
 
                 $query->where(function ($q) use ($keyword, $keywords) {
 
-                    // ✅ 1. Exact phrase match (highest priority)
+                    // ✅ Exact phrase match (highest priority)
                     $q->where('title', 'LIKE', "%{$keyword}%")
                         ->orWhere('slug', 'LIKE', "%{$keyword}%");
 
-                    // ✅ 2. STRICT multi-word match (AND logic 🔥)
+                    // ✅ Multi-word strict + flexible match
                     if (count($keywords) > 1) {
+
                         $q->orWhere(function ($sub) use ($keywords) {
+
                             foreach ($keywords as $word) {
-                                $sub->where(function ($inner) use ($word) {
+
+                                // 🔥 normalize word (teaching → teach)
+                                $root = preg_replace('/(ing|ed|s)$/', '', $word);
+
+                                $sub->where(function ($inner) use ($word, $root) {
+
                                     $inner->where('title', 'LIKE', "%{$word}%")
                                         ->orWhere('keywords', 'LIKE', "%{$word}%");
+
+                                    // 🔥 root match (important)
+                                    if ($root && $root !== $word) {
+                                        $inner->orWhere('title', 'LIKE', "%{$root}%")
+                                            ->orWhere('keywords', 'LIKE', "%{$root}%");
+                                    }
                                 });
                             }
                         });
                     } else {
-                        // ✅ 3. Single word
+
+                        // ✅ Single word
                         $word = $keywords[0] ?? null;
 
                         if ($word) {
+                            $root = preg_replace('/(ing|ed|s)$/', '', $word);
+
                             $q->orWhere('title', 'LIKE', "%{$word}%")
                                 ->orWhere('keywords', 'LIKE', "%{$word}%");
+
+                            if ($root && $root !== $word) {
+                                $q->orWhere('title', 'LIKE', "%{$root}%")
+                                    ->orWhere('keywords', 'LIKE', "%{$root}%");
+                            }
                         }
                     }
                 });
