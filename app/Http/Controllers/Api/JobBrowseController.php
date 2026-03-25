@@ -29,6 +29,7 @@ class JobBrowseController extends Controller
 
             $jobs = Job::where('status', 'approved')
                 ->where('job_status', 'open')
+                ->with(['employer:id,company_name,company_logo'])
                 ->latest()
                 ->paginate(10);
 
