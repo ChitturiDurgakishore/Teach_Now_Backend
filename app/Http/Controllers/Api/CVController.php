@@ -113,10 +113,10 @@ class CVController extends Controller
             $pdf = Pdf::loadHTML($html);
 
             $fileName = time() . '_cv.pdf';
-            $path = "public/media/cv/{$fileName}";
+            $path = "media/cv/{$fileName}";
             Storage::put($path, $pdf->output());
 
-            $pdfUrl = str_replace('public/', 'storage/', $path);
+            $pdfUrl = Storage::url($path);
 
             // 🔥 Save DB
             $cv = JobSeekerCV::create([
