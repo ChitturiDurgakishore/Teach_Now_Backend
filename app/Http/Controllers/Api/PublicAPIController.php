@@ -77,7 +77,7 @@ class PublicAPIController extends Controller
     {
         try {
 
-            $keyword = $request->input('keyword');
+            $keyword = strtolower(trim($request->input('keyword')));
             $location = $request->input('location');
             $categoryId = $request->input('category_id');
             $jobType = $request->input('job_type');
@@ -86,91 +86,81 @@ class PublicAPIController extends Controller
             $salaryMax = $request->input('salary_max');
             $gender = $request->input('gender');
             $experience_type = $request->input('experience_type');
+
             $query = Job::query()
                 ->where('status', 'approved')
                 ->where('job_status', 'open');
 
-            // 🔥 SMART SEARCH (FIXED)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 KEYWORD SEARCH (OPTIMIZED)
+        |--------------------------------------------------------------------------
+        */
             if ($keyword) {
 
-                $keyword = strtolower($keyword);
+                $keywords = array_filter(explode(' ', $keyword));
 
-                $normalizedKeyword = str_replace(' ', '-', $keyword); // for slug
-                $compactKeyword = str_replace(' ', '', $keyword);     // for hinditeacher case
+                $query->where(function ($q) use ($keyword, $keywords) {
 
-                $keywords = array_values(array_filter(explode(' ', $keyword)));
-                $wordCount = count($keywords);
+                    // ✅ Exact title match (highest priority)
+                    $q->where('title', 'LIKE', "%{$keyword}%");
 
-                $query->where(function ($q) use ($keywords, $keyword, $normalizedKeyword, $compactKeyword, $wordCount) {
+                    // ✅ Slug match
+                    $q->orWhere('slug', 'LIKE', "%{$keyword}%");
 
-                    // ✅ 1. TITLE MATCH
-                    $q->where('title', 'LIKE', "%$keyword%");
+                    // ✅ Keywords column match
+                    $q->orWhere('keywords', 'LIKE', "%{$keyword}%");
 
-                    // ✅ 2. SLUG MATCH (hindi-teacher)
-                    $q->orWhere('slug', 'LIKE', "%$normalizedKeyword%");
-
-                    // ✅ 3. REMOVE SPACE MATCH (hinditeacher)
-                    $q->orWhereRaw("REPLACE(LOWER(title), ' ', '') LIKE ?", ["%$compactKeyword%"]);
-
-                    // ✅ 4. MULTI WORD STRICT MATCH
-                    if ($wordCount >= 2) {
-
-                        $q->orWhere(function ($subQ) use ($keywords) {
-
-                            foreach ($keywords as $word) {
-                                $subQ->where(function ($inner) use ($word) {
-                                    $inner->where('keywords', 'LIKE', "%$word%")
-                                        ->orWhere('title', 'LIKE', "%$word%");
-                                });
-                            }
+                    // ✅ Multi-word match (AND logic → better accuracy)
+                    foreach ($keywords as $word) {
+                        $q->orWhere(function ($sub) use ($word) {
+                            $sub->where('title', 'LIKE', "%{$word}%")
+                                ->orWhere('keywords', 'LIKE', "%{$word}%");
                         });
-                    } else {
-
-                        // ✅ Single word → only title (safe)
-                        $word = $keywords[0] ?? null;
-
-                        if ($word) {
-                            $q->orWhere('title', 'LIKE', "%$word%");
-                        }
                     }
                 });
 
-                // 🔥 PRIORITY ORDER
+                // 🔥 RELEVANCE SORTING (cleaner)
                 $query->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
-                    WHEN slug LIKE ? THEN 2
-                    WHEN REPLACE(LOWER(title), ' ', '') LIKE ? THEN 3
+                    WHEN keywords LIKE ? THEN 2
+                    WHEN slug LIKE ? THEN 3
                     ELSE 4
                 END
             ", [
-                    "%$keyword%",
-                    "%$normalizedKeyword%",
-                    "%$compactKeyword%"
+                    "%{$keyword}%",
+                    "%{$keyword}%",
+                    "%{$keyword}%"
                 ]);
             }
 
-            // 🔥 CATEGORY
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FILTERS (INDEX FRIENDLY)
+        |--------------------------------------------------------------------------
+        */
+
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
             }
 
-            // 🔥 LOCATION
             if ($location) {
-                $query->where('location', 'LIKE', "%$location%");
+                $query->where('location', 'LIKE', "%{$location}%");
             }
 
-            // 🔥 JOB TYPE
             if ($jobType) {
                 $query->where('job_type', $jobType);
             }
 
-            // 🔥 EXPERIENCE
-            if ($experience !== null) {
+            if (!is_null($experience)) {
                 $query->where('experience_required', '<=', $experience);
             }
 
-            // 🔥 SALARY RANGE
+            if ($experience_type) {
+                $query->where('experience_type', $experience_type);
+            }
+
             if ($salaryMin) {
                 $query->where('salary_max', '>=', $salaryMin);
             }
@@ -179,27 +169,31 @@ class PublicAPIController extends Controller
                 $query->where('salary_min', '<=', $salaryMax);
             }
 
-            // 🔥 GENDER
             if ($gender) {
-                $query->where(function ($q) use ($gender) {
-                    $q->where('gender', $gender)
-                        ->orWhere('gender', 'both');
-                });
+                $query->whereIn('gender', [$gender, 'both']);
             }
 
-            if ($experience_type) {
-                $query->where('experience_type', $experience_type);
-            }
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 EXECUTION
+        |--------------------------------------------------------------------------
+        */
 
             $jobs = $query->latest()->paginate(10);
 
-            // 🔥 SEARCH LOG
-            SearchLog::create([
-                'keyword' => $keyword,
-                'location' => $location,
-                'ip_address' => $request->header('X-Forwarded-For') ?? $request->ip(),
-                'user_id' => auth()->user() ? auth()->user()->id : null
-            ]);
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 SEARCH LOG (ONLY IF SEARCH USED)
+        |--------------------------------------------------------------------------
+        */
+            if ($keyword || $location) {
+                SearchLog::create([
+                    'keyword' => $keyword,
+                    'location' => $location,
+                    'ip_address' => $request->ip(),
+                    'user_id' => auth()->id()
+                ]);
+            }
 
             if ($jobs->total() == 0) {
                 return response()->json([
