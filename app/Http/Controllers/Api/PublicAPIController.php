@@ -831,20 +831,36 @@ class PublicAPIController extends Controller
     {
         try {
 
-            $categories = Category::select('id', 'name', 'slug')
-                ->where('is_visible', true)
+            // 🔥 Categories with jobs count
+            $categories = Category::where('is_visible', true)
+                ->select('id', 'name', 'slug')
+                ->withCount([
+                    'jobs as jobs_count' => function ($q) {
+                        $q->where('status', 'approved')
+                            ->where('job_status', 'open');
+                    }
+                ])
                 ->orderBy('name')
                 ->get();
 
+            // 🔥 Locations with jobs count
             $locations = Location::select('id', 'name')
-                ->orderBy('name')
-                ->get();
+                ->get()
+                ->map(function ($location) {
+                    $location->jobs_count = Job::where('location', 'LIKE', "%{$location->name}%")
+                        ->where('status', 'approved')
+                        ->where('job_status', 'open')
+                        ->count();
+                    return $location;
+                });
 
             return response()->json([
                 'status' => true,
                 'data' => [
                     'categories' => $categories,
-                    'locations' => $locations
+                    'locations' => $locations,
+                    'categories_count' => $categories->count(), // 🔥 total categories
+                    'locations_count' => $locations->count()    // 🔥 total locations
                 ]
             ], 200);
         } catch (\Exception $e) {

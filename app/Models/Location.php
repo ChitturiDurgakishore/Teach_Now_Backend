@@ -52,4 +52,9 @@ class Location extends Model
             }
         });
     }
+
+    public function jobs()
+    {
+        return $this->hasMany(Job::class, 'location_id');
+    }
 }
