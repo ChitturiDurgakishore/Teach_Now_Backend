@@ -424,14 +424,19 @@ class PublicAPIController extends Controller
             $companies = Employer::where('is_verified', 1)
                 ->where('is_featured', 1)
                 ->where('company_featured', 1)
-                ->withCount('jobs') // This adds the 'jobs_count' field
-                ->select('id', 'company_name', 'company_logo', 'slug', 'city') // Include 'city' here
+                ->withCount([
+                    'jobs as jobs_count' => function ($query) {
+                        $query->where('status', 'approved')
+                            ->where('job_status', 'open');
+                    }
+                ])
+                ->select('id', 'company_name', 'company_logo', 'slug', 'city')
                 ->get();
 
             return response()->json([
                 'status' => true,
                 'total' => $companies->count(),
-                'data' => $companies // 'jobs_count' should now appear inside each item here
+                'data' => $companies
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
