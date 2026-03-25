@@ -421,10 +421,20 @@ class PublicAPIController extends Controller
     public function getFeaturedCompanies()
     {
         try {
-
-            $companies = Employer::where('is_verified', 1)->where('is_featured', 1)->where('company_featured', 1)
-                ->select('id', 'company_name', 'company_logo', 'slug')
-                ->get();
+            $companies = Employer::where('is_verified', 1)
+                ->where('is_featured', 1)
+                ->where('company_featured', 1)
+                // This adds 'jobs_count' to each company automatically
+                ->withCount('jobs')
+                ->select('id', 'company_name', 'company_logo', 'slug', 'location', 'city')
+                ->get()
+                ->map(function ($company) {
+                    // Optional: Ensure the logo has a full URL path
+                    if ($company->company_logo) {
+                        $company->company_logo = asset('storage/' . $company->company_logo);
+                    }
+                    return $company;
+                });
 
             return response()->json([
                 'status' => true,
@@ -432,10 +442,10 @@ class PublicAPIController extends Controller
                 'data' => $companies
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch featured companies',
+                // It's often safer to log the error instead of showing it to the user in production
                 'error' => $e->getMessage()
             ], 500);
         }
