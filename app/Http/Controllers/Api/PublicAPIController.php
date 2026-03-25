@@ -93,43 +93,48 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 KEYWORD SEARCH (OPTIMIZED)
+        | 🔥 KEYWORD SEARCH (FIXED LOGIC)
         |--------------------------------------------------------------------------
         */
             if ($keyword) {
 
-                $keywords = array_filter(explode(' ', $keyword));
+                $keywords = array_values(array_filter(explode(' ', $keyword)));
 
                 $query->where(function ($q) use ($keyword, $keywords) {
 
-                    // ✅ Exact title match (highest priority)
-                    $q->where('title', 'LIKE', "%{$keyword}%");
+                    // ✅ 1. Exact phrase match (highest priority)
+                    $q->where('title', 'LIKE', "%{$keyword}%")
+                        ->orWhere('slug', 'LIKE', "%{$keyword}%");
 
-                    // ✅ Slug match
-                    $q->orWhere('slug', 'LIKE', "%{$keyword}%");
-
-                    // ✅ Keywords column match
-                    $q->orWhere('keywords', 'LIKE', "%{$keyword}%");
-
-                    // ✅ Multi-word match (AND logic → better accuracy)
-                    foreach ($keywords as $word) {
-                        $q->orWhere(function ($sub) use ($word) {
-                            $sub->where('title', 'LIKE', "%{$word}%")
-                                ->orWhere('keywords', 'LIKE', "%{$word}%");
+                    // ✅ 2. STRICT multi-word match (AND logic 🔥)
+                    if (count($keywords) > 1) {
+                        $q->orWhere(function ($sub) use ($keywords) {
+                            foreach ($keywords as $word) {
+                                $sub->where(function ($inner) use ($word) {
+                                    $inner->where('title', 'LIKE', "%{$word}%")
+                                        ->orWhere('keywords', 'LIKE', "%{$word}%");
+                                });
+                            }
                         });
+                    } else {
+                        // ✅ 3. Single word
+                        $word = $keywords[0] ?? null;
+
+                        if ($word) {
+                            $q->orWhere('title', 'LIKE', "%{$word}%")
+                                ->orWhere('keywords', 'LIKE', "%{$word}%");
+                        }
                     }
                 });
 
-                // 🔥 RELEVANCE SORTING (cleaner)
+                // 🔥 Relevance sorting
                 $query->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
-                    WHEN keywords LIKE ? THEN 2
-                    WHEN slug LIKE ? THEN 3
-                    ELSE 4
+                    WHEN slug LIKE ? THEN 2
+                    ELSE 3
                 END
             ", [
-                    "%{$keyword}%",
                     "%{$keyword}%",
                     "%{$keyword}%"
                 ]);
@@ -137,7 +142,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FILTERS (INDEX FRIENDLY)
+        | 🔥 FILTERS
         |--------------------------------------------------------------------------
         */
 
@@ -175,7 +180,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 EXECUTION
+        | 🔥 EXECUTE
         |--------------------------------------------------------------------------
         */
 
@@ -183,7 +188,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 SEARCH LOG (ONLY IF SEARCH USED)
+        | 🔥 SEARCH LOG
         |--------------------------------------------------------------------------
         */
             if ($keyword || $location) {
