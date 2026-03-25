@@ -16,7 +16,7 @@ use App\Models\FAQ;
 use App\Http\Controllers\Api\RecruiterController;
 use App\Http\Controllers\Api\JobSeekerController;
 use App\Http\Controllers\Api\ResumeController;
-
+use App\Http\Controllers\Api\CVController;
 
 Route::prefix('auth')->group(function () {
 
@@ -439,6 +439,13 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
     Route::post('testimonials', [JobSeekerController::class, 'createTestimonial']);
     Route::put('testimonials/{id}', [JobSeekerController::class, 'updateTestimonial']);
     Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
+
+
+    //CV Generation
+
+    Route::post('cv/generate-base', [CVController::class, 'generateBaseCV']);
+    Route::post('cv/generate-job', [CVController::class, 'generateJobCV']);
+
 });
 
 
