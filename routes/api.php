@@ -411,9 +411,9 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
 
     // Experience management
 
-    Route::post('/jobseeker/experience', [JobSeekerController::class, 'addExperience']);
-    Route::put('/jobseeker/experience/{id}', [JobSeekerController::class, 'updateExperience']);
-    Route::delete('/jobseeker/experience/{id}', [JobSeekerController::class, 'deleteExperience']);
+    Route::post('experience', [JobSeekerController::class, 'addExperience']);
+    Route::put('experience/{id}', [JobSeekerController::class, 'updateExperience']);
+    Route::delete('experience/{id}', [JobSeekerController::class, 'deleteExperience']);
 
     //Resume management
 
