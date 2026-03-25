@@ -58,4 +58,8 @@ class JobSeeker extends Model
     {
         return $this->belongsToMany(Skill::class, 'job_seeker_skills');
     }
+    public function experiences()
+    {
+        return $this->hasMany(JobSeekerExperience::class)->latest();
+    }
 }

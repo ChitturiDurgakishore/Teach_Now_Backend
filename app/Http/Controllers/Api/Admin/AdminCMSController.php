@@ -410,15 +410,25 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|string'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120'
             ]);
+
+            // 🔥 Upload image
+            $imagePath = null;
+
+            if ($request->hasFile('background_image')) {
+                $imagePath = $this->uploadFile(
+                    $request->file('background_image'),
+                    'cta'
+                );
+            }
 
             $cta = HomepageCtaSection::create([
                 'title' => $request->title,
                 'subtitle' => $request->subtitle,
                 'button_text' => $request->button_text,
                 'button_link' => $request->button_link,
-                'background_image' => $request->background_image,
+                'background_image' => $imagePath,
                 'is_active' => true
             ]);
 
@@ -448,15 +458,28 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|string'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120'
             ]);
+
+            // 🔥 Replace image if new uploaded
+            if ($request->hasFile('background_image')) {
+
+                // delete old image
+                if ($cta->background_image) {
+                    Storage::delete(str_replace('storage/', '', $cta->background_image));
+                }
+
+                $cta->background_image = $this->uploadFile(
+                    $request->file('background_image'),
+                    'cta'
+                );
+            }
 
             $cta->update([
                 'title' => $request->title,
                 'subtitle' => $request->subtitle,
                 'button_text' => $request->button_text,
-                'button_link' => $request->button_link,
-                'background_image' => $request->background_image
+                'button_link' => $request->button_link
             ]);
 
             return response()->json([
@@ -481,6 +504,12 @@ class AdminCMSController extends Controller
         try {
 
             $cta = HomepageCtaSection::findOrFail($id);
+
+            // 🔥 delete image
+            if ($cta->background_image) {
+                Storage::delete(str_replace('storage/', '', $cta->background_image));
+            }
+
             $cta->delete();
 
             return response()->json([

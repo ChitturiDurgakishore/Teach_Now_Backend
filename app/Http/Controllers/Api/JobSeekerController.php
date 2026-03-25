@@ -13,6 +13,7 @@ use App\Models\Skill;
 use App\Models\EmployerUser;
 use App\Models\Employer;
 use App\Models\JobSeekerEducation;
+use App\Models\JobSeekerExperience;
 
 class JobSeekerController extends Controller
 {
@@ -107,9 +108,10 @@ class JobSeekerController extends Controller
             $profile = JobSeeker::with([
                 'educations',
                 'user',
-                'skills' // 🔥 added
+                'skills', // 🔥 added
+                'experiences'
             ])->where('user_id', $user->id)->first();
-            $skills=Skill::all();
+            $skills = Skill::all();
             if (!$profile) {
                 return response()->json([
                     'status' => false,
@@ -549,6 +551,128 @@ class JobSeekerController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Education deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Delete failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Experience management
+
+    public function addExperience(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'job_title' => 'required|string|max:255',
+                'company_name' => 'required|string|max:255',
+                'location' => 'nullable|string|max:255',
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date',
+                'is_current' => 'nullable|boolean',
+                'description' => 'nullable|string'
+            ]);
+
+            $jobSeeker = JobSeeker::where('user_id', auth()->id())->first();
+
+            if (!$jobSeeker) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Profile not found'
+                ], 404);
+            }
+
+            $experience = JobSeekerExperience::create([
+                'job_seeker_id' => $jobSeeker->id,
+                'job_title' => $request->job_title,
+                'company_name' => $request->company_name,
+                'location' => $request->location,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'is_current' => $request->is_current ?? false,
+                'description' => $request->description
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Experience added successfully',
+                'data' => $experience
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to add experience',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //Update
+
+    public function updateExperience(Request $request, $id)
+    {
+        try {
+
+            $experience = JobSeekerExperience::find($id);
+
+            if (!$experience) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Experience not found'
+                ], 404);
+            }
+
+            $experience->update($request->only([
+                'job_title',
+                'company_name',
+                'location',
+                'start_date',
+                'end_date',
+                'is_current',
+                'description'
+            ]));
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Experience updated successfully',
+                'data' => $experience
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //delete
+
+    public function deleteExperience($id)
+    {
+        try {
+
+            $experience = JobSeekerExperience::find($id);
+
+            if (!$experience) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Experience not found'
+                ], 404);
+            }
+
+            $experience->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Experience deleted successfully'
             ]);
         } catch (\Exception $e) {
 

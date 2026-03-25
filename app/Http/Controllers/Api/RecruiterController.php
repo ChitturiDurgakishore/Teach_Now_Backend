@@ -279,7 +279,7 @@ class RecruiterController extends Controller
                 'job_type',
                 'application_deadline',
                 'keywords', // ✅ NEW
-                'gender' ,// ✅ NEW,
+                'gender', // ✅ NEW,
                 'experience_type'
             ]));
 
@@ -539,7 +539,13 @@ class RecruiterController extends Controller
     {
         try {
             // 1. Fetch the application with basics
-            $application = JobApplication::with(['jobSeeker.user', 'jobSeeker.skills:id,name', 'resume'])->find($applicationId);
+            $application = JobApplication::with([
+                'jobSeeker.user',
+                'jobSeeker.skills:id,name',
+                'resume',
+                'jobSeeker.educations',     // ✅ ADD
+                'jobSeeker.experiences',
+            ])->find($applicationId);
 
             if (!$application) {
                 return response()->json([

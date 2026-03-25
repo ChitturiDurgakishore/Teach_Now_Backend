@@ -594,7 +594,7 @@ class EmployerController extends Controller
                 'experience_required' => $request->experience_required,
                 'job_type' => $request->job_type,
                 'application_deadline' => $request->application_deadline,
-                'keywords' => $request->keywords ,// ✅ NEW
+                'keywords' => $request->keywords, // ✅ NEW
                 'gender' => $request->gender ?? 'both',
                 'experience_type' => $request->experience_type,
             ]);
@@ -696,7 +696,7 @@ class EmployerController extends Controller
                 'experience_required',
                 'job_type',
                 'application_deadline',
-                'keywords' ,// ✅ NEW
+                'keywords', // ✅ NEW
                 'gender',
                 'experience_type'
             ]));
@@ -951,7 +951,13 @@ class EmployerController extends Controller
     {
         try {
             // 1. Fetch the application with basics
-            $application = JobApplication::with(['jobSeeker.user', 'jobSeeker.skills:id,name', 'resume'])->find($applicationId);
+            $application = JobApplication::with([
+                'jobSeeker.user',
+                'jobSeeker.skills:id,name',
+                'resume',
+                'jobSeeker.educations',     // ✅ ADD
+                'jobSeeker.experiences',
+            ])->find($applicationId);
 
             if (!$application) {
                 return response()->json([
