@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class JobSeekerCV extends Model
 {
+    public $table= 'job_seeker_cvs';
     protected $fillable = [
         'job_seeker_id',
         'title',

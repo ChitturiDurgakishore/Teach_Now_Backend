@@ -37,10 +37,37 @@ class CVController extends Controller
     public function generateJobCV(Request $request)
     {
         $request->validate([
-            'job_description' => 'required|string'
+            'job_id' => 'required|exists:jobs,id'
         ]);
 
-        return $this->generateCVLogic($request->job_description);
+        try {
+
+            $job = Job::find($request->job_id);
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            // 🔥 Build job description from DB
+            $jobDescription = "
+        Job Title: {$job->title}
+        Description: {$job->description}
+        Skills: {$job->keywords}
+        Experience: {$job->experience_required} years
+        ";
+
+            return $this->generateCVLogic($jobDescription);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'CV generation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /*
