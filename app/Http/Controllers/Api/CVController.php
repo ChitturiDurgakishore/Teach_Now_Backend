@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\JobSeeker;
 use App\Models\JobSeekerCV;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Job;
 
 class CVController extends Controller
 {
@@ -116,7 +117,7 @@ class CVController extends Controller
             $path = "media/cv/{$fileName}";
             Storage::put($path, $pdf->output());
 
-            $pdfUrl = Storage::url($path);
+            $pdfUrl = '/storage/' . $path;
 
             // 🔥 Save DB
             $cv = JobSeekerCV::create([
