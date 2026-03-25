@@ -426,7 +426,7 @@ class PublicAPIController extends Controller
                 ->where('company_featured', 1)
                 // This adds 'jobs_count' to each company automatically
                 ->withCount('jobs')
-                ->select('id', 'company_name', 'company_logo', 'slug', 'location', 'city')
+                ->select('id', 'company_name', 'company_logo', 'slug','city')
                 ->get()
                 ->map(function ($company) {
                     // Optional: Ensure the logo has a full URL path
