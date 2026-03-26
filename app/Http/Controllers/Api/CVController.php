@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\AIService;
 use Spatie\Browsershot\Browsershot;
+use App\Models\CVTemplate;
 
 class CVController extends Controller
 {
