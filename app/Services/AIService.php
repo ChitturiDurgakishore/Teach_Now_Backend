@@ -10,20 +10,27 @@ class AIService
     {
         $prompt = $this->buildPrompt($data, $jobDescription);
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . env('AI_API_KEY'),
-            'Content-Type' => 'application/json'
-        ])->post(env('AI_API_URL'), [
-            'model' => 'gpt-4o-mini',
-            'messages' => [
+        $url = config('ai.url') . '?key=' . config('ai.key');
+
+        $response = Http::post($url, [
+            "contents" => [
                 [
-                    'role' => 'user',
-                    'content' => $prompt
+                    "parts" => [
+                        [
+                            "text" => $prompt
+                        ]
+                    ]
                 ]
             ]
         ]);
 
-        return $response['choices'][0]['message']['content'] ?? null;
+        // 🔥 DEBUG IF NEEDED
+        if (!$response->successful()) {
+            dd($response->body());
+        }
+
+        // ✅ GEMINI RESPONSE FORMAT
+        return data_get($response->json(), 'candidates.0.content.parts.0.text');
     }
 
     private function buildPrompt($data, $jobDescription = null)
