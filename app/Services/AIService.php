@@ -16,21 +16,14 @@ class AIService
             "contents" => [
                 [
                     "parts" => [
-                        [
-                            "text" => $prompt
-                        ]
+                        ["text" => $prompt]
                     ]
                 ]
             ]
         ]);
-        dd($response->json());
-        // 🔥 DEBUG IF NEEDED
-        if (!$response->successful()) {
-            dd($response->body());
-        }
 
-        // ✅ GEMINI RESPONSE FORMAT
-        return data_get($response->json(), 'candidates.0.content.parts.0.text');
+        // 🚨 THIS WILL SHOW REAL ISSUE
+        dd($response->json());
     }
 
     private function buildPrompt($data, $jobDescription = null)
