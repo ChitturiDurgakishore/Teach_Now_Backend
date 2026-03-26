@@ -22,8 +22,15 @@ class AIService
             ]
         ]);
 
-        // 🚨 THIS WILL SHOW REAL ISSUE
-        dd($response->json());
+        $result = $response->json();
+
+        // 🔥 DEBUG SAFE (optional)
+        if (!isset($result['candidates'][0]['content']['parts'][0]['text'])) {
+            Log::error('Gemini Error', $result);
+            return null;
+        }
+
+        return $result['candidates'][0]['content']['parts'][0]['text'];
     }
 
     private function buildPrompt($data, $jobDescription = null)

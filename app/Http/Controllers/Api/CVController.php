@@ -62,7 +62,6 @@ class CVController extends Controller
             ";
 
             return $this->generateCVLogic($jobDescription);
-
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
@@ -112,8 +111,11 @@ class CVController extends Controller
             try {
                 $aiContent = $this->ai->generateCV($data, $jobDescription);
             } catch (\Exception $aiError) {
-                // fallback silently
-                $aiContent = null;
+                return response()->json([
+                    'status' => false,
+                    'message' => 'AI failed',
+                    'error' => $aiError->getMessage()
+                ]);
             }
 
             // 🔥 FINAL HTML (VERY IMPORTANT UPGRADE)
@@ -152,7 +154,6 @@ class CVController extends Controller
                 </body>
                 </html>
                 ";
-
             } else {
 
                 // 🔥 fallback template
@@ -187,7 +188,6 @@ class CVController extends Controller
                     'pdf_url' => $pdfPath
                 ]
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
