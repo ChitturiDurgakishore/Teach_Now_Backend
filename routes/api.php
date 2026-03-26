@@ -291,8 +291,8 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::patch('resources/{id}/toggle-visibility', [AdminCMSController::class, 'toggleResourceVisibility']);
 
     // CV Templates management
-    Route::get('/cv-templates', [AdminCMSController::class, 'getCVTemplates']);
-    Route::post('/cv-templates',[AdminCMSController::class, 'createCVTemplate']);
+    Route::get('/cv-templates', [AdminCMSController::class, 'GetAllTemplates']);
+    Route::post('/cv-templates',[AdminCMSController::class, 'CreateCV']);
     Route::get('/cv-templates/{id}', [AdminCMSController::class, 'showCV']);
     Route::put('/cv-templates/{id}', [AdminCMSController::class, 'updateCVTemplate']);
     Route::delete('/cv-templates/{id}', [AdminCMSController::class, 'destroyCVTemplate']);
