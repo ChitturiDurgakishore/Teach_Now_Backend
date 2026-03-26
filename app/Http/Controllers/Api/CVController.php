@@ -25,9 +25,13 @@ class CVController extends Controller
     | 1. BASE CV (PROFILE ONLY)
     |--------------------------------------------------------------------------
     */
-    public function generateBaseCV()
+    public function generateBaseCV(Request $request)
     {
-        return $this->generateCVLogic();
+        $request->validate([
+            'template_id' => 'required|exists:cv_templates,id'
+        ]);
+
+        return $this->generateCVLogic(null, $request->template_id);
     }
 
     /*
@@ -38,7 +42,8 @@ class CVController extends Controller
     public function generateJobCV(Request $request)
     {
         $request->validate([
-            'job_id' => 'required|exists:jobs,id'
+            'job_id' => 'required|exists:jobs,id',
+            'template_id' => 'required|exists:cv_templates,id'
         ]);
 
         try {
@@ -52,17 +57,17 @@ class CVController extends Controller
                 ], 404);
             }
 
-            // 🔥 Job description for AI
             $jobDescription = "
-            Job Title: {$job->title}
-            Description: {$job->description}
-            Skills: {$job->keywords}
-            Experience: {$job->experience_required} years
-            Location: {$job->location}
-            ";
+        Job Title: {$job->title}
+        Description: {$job->description}
+        Skills: {$job->keywords}
+        Experience: {$job->experience_required} years
+        Location: {$job->location}
+        ";
 
-            return $this->generateCVLogic($jobDescription);
+            return $this->generateCVLogic($jobDescription, $request->template_id);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'CV generation failed',
@@ -76,7 +81,7 @@ class CVController extends Controller
     | COMMON LOGIC
     |--------------------------------------------------------------------------
     */
-    private function generateCVLogic($jobDescription = null)
+    private function generateCVLogic($jobDescription = null, $templateId = null)
     {
         try {
 
@@ -96,83 +101,79 @@ class CVController extends Controller
                 ], 404);
             }
 
-            // 🔥 Prepare structured data
+            // 🔥 PREPARE DATA
             $data = [
                 'name' => $jobSeeker->user->name ?? '',
                 'email' => $jobSeeker->user->email ?? '',
-                'skills' => $jobSeeker->skills->pluck('name'),
+                'skills' => $jobSeeker->skills->pluck('name')->toArray(),
                 'educations' => $jobSeeker->educations->toArray(),
-                'experiences' => $jobSeeker->experiences->toArray()
+                'experiences' => $jobSeeker->experiences->toArray(),
+                'photo' => $jobSeeker->photo ?? null
             ];
 
             // 🔥 AI CONTENT
             $aiContent = null;
-
             try {
                 $aiContent = $this->ai->generateCV($data, $jobDescription);
-            } catch (\Exception $aiError) {
+            } catch (\Exception $e) {
+                $aiContent = null;
+            }
+
+            // 🔥 GET TEMPLATE
+            $template = \App\Models\CVTemplate::find($templateId);
+
+            if (!$template) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'AI failed',
-                    'error' => $aiError->getMessage()
+                    'message' => 'Template not found'
                 ]);
             }
 
-            // 🔥 FINAL HTML (VERY IMPORTANT UPGRADE)
-            if ($aiContent) {
+            // 🔥 PARSE TEMPLATE
+            $htmlBody = $this->parseTemplate(
+                $template->html_template,
+                $data,
+                $aiContent
+            );
 
-                $html = "
-                <html>
-                <head>
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            line-height: 1.6;
-                            font-size: 14px;
-                            color: #333;
-                        }
-                        h1 {
-                            font-size: 22px;
-                            margin-bottom: 5px;
-                        }
-                        h2 {
-                            font-size: 16px;
-                            margin-top: 20px;
-                            border-bottom: 1px solid #ddd;
-                            padding-bottom: 5px;
-                        }
-                        ul {
-                            padding-left: 18px;
-                        }
-                        p {
-                            margin: 5px 0;
-                        }
-                    </style>
-                </head>
-                <body>
-                    {$aiContent}
-                </body>
-                </html>
-                ";
-            } else {
+            // 🔥 FINAL HTML
+            $html = "
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 14px;
+                    color: #333;
+                    line-height: 1.6;
+                }
+                h1 { font-size: 22px; margin-bottom: 5px; }
+                h2 {
+                    font-size: 16px;
+                    margin-top: 20px;
+                    border-bottom: 1px solid #ddd;
+                    padding-bottom: 5px;
+                }
+                ul { padding-left: 18px; }
+            </style>
+        </head>
+        <body>
+            {$htmlBody}
+        </body>
+        </html>
+        ";
 
-                // 🔥 fallback template
-                $html = view('cv.template', ['cv' => $data])->render();
-            }
-
-            // 🔥 Generate PDF
+            // 🔥 GENERATE PDF
             $pdf = Pdf::loadHTML($html);
 
             $fileName = time() . '_cv.pdf';
             $path = "media/cv/{$fileName}";
 
-            // ✅ KEEPING YOUR EXACT STORAGE LOGIC
             Storage::put($path, $pdf->output());
 
-            // ✅ RELATIVE PATH ONLY
             $pdfPath = "storage/" . $path;
 
-            // 🔥 Save DB
+            // 🔥 SAVE
             $cv = JobSeekerCV::create([
                 'job_seeker_id' => $jobSeeker->id,
                 'title' => $jobDescription ? 'Job Specific CV' : 'Base CV',
@@ -189,11 +190,85 @@ class CVController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'CV generation failed',
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+
+
+    private function parseTemplate($template, $data, $aiContent = null)
+    {
+        // 🔥 SKILLS
+        $skillsHtml = '';
+        foreach ($data['skills'] as $skill) {
+            $skillsHtml .= "<li>{$skill}</li>";
+        }
+
+        // 🔥 EXPERIENCE (UPDATED AS PER YOUR TABLE)
+        $expHtml = '';
+        foreach ($data['experiences'] as $exp) {
+
+            $company = $exp['company_name'] ?? '';
+            $role = $exp['job_title'] ?? '';
+            $location = $exp['location'] ?? '';
+            $start = $exp['start_date'] ?? '';
+            $end = $exp['end_date'] ?? 'Present';
+            $desc = $exp['description'] ?? '';
+
+            // 🔥 convert description → bullets
+            $points = explode('.', $desc);
+            $bullets = '';
+
+            foreach ($points as $point) {
+                if (trim($point)) {
+                    $bullets .= "<li>" . trim($point) . "</li>";
+                }
+            }
+
+            $expHtml .= "
+            <div style='margin-bottom:12px;'>
+                <strong>{$role}</strong> at {$company}<br>
+                <small>{$location} | {$start} - {$end}</small>
+                <ul>{$bullets}</ul>
+            </div>
+        ";
+        }
+
+        // 🔥 EDUCATION
+        $eduHtml = '';
+        foreach ($data['educations'] as $edu) {
+
+            $degree = $edu['degree'] ?? '';
+            $institution = $edu['institution'] ?? '';
+            $start = $edu['start_year'] ?? '';
+            $end = $edu['end_year'] ?? '';
+
+            $eduHtml .= "
+            <div style='margin-bottom:10px;'>
+                <strong>{$degree}</strong><br>
+                {$institution} ({$start} - {$end})
+            </div>
+        ";
+        }
+
+        // 🔥 REPLACE PLACEHOLDERS
+        $template = str_replace('{{name}}', $data['name'], $template);
+        $template = str_replace('{{email}}', $data['email'], $template);
+        $template = str_replace('{{skills}}', $skillsHtml, $template);
+        $template = str_replace('{{experience}}', $expHtml, $template);
+        $template = str_replace('{{education}}', $eduHtml, $template);
+
+        // 🔥 IMAGE SUPPORT
+        $template = str_replace('{{photo}}', $data['photo'] ?? 'https://via.placeholder.com/100', $template);
+
+        // 🔥 AI SUMMARY
+        $template = str_replace('{{summary}}', $aiContent ?? '', $template);
+
+        return $template;
     }
 }

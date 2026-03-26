@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-
+use Illuminate\Support\Facades\Log;
 class AIService
 {
     public function generateCV($data, $jobDescription = null)
@@ -25,7 +25,7 @@ class AIService
         $result = $response->json();
 
         if (!isset($result['candidates'][0]['content']['parts'][0]['text'])) {
-            \Log::error('Gemini Error', $result);
+            Log::error('Gemini Error', $result);
             return null;
         }
 
