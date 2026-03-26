@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
@@ -9,10 +10,10 @@ class AIService
     {
         $prompt = $this->buildPrompt($data, $jobDescription);
 
-        // 🔥 Replace with your AI API (OpenAI or any)
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer YOUR_API_KEY'
-        ])->post('https://api.openai.com/v1/chat/completions', [
+            'Authorization' => 'Bearer ' . env('AI_API_KEY'),
+            'Content-Type' => 'application/json'
+        ])->post(env('AI_API_URL'), [
             'model' => 'gpt-4o-mini',
             'messages' => [
                 [
@@ -28,22 +29,33 @@ class AIService
     private function buildPrompt($data, $jobDescription = null)
     {
         $base = "
-        Create a professional ATS-friendly CV.
+You are a professional resume writer.
 
-        Name: {$data['name']}
-        Email: {$data['email']}
+Create a modern, ATS-friendly CV in CLEAN HTML FORMAT (no markdown).
 
-        Skills: " . implode(', ', $data['skills']->toArray()) . "
+Candidate Details:
+Name: {$data['name']}
+Email: {$data['email']}
 
-        Education:
-        " . json_encode($data['educations']) . "
+Skills: " . implode(', ', $data['skills']->toArray()) . "
 
-        Experience:
-        " . json_encode($data['experiences']) . "
-        ";
+Education:
+" . json_encode($data['educations']) . "
+
+Experience:
+" . json_encode($data['experiences']) . "
+
+Instructions:
+- Add a strong professional summary
+- Convert experience into bullet points
+- Highlight achievements (not just responsibilities)
+- Use proper headings (Summary, Skills, Experience, Education)
+- Keep it clean and readable
+- Return ONLY HTML (no explanations)
+";
 
         if ($jobDescription) {
-            $base .= "\nOptimize this CV for the following job:\n{$jobDescription}";
+            $base .= "\n\nOptimize this CV for the following job:\n{$jobDescription}";
         }
 
         return $base;

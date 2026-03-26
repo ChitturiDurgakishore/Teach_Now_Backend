@@ -52,7 +52,7 @@ class CVController extends Controller
                 ], 404);
             }
 
-            // 🔥 Build job description
+            // 🔥 Job description for AI
             $jobDescription = "
             Job Title: {$job->title}
             Description: {$job->description}
@@ -97,7 +97,7 @@ class CVController extends Controller
                 ], 404);
             }
 
-            // 🔥 Prepare data
+            // 🔥 Prepare structured data
             $data = [
                 'name' => $jobSeeker->user->name ?? '',
                 'email' => $jobSeeker->user->email ?? '',
@@ -106,18 +106,45 @@ class CVController extends Controller
                 'experiences' => $jobSeeker->experiences->toArray()
             ];
 
-            // 🔥 AI GENERATED CONTENT
-            $aiContent = $this->ai->generateCV($data, $jobDescription);
+            // 🔥 AI CONTENT
+            $aiContent = null;
 
-            // 🔥 Use AI HTML OR fallback
+            try {
+                $aiContent = $this->ai->generateCV($data, $jobDescription);
+            } catch (\Exception $aiError) {
+                // fallback silently
+                $aiContent = null;
+            }
+
+            // 🔥 FINAL HTML (VERY IMPORTANT UPGRADE)
             if ($aiContent) {
+
                 $html = "
                 <html>
                 <head>
                     <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; }
-                        h1, h2 { color: #333; }
-                        ul { padding-left: 20px; }
+                        body {
+                            font-family: Arial, sans-serif;
+                            line-height: 1.6;
+                            font-size: 14px;
+                            color: #333;
+                        }
+                        h1 {
+                            font-size: 22px;
+                            margin-bottom: 5px;
+                        }
+                        h2 {
+                            font-size: 16px;
+                            margin-top: 20px;
+                            border-bottom: 1px solid #ddd;
+                            padding-bottom: 5px;
+                        }
+                        ul {
+                            padding-left: 18px;
+                        }
+                        p {
+                            margin: 5px 0;
+                        }
                     </style>
                 </head>
                 <body>
@@ -125,8 +152,10 @@ class CVController extends Controller
                 </body>
                 </html>
                 ";
+
             } else {
-                // fallback (no AI key case)
+
+                // 🔥 fallback template
                 $html = view('cv.template', ['cv' => $data])->render();
             }
 
@@ -136,10 +165,10 @@ class CVController extends Controller
             $fileName = time() . '_cv.pdf';
             $path = "media/cv/{$fileName}";
 
-            // IMPORTANT → store in public disk
-            Storage::put( $path, $pdf->output());
+            // ✅ KEEPING YOUR EXACT STORAGE LOGIC
+            Storage::put($path, $pdf->output());
 
-            // 🔥 ONLY RELATIVE PATH (BEST PRACTICE)
+            // ✅ RELATIVE PATH ONLY
             $pdfPath = "storage/" . $path;
 
             // 🔥 Save DB
@@ -155,7 +184,7 @@ class CVController extends Controller
                 'message' => 'CV generated successfully',
                 'data' => [
                     'cv' => $cv,
-                    'pdf_url' => $pdfPath // ✅ clean
+                    'pdf_url' => $pdfPath
                 ]
             ]);
 
