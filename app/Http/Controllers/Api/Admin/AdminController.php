@@ -270,6 +270,50 @@ class AdminController extends Controller
         }
     }
 
+    //Deleted Jobs
+
+    public function getExpiredJobsForAdmin()
+    {
+        $jobs = Job::where('expires_at', '<', now())
+            ->latest()
+            ->get();
+
+        // ✅ add status (optional but useful)
+        $jobs->map(function ($job) {
+            $job->status = 'expired';
+            return $job;
+        });
+
+        return response()->json([
+            'status' => true,
+            'data' => $jobs
+        ]);
+    }
+
+    //Republish
+
+    public function adminRepublishJob($id)
+    {
+        $job = Job::find($id);
+
+        if (!$job) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Job not found'
+            ], 404);
+        }
+
+        $job->update([
+            'expires_at' => now()->addDays(30),
+            'is_active' => true
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Job republished by admin successfully'
+        ]);
+    }
+
     //======================================================================================
 
     //Employers management

@@ -135,6 +135,10 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::patch('/jobs/{id}/feature', [AdminController::class, 'featureJob']);
     Route::delete('/jobs/{id}', [AdminController::class, 'deleteJob']);
 
+    //Expired Jobs
+
+    Route::get('/jobs/expired', [AdminController::class, 'getExpiredJobsForAdmin']);
+    Route::post('/jobs/{id}/republish', [AdminController::class, 'adminRepublishJob']);
     //Employer Management for Admin
 
     Route::get('/employers', [AdminController::class, 'getEmployers']);
@@ -356,7 +360,7 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::delete('/jobs/delete/{id}', [EmployerController::class, 'deleteJob']); //Delete job posting
     Route::put('/jobs/{id}/filled', [EmployerController::class, 'markJobFilled']); //Mark job as filled
 
-    Route::get('employer/jobs/expired', [EmployerController::class, 'getExpiredJobsForEmployer']); //Employer expiry jobs
+    Route::get('/jobs/expired', [EmployerController::class, 'getExpiredJobsForEmployer']); //Employer expiry jobs
     Route::put('/jobs/{id}/republish', [EmployerController::class, 'republishJob']); //Republish job
     // Application management
 
@@ -403,7 +407,7 @@ Route::prefix('recruiter')->group(function () {
         Route::get('/jobs', [RecruiterController::class, 'getRecruiterJobs']); //Get recruiter jobs
         Route::put('/jobs/{id}/republish', [RecruiterController::class, 'republishJob']); //Republish job
 
-        Route::get('recruiter/jobs/expired', [RecruiterController::class, 'getExpiredJobsForRecruiter']); //Expired jobs
+        Route::get('/jobs/expired', [RecruiterController::class, 'getExpiredJobsForRecruiter']); //Expired jobs
         // Feature JOb
         Route::post('/job/{id}/toggle-feature', [RecruiterController::class, 'toggleJobFeatured']);
 
