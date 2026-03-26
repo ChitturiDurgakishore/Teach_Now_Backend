@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CVTemplate extends Model
 {
+    public $table = 'cv_templates';
     protected $fillable = [
         'name',
         'html_template',
