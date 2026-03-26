@@ -24,6 +24,8 @@ use App\Models\JobType;
 use App\Models\Location;
 use App\Models\EmailTemplate;
 use App\Models\TeachingResource;
+use App\Models\CVTemplate;
+
 
 class AdminCMSController extends Controller
 {
@@ -2269,5 +2271,126 @@ class AdminCMSController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+
+    // CV Template addition
+
+    public function GetAllTemplates()
+    {
+        $templates = CVTemplate::latest()->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $templates
+        ]);
+    }
+    //Create template
+    public function CreateCV(Request $request)
+    {
+        $request->validate([
+            'name' => 'required',
+            'html_template' => 'required'
+        ]);
+
+        $template = CVTemplate::create([
+            'name' => $request->name,
+            'html_template' => $request->html_template,
+            'is_active' => true,
+            'key_values' => $request->key_values ?? $request->key_values
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Template created',
+            'data' => $template
+        ]);
+    }
+
+
+    //Showing single template
+    public function showCV($id)
+    {
+        $template = CVTemplate::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Template not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $template
+        ]);
+    }
+
+    //Update single template
+    public function updateCVTemplate(Request $request, $id)
+    {
+        $template = CVTemplate::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Template not found'
+            ], 404);
+        }
+
+        $template->update([
+            'name' => $request->name ?? $template->name,
+            'html_template' => $request->html_template ?? $template->html_template,
+            'is_active' => $request->is_active ?? $template->is_active,
+            'key_values' => $request->key_values ?? $template->key_values
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Template updated',
+            'data' => $template
+        ]);
+    }
+
+    // ✅ DELETE
+    public function destroyCVTemplate($id)
+    {
+        $template = CVTemplate::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Template not found'
+            ], 404);
+        }
+
+        $template->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Template deleted'
+        ]);
+    }
+
+    // ✅ TOGGLE ACTIVE
+    public function toggleStatusCVTemplate($id)
+    {
+        $template = CVTemplate::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Template not found'
+            ], 404);
+        }
+
+        $template->is_active = !$template->is_active;
+        $template->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Status updated',
+            'data' => $template
+        ]);
     }
 }

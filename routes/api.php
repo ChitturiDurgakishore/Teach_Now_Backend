@@ -289,6 +289,15 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::put('/resources/update/{id}', [AdminCMSController::class, 'updateResource']);
     Route::delete('resources/{id}', [AdminCMSController::class, 'deleteResource']);
     Route::patch('resources/{id}/toggle-visibility', [AdminCMSController::class, 'toggleResourceVisibility']);
+
+    // CV Templates management
+    Route::get('/cv-templates', [AdminCMSController::class, 'getCVTemplates']);
+    Route::post('/cv-templates',[AdminCMSController::class, 'createCVTemplate']);
+    Route::get('/cv-templates/{id}', [AdminCMSController::class, 'showCV']);
+    Route::put('/cv-templates/{id}', [AdminCMSController::class, 'updateCVTemplate']);
+    Route::delete('/cv-templates/{id}', [AdminCMSController::class, 'destroyCVTemplate']);
+    Route::patch('/cv-templates/{id}/toggle', [AdminCMSController::class, 'toggleStatusCVTemplate']);
+
 });
 
 
@@ -445,6 +454,9 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
 
     Route::post('cv/generate-base', [CVController::class, 'generateBaseCV']);
     Route::post('cv/generate-job', [CVController::class, 'generateJobCV']);
+
+    //get active cvs
+    Route::get('cv/templates', [CVController::class, 'getActiveCVTemplates']);
 
 });
 

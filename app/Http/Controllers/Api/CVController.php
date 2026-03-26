@@ -309,4 +309,16 @@ class CVController extends Controller
 
         return $template;
     }
+
+    public function getActiveTemplates()
+    {
+        $templates = \App\Models\CVTemplate::where('is_active', true)
+            ->select('id', 'name')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $templates
+        ]);
+    }
 }
