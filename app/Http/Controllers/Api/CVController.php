@@ -108,15 +108,14 @@ class CVController extends Controller
                 'email' => $jobSeeker->user->email ?? '',
                 'phone' => $jobSeeker->phone ?? '',
                 'location' => $jobSeeker->location ?? '',
-                'experience_years' => $jobSeeker->experience_years ?? '',
-                'bio' => $jobSeeker->bio ?? '',
 
-                'skills' => $jobSeeker->skills->pluck('name')->toArray(),
-                'educations' => $jobSeeker->educations->toArray(),
-                'experiences' => $jobSeeker->experiences->toArray()
+                // 🔥 LIMIT CONTENT (IMPORTANT FOR 2 PAGE CV)
+                'skills' => $jobSeeker->skills->pluck('name')->take(8)->toArray(),
+                'educations' => $jobSeeker->educations->take(3)->toArray(),
+                'experiences' => $jobSeeker->experiences->take(4)->toArray(),
             ];
 
-            // ✅ AI CONTENT (ONLY TEXT)
+            // ✅ AI CONTENT
             $aiContent = null;
             try {
                 $aiContent = $this->ai->generateCV($data, $jobDescription);
@@ -141,7 +140,7 @@ class CVController extends Controller
                 $aiContent
             );
 
-            // ✅ FINAL HTML (SIMPLE + STABLE)
+            // ✅ FINAL HTML WITH PAGE CONTROL
             $html = "
         <html>
         <head>
@@ -152,19 +151,44 @@ class CVController extends Controller
                     font-size: 14px;
                     color: #333;
                 }
-                h2, h3 {
-                    margin-bottom: 5px;
+
+                .page {
+                    border: 2px solid #2c3e50;
+                    padding: 25px;
+                    margin-bottom: 20px;
                 }
-                ul {
-                    padding-left: 18px;
+
+                .section {
+                    margin-bottom: 25px;
+                    page-break-inside: avoid;
                 }
+
                 table {
+                    width: 100%;
                     border-collapse: collapse;
+                }
+
+                tr {
+                    page-break-inside: avoid;
+                }
+
+                h2 {
+                    border-bottom: 2px solid #2c3e50;
+                    padding-bottom: 5px;
+                    margin-bottom: 10px;
+                }
+
+                p {
+                    line-height: 1.8;
                 }
             </style>
         </head>
         <body>
+
+        <div class='page'>
             {$htmlBody}
+        </div>
+
         </body>
         </html>
         ";
@@ -211,63 +235,75 @@ class CVController extends Controller
 
     private function parseTemplate($template, $data, $aiContent = null)
     {
-        // ✅ SKILLS
-        $skillsHtml = '';
-        foreach ($data['skills'] as $skill) {
-            $skillsHtml .= "<li>{$skill}</li>";
-        }
+        // ✅ SKILLS → 5 PER COLUMN
+        $skills = $data['skills'];
+        $chunks = array_chunk($skills, 5);
 
-        // ✅ EXPERIENCE (FULL TABLE STRUCTURE)
+        $skillsHtml = "<tr>";
+        foreach ($chunks as $chunk) {
+
+            $skillsHtml .= "<td width='" . (100 / count($chunks)) . "%' valign='top' style='padding-right:15px;'>
+                            <ul style='margin:0; padding-left:15px; list-style-type:square;'>";
+
+            foreach ($chunk as $skill) {
+                $skillsHtml .= "<li>{$skill}</li>";
+            }
+
+            $skillsHtml .= "</ul></td>";
+        }
+        $skillsHtml .= "</tr>";
+
+
+        // ✅ EXPERIENCE (STRICT PRESENT FIX)
         $expRows = '';
         foreach ($data['experiences'] as $exp) {
 
-            $company = $exp['company_name'] ?? '';
-            $role = $exp['job_title'] ?? '';
-            $location = $exp['location'] ?? '';
-            $start = $exp['start_date'] ?? '';
-            $end = $exp['end_date'] ?? 'Present';
+            $end = (!empty($exp['end_date']))
+                ? $exp['end_date']
+                : 'Present';
 
             $expRows .= "
         <tr>
-            <td style='padding:6px; border-bottom:1px solid #eee;'>
-                <strong>{$role}</strong> - {$company}<br>
-                <small>{$location} | {$start} - {$end}</small>
+            <td style='padding:10px 0; border-bottom:1px solid #e2e8f0;'>
+                <strong>{$exp['job_title']}</strong> - {$exp['company_name']}<br>
+                <span style='color:#64748b; font-size:10px;'>
+                    {$exp['location']} | {$exp['start_date']} - {$end}
+                </span>
             </td>
         </tr>";
         }
 
         $expHtml = "<tbody>{$expRows}</tbody>";
 
-        // ✅ EDUCATION (FULL TABLE STRUCTURE)
+
+        // ✅ EDUCATION
         $eduRows = '';
         foreach ($data['educations'] as $edu) {
 
-            $degree = $edu['degree'] ?? '';
-            $institution = $edu['institution'] ?? '';
-            $start = $edu['start_year'] ?? '';
-            $end = $edu['end_year'] ?? '';
-
             $eduRows .= "
         <tr>
-            <td style='padding:6px; border-bottom:1px solid #eee;'>
-                <strong>{$degree}</strong><br>
-                {$institution} ({$start} - {$end})
+            <td style='padding:10px 0; border-bottom:1px solid #e2e8f0;'>
+                <strong>{$edu['degree']}</strong><br>
+                <span style='color:#64748b; font-size:10px;'>
+                    {$edu['institution']} ({$edu['start_year']} - {$edu['end_year']})
+                </span>
             </td>
         </tr>";
         }
 
         $eduHtml = "<tbody>{$eduRows}</tbody>";
 
-        // ✅ REPLACE VALUES
+
+        // ✅ REPLACE VARIABLES
         $template = str_replace('{{name}}', $data['name'], $template);
         $template = str_replace('{{email}}', $data['email'], $template);
+        $template = str_replace('{{phone}}', $data['phone'], $template);
+        $template = str_replace('{{location}}', $data['location'], $template);
         $template = str_replace('{{skills}}', $skillsHtml, $template);
         $template = str_replace('{{experience}}', $expHtml, $template);
         $template = str_replace('{{education}}', $eduHtml, $template);
 
-        $template = str_replace('{{phone}}', $data['phone'], $template);
-        $template = str_replace('{{location}}', $data['location'], $template);
-        // ✅ AI SUMMARY (SAFE TEXT)
+        // ✅ SUMMARY (SAFE FORMAT)
         $template = str_replace('{{summary}}', nl2br($aiContent ?? ''), $template);
 
         return $template;
