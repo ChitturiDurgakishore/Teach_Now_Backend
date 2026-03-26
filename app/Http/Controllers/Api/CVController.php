@@ -264,7 +264,7 @@ class CVController extends Controller
         $template = str_replace('{{skills}}', $skillsHtml, $template);
         $template = str_replace('{{experience}}', $expHtml, $template);
         $template = str_replace('{{education}}', $eduHtml, $template);
-        $template = str_replace('{{photo}}', $data['photo'], $template);
+
         $template = str_replace('{{phone}}', $data['phone'], $template);
         $template = str_replace('{{location}}', $data['location'], $template);
         // ✅ AI SUMMARY (SAFE TEXT)
