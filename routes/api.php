@@ -400,7 +400,7 @@ Route::prefix('recruiter')->group(function () {
 
 
         // Jobs management
-        Route::get('/jobs/expired', [RecruiterController::class, 'getExpiredJobsForRecruiter']); //Expired jobs
+        Route::get('/jobs/expired/expired', [RecruiterController::class, 'getExpiredJobsForRecruiter']); //Expired jobs
         Route::post('/jobs', [RecruiterController::class, 'createJob']); //Create job posting
         Route::put('/jobs/{id}', [RecruiterController::class, 'updateJob']); //Update job posting
         Route::put('/jobs/{id}/filled', [RecruiterController::class, 'markJobFilled']); //Mark job as filled
