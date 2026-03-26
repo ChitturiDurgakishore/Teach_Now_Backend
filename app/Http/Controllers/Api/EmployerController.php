@@ -408,6 +408,7 @@ class EmployerController extends Controller
 
             $user->delete();
 
+
             // 🔥 MAILS (QUEUE + SAFE)
             try {
 

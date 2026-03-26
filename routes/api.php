@@ -292,12 +292,11 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
 
     // CV Templates management
     Route::get('/cv-templates', [AdminCMSController::class, 'GetAllTemplates']);
-    Route::post('/cv-templates',[AdminCMSController::class, 'CreateCV']);
+    Route::post('/cv-templates', [AdminCMSController::class, 'CreateCV']);
     Route::get('/cv-templates/{id}', [AdminCMSController::class, 'showCV']);
     Route::put('/cv-templates/{id}', [AdminCMSController::class, 'updateCVTemplate']);
     Route::delete('/cv-templates/{id}', [AdminCMSController::class, 'destroyCVTemplate']);
     Route::patch('/cv-templates/{id}/toggle', [AdminCMSController::class, 'toggleStatusCVTemplate']);
-
 });
 
 
@@ -311,7 +310,7 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     // Recruiter management for employer
     Route::post('/users', [EmployerController::class, 'createEmployerUser']); //Employer user creation
     Route::get('/users', [EmployerController::class, 'getEmployerUsers']); //Get employer users
-
+    Route::delete('/users/{id}', [EmployerController::class, 'deleteEmployerUser']); //Delete employer user
     //Dashboard
     Route::get('/dashboard', [EmployerController::class, 'dashboard']); //Employer dashboard
 
@@ -322,7 +321,7 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
 
     Route::get('/applications', [EmployerController::class, 'getApplications']); //Get applications for company jobs
     Route::put('/Update-Company', [EmployerController::class, 'updateCompanyProfile']); //Update company profile
-    Route::delete('/users/{id}', [EmployerController::class, 'deleteEmployerUser']); //Delete employer user
+
 
     //Jobs management
     Route::get('/jobs', [EmployerController::class, 'getCompanyJobs']); //Get company jobs
@@ -457,7 +456,6 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
 
     //get active cvs
     Route::get('cv/templates', [CVController::class, 'getActiveTemplates']);
-
 });
 
 
