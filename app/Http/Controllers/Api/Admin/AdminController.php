@@ -274,15 +274,9 @@ class AdminController extends Controller
 
     public function getExpiredJobsForAdmin()
     {
-        $jobs = Job::where('expires_at', '<', now())
+        $jobs = Job::withTrashed()->where('expires_at', '<', now())
             ->latest()
             ->get();
-
-        // ✅ add status (optional but useful)
-        $jobs->map(function ($job) {
-            $job->status = 'expired';
-            return $job;
-        });
 
         return response()->json([
             'status' => true,
