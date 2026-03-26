@@ -101,14 +101,19 @@ class CVController extends Controller
                 ], 404);
             }
 
-            // 🔥 PREPARE DATA
+            // ✅ BASE URL FROM ENV
+            $baseUrl = rtrim(config('cv.base_url'), '/');
+
+            // 🔥 FINAL DATA BLOCK
             $data = [
                 'name' => $jobSeeker->user->name ?? '',
                 'email' => $jobSeeker->user->email ?? '',
                 'skills' => $jobSeeker->skills->pluck('name')->toArray(),
                 'educations' => $jobSeeker->educations->toArray(),
                 'experiences' => $jobSeeker->experiences->toArray(),
-                'photo' => $jobSeeker->photo ?? null
+                'photo' => $jobSeeker->photo
+                    ? $baseUrl . '/' . ltrim($jobSeeker->photo, '/')
+                    : 'https://via.placeholder.com/120'
             ];
 
             // 🔥 AI CONTENT
@@ -136,7 +141,7 @@ class CVController extends Controller
                 $aiContent
             );
 
-            // 🔥 FINAL HTML
+            // 🔥 FINAL HTML WRAPPER
             $html = "
         <html>
         <head>
@@ -171,9 +176,13 @@ class CVController extends Controller
 
             Storage::put($path, $pdf->output());
 
+            // 🔥 RELATIVE PATH
             $pdfPath = "storage/" . $path;
 
-            // 🔥 SAVE
+            // 🔥 FULL URL (FROM ENV)
+            $pdfUrl = $baseUrl . '/' . $pdfPath;
+
+            // 🔥 SAVE DB
             $cv = JobSeekerCV::create([
                 'job_seeker_id' => $jobSeeker->id,
                 'title' => $jobDescription ? 'Job Specific CV' : 'Base CV',
@@ -186,7 +195,7 @@ class CVController extends Controller
                 'message' => 'CV generated successfully',
                 'data' => [
                     'cv' => $cv,
-                    'pdf_url' => $pdfPath
+                    'pdf_url' => $pdfUrl
                 ]
             ]);
         } catch (\Exception $e) {
