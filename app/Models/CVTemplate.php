@@ -12,6 +12,7 @@ class CVTemplate extends Model
         'html_template',
         'preview_image',
         'is_active',
-        'key_values'
+        'key_values',
+        'preview_image'
     ];
 }

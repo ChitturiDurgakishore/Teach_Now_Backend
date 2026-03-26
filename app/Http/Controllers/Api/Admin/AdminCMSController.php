@@ -2338,6 +2338,22 @@ class AdminCMSController extends Controller
             ], 404);
         }
 
+        // ✅ HANDLE IMAGE UPLOAD
+        if ($request->hasFile('preview_image')) {
+
+            $file = $request->file('preview_image');
+
+            $fileName = time() . '_preview.' . $file->getClientOriginalExtension();
+
+            $path = "media/cv_templates/" . $fileName;
+
+            // store in public
+            Storage::put($path, file_get_contents($file));
+
+            $template->preview_image = "storage/" . $path;
+        }
+
+        // ✅ UPDATE OTHER FIELDS
         $template->update([
             'name' => $request->name ?? $template->name,
             'html_template' => $request->html_template ?? $template->html_template,

@@ -312,9 +312,20 @@ class CVController extends Controller
 
     public function getActiveTemplates()
     {
-        $templates = \App\Models\CVTemplate::where('is_active', true)
-            ->select('id', 'name')
-            ->get();
+        $baseUrl = rtrim(config('cv.base_url'), '/');
+
+        $templates = CVTemplate::where('is_active', true)
+            ->get()
+            ->map(function ($template) use ($baseUrl) {
+
+                return [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'preview_image' => $template->preview_image
+                        ? $baseUrl . '/' . $template->preview_image
+                        : null
+                ];
+            });
 
         return response()->json([
             'status' => true,
