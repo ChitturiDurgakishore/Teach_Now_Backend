@@ -246,7 +246,8 @@ class CVController extends Controller
                             <ul style='margin:0; padding-left:15px; list-style-type:square;'>";
 
             foreach ($chunk as $skill) {
-                $skillsHtml .= "<li>{$skill}</li>";
+                $formattedSkill = ucwords(strtolower($skill)); // 🔥 FIX
+                $skillsHtml .= "<li>{$formattedSkill}</li>";
             }
 
             $skillsHtml .= "</ul></td>";
