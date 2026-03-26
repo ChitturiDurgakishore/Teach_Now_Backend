@@ -101,10 +101,10 @@ class CVController extends Controller
                 ], 404);
             }
 
-            // ✅ BASE URL FROM ENV
+            // ✅ BASE URL
             $baseUrl = rtrim(config('cv.base_url'), '/');
 
-            // 🔥 FINAL DATA BLOCK
+            // ✅ DATA
             $data = [
                 'name' => $jobSeeker->user->name ?? '',
                 'email' => $jobSeeker->user->email ?? '',
@@ -116,7 +116,7 @@ class CVController extends Controller
                     : 'https://via.placeholder.com/120'
             ];
 
-            // 🔥 AI CONTENT
+            // ✅ AI CONTENT
             $aiContent = null;
             try {
                 $aiContent = $this->ai->generateCV($data, $jobDescription);
@@ -124,7 +124,7 @@ class CVController extends Controller
                 $aiContent = null;
             }
 
-            // 🔥 GET TEMPLATE
+            // ✅ TEMPLATE
             $template = \App\Models\CVTemplate::find($templateId);
 
             if (!$template) {
@@ -134,30 +134,19 @@ class CVController extends Controller
                 ]);
             }
 
-            // 🔥 PARSE TEMPLATE
-            $htmlBody = $this->parseTemplate(
-                $template->html_template,
-                $data,
-                $aiContent
-            );
+            // ✅ PARSE TEMPLATE
+            $htmlBody = $this->parseTemplate($template->html_template, $data, $aiContent);
 
-            // 🔥 FINAL HTML WRAPPER
+            // ✅ FINAL HTML
             $html = "
         <html>
         <head>
+            <meta charset='utf-8'>
             <style>
                 body {
                     font-family: Arial, sans-serif;
                     font-size: 14px;
                     color: #333;
-                    line-height: 1.6;
-                }
-                h1 { font-size: 22px; margin-bottom: 5px; }
-                h2 {
-                    font-size: 16px;
-                    margin-top: 20px;
-                    border-bottom: 1px solid #ddd;
-                    padding-bottom: 5px;
                 }
                 ul { padding-left: 18px; }
             </style>
@@ -168,21 +157,21 @@ class CVController extends Controller
         </html>
         ";
 
-            // 🔥 GENERATE PDF
-            $pdf = Pdf::loadHTML($html);
+            // ✅ PDF (IMPORTANT FIX)
+            $pdf = Pdf::loadHTML($html)->setOptions([
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true
+            ]);
 
             $fileName = time() . '_cv.pdf';
             $path = "media/cv/{$fileName}";
 
             Storage::put($path, $pdf->output());
 
-            // 🔥 RELATIVE PATH
             $pdfPath = "storage/" . $path;
-
-            // 🔥 FULL URL (FROM ENV)
             $pdfUrl = $baseUrl . '/' . $pdfPath;
 
-            // 🔥 SAVE DB
+            // ✅ SAVE
             $cv = JobSeekerCV::create([
                 'job_seeker_id' => $jobSeeker->id,
                 'title' => $jobDescription ? 'Job Specific CV' : 'Base CV',
@@ -212,13 +201,13 @@ class CVController extends Controller
 
     private function parseTemplate($template, $data, $aiContent = null)
     {
-        // 🔥 SKILLS
+        // ✅ SKILLS
         $skillsHtml = '';
         foreach ($data['skills'] as $skill) {
             $skillsHtml .= "<li>{$skill}</li>";
         }
 
-        // 🔥 EXPERIENCE (UPDATED AS PER YOUR TABLE)
+        // ✅ EXPERIENCE (NO PAGE BREAK ISSUE)
         $expHtml = '';
         foreach ($data['experiences'] as $exp) {
 
@@ -229,26 +218,26 @@ class CVController extends Controller
             $end = $exp['end_date'] ?? 'Present';
             $desc = $exp['description'] ?? '';
 
-            // 🔥 convert description → bullets
+            // 🔥 BULLETS (IMPORTANT FOR QUALITY)
             $points = explode('.', $desc);
             $bullets = '';
 
             foreach ($points as $point) {
                 if (trim($point)) {
-                    $bullets .= "<li>" . trim($point) . "</li>";
+                    $bullets .= "<li>{$point}</li>";
                 }
             }
 
             $expHtml .= "
-            <div style='margin-bottom:12px;'>
-                <strong>{$role}</strong> at {$company}<br>
-                <small>{$location} | {$start} - {$end}</small>
-                <ul>{$bullets}</ul>
-            </div>
+        <div style='margin-bottom:12px; page-break-inside: avoid;'>
+            <strong>{$role}</strong> at {$company}<br>
+            <small>{$location} | {$start} - {$end}</small>
+            <ul>{$bullets}</ul>
+        </div>
         ";
         }
 
-        // 🔥 EDUCATION
+        // ✅ EDUCATION (FIX PAGE SPLIT)
         $eduHtml = '';
         foreach ($data['educations'] as $edu) {
 
@@ -258,24 +247,20 @@ class CVController extends Controller
             $end = $edu['end_year'] ?? '';
 
             $eduHtml .= "
-            <div style='margin-bottom:10px;'>
-                <strong>{$degree}</strong><br>
-                {$institution} ({$start} - {$end})
-            </div>
+        <div style='margin-bottom:10px; page-break-inside: avoid;'>
+            <strong>{$degree}</strong><br>
+            {$institution} ({$start} - {$end})
+        </div>
         ";
         }
 
-        // 🔥 REPLACE PLACEHOLDERS
+        // ✅ REPLACE VALUES
         $template = str_replace('{{name}}', $data['name'], $template);
         $template = str_replace('{{email}}', $data['email'], $template);
         $template = str_replace('{{skills}}', $skillsHtml, $template);
         $template = str_replace('{{experience}}', $expHtml, $template);
         $template = str_replace('{{education}}', $eduHtml, $template);
-
-        // 🔥 IMAGE SUPPORT
-        $template = str_replace('{{photo}}', $data['photo'] ?? 'https://via.placeholder.com/100', $template);
-
-        // 🔥 AI SUMMARY
+        $template = str_replace('{{photo}}', $data['photo'], $template);
         $template = str_replace('{{summary}}', $aiContent ?? '', $template);
 
         return $template;
