@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\RecruiterController;
 use App\Http\Controllers\Api\JobSeekerController;
 use App\Http\Controllers\Api\ResumeController;
 use App\Http\Controllers\Api\CVController;
+use App\Http\Controllers\Api\Admin\AdminDeletedController;
 
 Route::prefix('auth')->group(function () {
 
@@ -297,6 +298,31 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::put('/cv-templates/{id}', [AdminCMSController::class, 'updateCVTemplate']);
     Route::delete('/cv-templates/{id}', [AdminCMSController::class, 'destroyCVTemplate']);
     Route::patch('/cv-templates/{id}/toggle', [AdminCMSController::class, 'toggleStatusCVTemplate']);
+});
+
+// =================================================================================
+
+// Admin Deleted Items Management routes
+
+Route::prefix('admin/deleted')->group(function () {
+
+    // LIST
+    Route::get('users', [AdminDeletedController::class, 'users']);
+    Route::get('job-seekers', [AdminDeletedController::class, 'jobSeekers']);
+    Route::get('jobs', [AdminDeletedController::class, 'jobs']);
+    Route::get('employers', [AdminDeletedController::class, 'employers']);
+    Route::get('cvs', [AdminDeletedController::class, 'cvs']);
+    Route::get('testimonials', [AdminDeletedController::class, 'testimonials']);
+    Route::get('resumes', [AdminDeletedController::class, 'resumes']);
+
+    // RESTORE
+    Route::post('users/{id}/restore', [AdminDeletedController::class, 'restoreUser']);
+    Route::post('job-seekers/{id}/restore', [AdminDeletedController::class, 'restoreJobSeeker']);
+    Route::post('jobs/{id}/restore', [AdminDeletedController::class, 'restoreJob']);
+    Route::post('employers/{id}/restore', [AdminDeletedController::class, 'restoreEmployer']);
+    Route::post('cvs/{id}/restore', [AdminDeletedController::class, 'restoreCV']);
+    Route::post('testimonials/{id}/restore', [AdminDeletedController::class, 'restoreTestimonial']);
+    Route::post('resumes/{id}/restore', [AdminDeletedController::class, 'restoreResume']);
 });
 
 

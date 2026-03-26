@@ -116,7 +116,7 @@ class AdminController extends Controller
     {
         try {
 
-            $job = Job::with([
+            $job = Job::withTrashed()->with([
                 'employer:id,company_name',
                 'category:id,name',
                 'jobQuestions'
@@ -149,7 +149,7 @@ class AdminController extends Controller
     {
         try {
 
-            $job = Job::find($id);
+            $job = Job::withTrashed()->find($id);
 
             if (!$job) {
                 return response()->json([
@@ -181,7 +181,7 @@ class AdminController extends Controller
     {
         try {
 
-            $job = Job::find($id);
+            $job = Job::withTrashed()->find($id);
 
             if (!$job) {
                 return response()->json([
@@ -213,7 +213,7 @@ class AdminController extends Controller
     {
         try {
 
-            $job = Job::find($id);
+            $job = Job::withTrashed()->find($id);
 
             if (!$job) {
                 return response()->json([
@@ -245,7 +245,7 @@ class AdminController extends Controller
     {
         try {
 
-            $job = Job::find($id);
+            $job = Job::withTrashed()->find($id);
 
             if (!$job) {
                 return response()->json([
@@ -300,7 +300,7 @@ class AdminController extends Controller
     {
         try {
 
-            $employer = Employer::with([
+            $employer = Employer::withTrashed()->with([
                 'employerUsers',
                 'jobs',
                 'documents' // 🔥 added this
@@ -339,7 +339,7 @@ class AdminController extends Controller
                 'admin_remark' => 'required_if:status,rejected|nullable|string'
             ]);
 
-            $employer = Employer::find($id);
+            $employer = Employer::withTrashed()->find($id);
 
             if (!$employer) {
                 return response()->json([
@@ -410,7 +410,7 @@ class AdminController extends Controller
     {
         try {
 
-            $employer = Employer::find($id);
+            $employer = Employer::withTrashed()->find($id);
 
             if (!$employer) {
                 return response()->json([
@@ -442,7 +442,7 @@ class AdminController extends Controller
     {
         try {
 
-            $employer = Employer::find($id);
+            $employer = Employer::withTrashed()->find($id);
 
             if (!$employer) {
                 return response()->json([
@@ -473,7 +473,7 @@ class AdminController extends Controller
     {
         try {
 
-            $employer = Employer::find($id);
+            $employer = Employer::withTrashed()->find($id);
 
             if (!$employer) {
                 return response()->json([
@@ -560,7 +560,7 @@ class AdminController extends Controller
     {
         try {
 
-            $recruiter = EmployerUser::with([
+            $recruiter = EmployerUser::withTrashed()->with([
                 'employer:id,company_name',
                 'jobs'
             ])->find($id);
@@ -594,7 +594,7 @@ class AdminController extends Controller
     {
         try {
 
-            $recruiter = EmployerUser::find($id);
+            $recruiter = EmployerUser::withTrashed()->find($id);
 
             if (!$recruiter) {
                 return response()->json([
@@ -661,7 +661,7 @@ class AdminController extends Controller
     {
         try {
 
-            $recruiter = EmployerUser::with('employer')->find($id);
+            $recruiter = EmployerUser::withTrashed()->with('employer')->find($id);
 
             if (!$recruiter) {
                 return response()->json([
@@ -734,7 +734,7 @@ class AdminController extends Controller
     {
         try {
 
-            $jobSeekers = JobSeeker::withTrashed()->with('user:id,name,email')
+            $jobSeekers = JobSeeker::with('user:id,name,email')
                 ->latest()
                 ->paginate(10);
 
@@ -758,7 +758,7 @@ class AdminController extends Controller
     {
         try {
 
-            $jobSeeker = JobSeeker::with([
+            $jobSeeker = JobSeeker::withTrashed()->with([
                 'user:id,name,email',
                 'resumes',
                 'jobApplications.job:id,title'
@@ -791,7 +791,7 @@ class AdminController extends Controller
     {
         try {
 
-            $jobSeeker = JobSeeker::find($id);
+            $jobSeeker = JobSeeker::withTrashed()->find($id);
 
             if (!$jobSeeker) {
                 return response()->json([
@@ -828,7 +828,7 @@ class AdminController extends Controller
     {
         try {
 
-            $jobSeeker = JobSeeker::find($id);
+            $jobSeeker = JobSeeker::withTrashed()->find($id);
 
             if (!$jobSeeker) {
                 return response()->json([
@@ -893,7 +893,7 @@ class AdminController extends Controller
     {
         try {
 
-            $application = JobApplication::with([
+            $application = JobApplication::withTrashed()->with([
                 'job',
                 'jobSeeker.user',
                 'jobSeeker.resumes',
@@ -927,7 +927,7 @@ class AdminController extends Controller
     {
         try {
 
-            $applications = JobApplication::where('job_id', $jobId)
+            $applications = JobApplication::withTrashed()->where('job_id', $jobId)
                 ->with([
                     'jobSeeker.user:id,name,email'
                 ])
@@ -955,7 +955,7 @@ class AdminController extends Controller
     {
         try {
 
-            $application = JobApplication::find($id);
+            $application = JobApplication::withTrashed()->find($id);
 
             if (!$application) {
                 return response()->json([
@@ -979,4 +979,10 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
+
+
+    // ==============================================================================
+
+
 }
