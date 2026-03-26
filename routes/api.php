@@ -456,7 +456,7 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
     Route::post('cv/generate-job', [CVController::class, 'generateJobCV']);
 
     //get active cvs
-    Route::get('cv/templates', [CVController::class, 'getActiveCVTemplates']);
+    Route::get('cv/templates', [CVController::class, 'getActiveTemplates']);
 
 });
 
