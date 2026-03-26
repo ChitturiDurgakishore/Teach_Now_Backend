@@ -528,7 +528,7 @@ class EmployerController extends Controller
 
             $employer = Auth::guard('employer')->user();
 
-            $jobs = Job::where('employer_id', $employer->id)->latest()->get();
+            $jobs = Job::where('expires_at', '>', now())->where('employer_id', $employer->id)->latest()->get();
 
             return response()->json([
                 'status' => true,

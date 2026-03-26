@@ -473,7 +473,7 @@ class RecruiterController extends Controller
 
             $recruiter = Auth::guard('employer_user')->user();
 
-            $jobs = Job::where('created_by', $recruiter->id)
+            $jobs = Job::where('expires_at', '>', now())->where('created_by', $recruiter->id)
                 ->latest()
                 ->get();
 

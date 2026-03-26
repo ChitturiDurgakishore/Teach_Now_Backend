@@ -836,7 +836,8 @@ class PublicAPIController extends Controller
         try {
 
             // 🔥 Categories with jobs count
-            $categories = Category::where('is_visible', true)
+            $categories = Category::where('is_active', true)
+                ->where('expires_at', '>', now())->where('is_visible', true)
                 ->select('id', 'name', 'slug')
                 ->withCount([
                     'jobs as jobs_count' => function ($q) {
@@ -851,7 +852,8 @@ class PublicAPIController extends Controller
             $locations = Location::select('id', 'name')
                 ->get()
                 ->map(function ($location) {
-                    $location->jobs_count = Job::where('location', 'LIKE', "%{$location->name}%")
+                    $location->jobs_count = Job::where('is_active', true)
+                        ->where('expires_at', '>', now())->where('location', 'LIKE', "%{$location->name}%")
                         ->where('status', 'approved')
                         ->where('job_status', 'open')
                         ->count();
