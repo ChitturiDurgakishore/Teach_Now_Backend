@@ -23,7 +23,7 @@ class AIService
                 ]
             ]
         ]);
-
+        dd($response->json());
         // 🔥 DEBUG IF NEEDED
         if (!$response->successful()) {
             dd($response->body());
