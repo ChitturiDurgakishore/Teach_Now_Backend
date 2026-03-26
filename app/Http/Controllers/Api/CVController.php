@@ -137,10 +137,10 @@ class CVController extends Controller
             $path = "media/cv/{$fileName}";
 
             // IMPORTANT → store in public disk
-            Storage::put("public/" . $path, $pdf->output());
+            Storage::put( $path, $pdf->output());
 
             // 🔥 ONLY RELATIVE PATH (BEST PRACTICE)
-            $pdfPath = "/storage/" . $path;
+            $pdfPath = "storage/" . $path;
 
             // 🔥 Save DB
             $cv = JobSeekerCV::create([
