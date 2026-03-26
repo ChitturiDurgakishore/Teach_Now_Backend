@@ -38,7 +38,11 @@ class AIService
         $base = "
 You are a professional resume writer.
 
-Create a modern, ATS-friendly CV in CLEAN HTML FORMAT (no markdown).
+Generate ONLY a professional summary (3-5 lines) and bullet achievements.
+
+DO NOT return HTML page.
+DO NOT include <html>, <head>, <body>.
+Return ONLY plain text or simple paragraphs.
 
 Candidate Details:
 Name: {$data['name']}
@@ -53,12 +57,9 @@ Experience:
 " . json_encode($data['experiences']) . "
 
 Instructions:
-- Add a strong professional summary
-- Convert experience into bullet points
-- Highlight achievements (not just responsibilities)
-- Use proper headings (Summary, Skills, Experience, Education)
-- Keep it clean and readable
-- Return ONLY HTML (no explanations)
+- Write strong professional summary
+- Add 3–5 bullet achievements
+- Keep it concise and impactful
 ";
 
         if ($jobDescription) {
