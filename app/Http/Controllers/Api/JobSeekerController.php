@@ -248,6 +248,7 @@ class JobSeekerController extends Controller
             }
 
             $profile->delete();
+            $user->delete();
 
             return response()->json([
                 'status' => true,

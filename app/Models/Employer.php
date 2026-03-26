@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Str;
 
 class Employer extends Authenticatable
 {
+    use SoftDeletes;
     public function users()
     {
         return $this->hasMany(EmployerUser::class);

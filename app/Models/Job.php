@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Job extends Model
 {
+    use SoftDeletes;
     public function employer()
     {
         return $this->belongsTo(Employer::class);
