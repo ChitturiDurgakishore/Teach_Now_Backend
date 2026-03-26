@@ -734,7 +734,7 @@ class AdminController extends Controller
     {
         try {
 
-            $jobSeekers = JobSeeker::with('user:id,name,email')
+            $jobSeekers = JobSeeker::withTrashed()->with('user:id,name,email')
                 ->latest()
                 ->paginate(10);
 
