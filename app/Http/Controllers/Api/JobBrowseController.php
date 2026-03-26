@@ -27,7 +27,8 @@ class JobBrowseController extends Controller
     {
         try {
 
-            $jobs = Job::where('status', 'approved')
+            $jobs = Job::where('is_active', true)
+                ->where('expires_at', '>', now())->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->with(['employer:id,company_name,company_logo'])
                 ->latest()
@@ -254,7 +255,7 @@ class JobBrowseController extends Controller
 
             $user = Auth::user();
 
-            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+            $jobSeeker = JobSeeker::withTrashed()->where('user_id', $user->id)->first();
 
             $applications = JobApplication::where('job_seeker_id', $jobSeeker->id)
                 ->with('job')
@@ -283,7 +284,7 @@ class JobBrowseController extends Controller
 
             $user = Auth::user();
 
-            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+            $jobSeeker = JobSeeker::withTrashed()->where('user_id', $user->id)->first();
 
             $application = JobApplication::where('id', $id)
                 ->where('job_seeker_id', $jobSeeker->id)
@@ -320,7 +321,7 @@ class JobBrowseController extends Controller
 
             $user = Auth::user();
 
-            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+            $jobSeeker = JobSeeker::withTrashed()->where('user_id', $user->id)->first();
 
             $shortlisted = JobApplication::where('job_seeker_id', $jobSeeker->id)
                 ->where('status', 'shortlisted')
@@ -433,7 +434,7 @@ class JobBrowseController extends Controller
 
             $user = Auth::user();
 
-            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+            $jobSeeker = JobSeeker::withTrashed()->where('user_id', $user->id)->first();
 
             $bookmarks = BookmarkedJob::where('job_seeker_id', $jobSeeker->id)
                 ->with('job')

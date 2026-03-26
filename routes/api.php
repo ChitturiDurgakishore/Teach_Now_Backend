@@ -356,6 +356,8 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::delete('/jobs/delete/{id}', [EmployerController::class, 'deleteJob']); //Delete job posting
     Route::put('/jobs/{id}/filled', [EmployerController::class, 'markJobFilled']); //Mark job as filled
 
+    Route::get('employer/jobs/expired', [EmployerController::class, 'getExpiredJobsForEmployer']); //Employer expiry jobs
+    Route::put('/jobs/{id}/republish', [EmployerController::class, 'republishJob']); //Republish job
     // Application management
 
     Route::get('/jobs/{jobId}', [EmployerController::class, 'getJobApplications']);
@@ -399,9 +401,12 @@ Route::prefix('recruiter')->group(function () {
         Route::put('/jobs/{id}', [RecruiterController::class, 'updateJob']); //Update job posting
         Route::put('/jobs/{id}/filled', [RecruiterController::class, 'markJobFilled']); //Mark job as filled
         Route::get('/jobs', [RecruiterController::class, 'getRecruiterJobs']); //Get recruiter jobs
+        Route::put('/jobs/{id}/republish', [RecruiterController::class, 'republishJob']); //Republish job
 
+        Route::get('recruiter/jobs/expired', [RecruiterController::class, 'getExpiredJobsForRecruiter']); //Expired jobs
         // Feature JOb
         Route::post('/job/{id}/toggle-feature', [RecruiterController::class, 'toggleJobFeatured']);
+
         //Applications management
 
         Route::get('/applications', [RecruiterController::class, 'getApplications']); //Get all applications for recruiter

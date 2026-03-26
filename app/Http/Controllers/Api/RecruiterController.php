@@ -165,6 +165,8 @@ class RecruiterController extends Controller
                 'keywords' => $request->keywords,
                 'gender' => $request->gender ?? 'both',
                 'experience_type' => $request->experience_type,
+                'expires_at' => now()->addDays(30),
+                'is_active' => true
             ]);
 
             $questionsCreated = [];
@@ -321,6 +323,46 @@ class RecruiterController extends Controller
             ], 500);
         }
     }
+    // Republish Job
+    public function republishJob($id)
+    {
+        $job = Job::find($id);
+
+        if (!$job) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Job not found'
+            ], 404);
+        }
+
+        $recruiter = Auth::guard('employer_user')->user();
+
+        if (!$recruiter) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        // ✅ CORRECT CHECK
+        if ($job->employer_id !== $recruiter->employer_id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $job->update([
+            'expires_at' => now()->addDays(30),
+            'is_active' => true
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Job republished successfully'
+        ]);
+    }
+
 
     //Feature job
     public function toggleJobFeatured($id)
@@ -448,6 +490,30 @@ class RecruiterController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    // Expired Jobs
+
+    public function getExpiredJobsForRecruiter()
+    {
+        $recruiter = Auth::guard('employer_user')->user();
+
+        if (!$recruiter) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $jobs = Job::where('employer_id', $recruiter->employer_id)
+            ->where('expires_at', '<', now())
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $jobs
+        ]);
     }
 
     // Get all applications for recruiter's jobs

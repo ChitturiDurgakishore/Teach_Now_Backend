@@ -87,7 +87,8 @@ class PublicAPIController extends Controller
             $gender = $request->input('gender');
             $experience_type = $request->input('experience_type');
 
-            $query = Job::query()
+            $query = Job::query()->where('is_active', true)
+                ->where('expires_at', '>', now())
                 ->where('status', 'approved')
                 ->where('job_status', 'open');
 
@@ -259,7 +260,8 @@ class PublicAPIController extends Controller
                 ], 404);
             }
 
-            $jobs = Job::where('category_id', $category->id)
+            $jobs = Job::where('is_active', true)
+                ->where('expires_at', '>', now())->where('category_id', $category->id)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->latest()
@@ -475,7 +477,8 @@ class PublicAPIController extends Controller
     {
         try {
 
-            $jobs = Job::where('featured', 1)->where('admin_featured', 1)
+            $jobs = Job::where('is_active', true)
+                ->where('expires_at', '>', now())->where('featured', 1)->where('admin_featured', 1)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->with(['employer:id,company_name,company_logo'])
@@ -728,7 +731,8 @@ class PublicAPIController extends Controller
             }
 
             // 🔥 Step 2: filter jobs (using location name)
-            $jobs = Job::where('location', 'LIKE', '%' . $location->name . '%')
+            $jobs = Job::where('is_active', true)
+                ->where('expires_at', '>', now())->where('location', 'LIKE', '%' . $location->name . '%')
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->latest()

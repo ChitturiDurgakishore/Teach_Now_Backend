@@ -598,6 +598,8 @@ class EmployerController extends Controller
                 'keywords' => $request->keywords, // ✅ NEW
                 'gender' => $request->gender ?? 'both',
                 'experience_type' => $request->experience_type,
+                'expires_at' => now()->addDays(30),
+                'is_active' => true
             ]);
 
             $questionsCreated = [];
@@ -753,6 +755,71 @@ class EmployerController extends Controller
             ], 500);
         }
     }
+
+    // Republish Job
+    public function republishJob($id)
+    {
+        $job = Job::find($id);
+
+        if (!$job) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Job not found'
+            ], 404);
+        }
+
+        $employer = auth('employer')->user();
+
+        if (!$employer) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        // ✅ SAFE CHECK
+        if ($job->employer_id !== $employer->id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $job->update([
+            'expires_at' => now()->addDays(30),
+            'is_active' => true
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Job republished successfully'
+        ]);
+    }
+
+    // Expired Jobs
+
+    public function getExpiredJobsForEmployer()
+    {
+        $employer = Auth::guard('employer')->user();
+
+        if (!$employer) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $jobs = Job::where('employer_id', $employer->id)
+            ->where('expires_at', '<', now())
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $jobs
+        ]);
+    }
+
 
     //mark job as filled
 
