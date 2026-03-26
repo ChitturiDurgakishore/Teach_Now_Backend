@@ -274,7 +274,7 @@ class AdminController extends Controller
 
     public function getExpiredJobsForAdmin()
     {
-        $jobs = Job::withTrashed()->where('expires_at', '<', now())
+        $jobs = Job::where('expires_at', '<', now())
             ->latest()
             ->get();
 
