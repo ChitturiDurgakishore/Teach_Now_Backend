@@ -106,14 +106,14 @@ class CVController extends Controller
             $data = [
                 'name' => $jobSeeker->user->name ?? '',
                 'email' => $jobSeeker->user->email ?? '',
+                'phone' => $jobSeeker->phone ?? '',
+                'location' => $jobSeeker->location ?? '',
+                'experience_years' => $jobSeeker->experience_years ?? '',
+                'bio' => $jobSeeker->bio ?? '',
+
                 'skills' => $jobSeeker->skills->pluck('name')->toArray(),
                 'educations' => $jobSeeker->educations->toArray(),
-                'experiences' => $jobSeeker->experiences->toArray(),
-
-                // ✅ IMAGE FIX (IMPORTANT)
-                'photo' => $jobSeeker->profile_photo
-                    ? public_path($jobSeeker->profile_photo)
-                    : public_path('default.png')
+                'experiences' => $jobSeeker->experiences->toArray()
             ];
 
             // ✅ AI CONTENT (ONLY TEXT)
@@ -217,8 +217,8 @@ class CVController extends Controller
             $skillsHtml .= "<li>{$skill}</li>";
         }
 
-        // ✅ EXPERIENCE (TABLE SAFE)
-        $expHtml = '';
+        // ✅ EXPERIENCE (FULL TABLE STRUCTURE)
+        $expRows = '';
         foreach ($data['experiences'] as $exp) {
 
             $company = $exp['company_name'] ?? '';
@@ -227,18 +227,19 @@ class CVController extends Controller
             $start = $exp['start_date'] ?? '';
             $end = $exp['end_date'] ?? 'Present';
 
-            $expHtml .= "
+            $expRows .= "
         <tr>
             <td style='padding:6px; border-bottom:1px solid #eee;'>
                 <strong>{$role}</strong> - {$company}<br>
                 <small>{$location} | {$start} - {$end}</small>
             </td>
-        </tr>
-        ";
+        </tr>";
         }
 
-        // ✅ EDUCATION (TABLE SAFE)
-        $eduHtml = '';
+        $expHtml = "<tbody>{$expRows}</tbody>";
+
+        // ✅ EDUCATION (FULL TABLE STRUCTURE)
+        $eduRows = '';
         foreach ($data['educations'] as $edu) {
 
             $degree = $edu['degree'] ?? '';
@@ -246,15 +247,16 @@ class CVController extends Controller
             $start = $edu['start_year'] ?? '';
             $end = $edu['end_year'] ?? '';
 
-            $eduHtml .= "
+            $eduRows .= "
         <tr>
             <td style='padding:6px; border-bottom:1px solid #eee;'>
                 <strong>{$degree}</strong><br>
                 {$institution} ({$start} - {$end})
             </td>
-        </tr>
-        ";
+        </tr>";
         }
+
+        $eduHtml = "<tbody>{$eduRows}</tbody>";
 
         // ✅ REPLACE VALUES
         $template = str_replace('{{name}}', $data['name'], $template);
@@ -263,8 +265,9 @@ class CVController extends Controller
         $template = str_replace('{{experience}}', $expHtml, $template);
         $template = str_replace('{{education}}', $eduHtml, $template);
         $template = str_replace('{{photo}}', $data['photo'], $template);
-
-        // ✅ AI TEXT (NO HTML BREAK)
+        $template = str_replace('{{phone}}', $data['phone'], $template);
+        $template = str_replace('{{location}}', $data['location'], $template);
+        // ✅ AI SUMMARY (SAFE TEXT)
         $template = str_replace('{{summary}}', nl2br($aiContent ?? ''), $template);
 
         return $template;
