@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\AIService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\JobSeeker;
 use App\Models\JobSeekerCV;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Job;
+use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\AIService;
 
 class CVController extends Controller
 {
@@ -52,17 +52,18 @@ class CVController extends Controller
                 ], 404);
             }
 
-            // 🔥 Build job description from DB
+            // 🔥 Build job description
             $jobDescription = "
-        Job Title: {$job->title}
-        Description: {$job->description}
-        Skills: {$job->keywords}
-        Experience: {$job->experience_required} years
-        ";
+            Job Title: {$job->title}
+            Description: {$job->description}
+            Skills: {$job->keywords}
+            Experience: {$job->experience_required} years
+            Location: {$job->location}
+            ";
 
             return $this->generateCVLogic($jobDescription);
-        } catch (\Exception $e) {
 
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'CV generation failed',
@@ -96,6 +97,7 @@ class CVController extends Controller
                 ], 404);
             }
 
+            // 🔥 Prepare data
             $data = [
                 'name' => $jobSeeker->user->name ?? '',
                 'email' => $jobSeeker->user->email ?? '',
@@ -104,27 +106,48 @@ class CVController extends Controller
                 'experiences' => $jobSeeker->experiences->toArray()
             ];
 
-            // 🔥 AI GENERATED TEXT
+            // 🔥 AI GENERATED CONTENT
             $aiContent = $this->ai->generateCV($data, $jobDescription);
 
-            // 🔥 Render HTML
-            $html = view('cv.template', ['cv' => $data])->render();
+            // 🔥 Use AI HTML OR fallback
+            if ($aiContent) {
+                $html = "
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; }
+                        h1, h2 { color: #333; }
+                        ul { padding-left: 20px; }
+                    </style>
+                </head>
+                <body>
+                    {$aiContent}
+                </body>
+                </html>
+                ";
+            } else {
+                // fallback (no AI key case)
+                $html = view('cv.template', ['cv' => $data])->render();
+            }
 
             // 🔥 Generate PDF
             $pdf = Pdf::loadHTML($html);
 
             $fileName = time() . '_cv.pdf';
             $path = "media/cv/{$fileName}";
-            Storage::put($path, $pdf->output());
 
-            $pdfUrl = 'storage/' . $path;
+            // IMPORTANT → store in public disk
+            Storage::put("public/" . $path, $pdf->output());
+
+            // 🔥 ONLY RELATIVE PATH (BEST PRACTICE)
+            $pdfPath = "/storage/" . $path;
 
             // 🔥 Save DB
             $cv = JobSeekerCV::create([
                 'job_seeker_id' => $jobSeeker->id,
                 'title' => $jobDescription ? 'Job Specific CV' : 'Base CV',
                 'content' => $aiContent,
-                'pdf_path' => $pdfUrl
+                'pdf_path' => $pdfPath
             ]);
 
             return response()->json([
@@ -132,11 +155,11 @@ class CVController extends Controller
                 'message' => 'CV generated successfully',
                 'data' => [
                     'cv' => $cv,
-                    'pdf_url' => asset($pdfUrl)
+                    'pdf_url' => $pdfPath // ✅ clean
                 ]
             ]);
-        } catch (\Exception $e) {
 
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'CV generation failed',
