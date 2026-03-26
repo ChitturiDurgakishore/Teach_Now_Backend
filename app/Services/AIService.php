@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+
 class AIService
 {
     public function generateCV($data, $jobDescription = null)
@@ -43,7 +44,7 @@ Candidate Details:
 Name: {$data['name']}
 Email: {$data['email']}
 
-Skills: " . implode(', ', $data['skills']->toArray()) . "
+Skills: " . implode(', ', $data['skills']) . "
 
 Education:
 " . json_encode($data['educations']) . "
