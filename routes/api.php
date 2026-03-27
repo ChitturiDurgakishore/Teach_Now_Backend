@@ -292,10 +292,10 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::patch('/email-templates/{id}/toggle', [AdminCMSController::class, 'toggleEmailTemplate']);
 
     //CORN Jobs for sending emails
-    Route::post('/save', [MailController::class, 'saveTemplate']);
-    Route::get('/all', [MailController::class, 'getAllTemplates']);
-    Route::get('/{type}', [MailController::class, 'getTemplate']);
-    Route::post('/toggle/{id}', [MailController::class, 'toggleTemplate']);
+    Route::post('corn/save', [MailController::class, 'saveTemplate']);
+    Route::get('corn/all', [MailController::class, 'getAllTemplates']);
+    Route::get('corn/{type}', [MailController::class, 'getTemplate']);
+    Route::post('corn/toggle/{id}', [MailController::class, 'toggleTemplate']);
 
     // Teaching Resources management
     Route::get('/resources', [AdminCMSController::class, 'getResources']);
