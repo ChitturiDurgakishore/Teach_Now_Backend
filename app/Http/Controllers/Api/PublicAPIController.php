@@ -88,7 +88,7 @@ class PublicAPIController extends Controller
             $experience_type = $request->input('experience_type');
 
             // ✅ ONLY CHANGE → added employer relation
-            $query = Job::with(['employer:id,name,logo'])
+            $query = Job::with(['employer:id,company_name,company_logo'])
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->where('status', 'approved')
