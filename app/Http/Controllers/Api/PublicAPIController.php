@@ -850,38 +850,73 @@ class PublicAPIController extends Controller
     {
         try {
 
-            // 🔥 Categories with jobs count
-            $categories = Category::where('is_active', true)
-                ->where('expires_at', '>', now())->where('is_visible', true)
-                ->select('id', 'name', 'slug')
-                ->withCount([
-                    'jobs as jobs_count' => function ($q) {
-                        $q->where('status', 'approved')
-                            ->where('job_status', 'open');
-                    }
-                ])
-                ->orderBy('name')
-                ->get();
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CATEGORY COUNTS (CORRECT WAY)
+        |--------------------------------------------------------------------------
+        */
 
-            // 🔥 Locations with jobs count
-            $locations = Location::select('id', 'name')
+            $categories = Category::where('is_visible', true)
+                ->select('id', 'name', 'slug')
                 ->get()
-                ->map(function ($location) {
-                    $location->jobs_count = Job::where('is_active', true)
-                        ->where('expires_at', '>', now())->where('location', 'LIKE', "%{$location->name}%")
+                ->map(function ($category) {
+
+                    $category->jobs_count = Job::where('category_id', $category->id)
+                        ->where('is_active', true)
+                        ->where('expires_at', '>', now())
                         ->where('status', 'approved')
                         ->where('job_status', 'open')
                         ->count();
+
+                    return $category;
+                });
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 LOCATION COUNTS (OPTIMIZED GROUPING)
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Get counts in ONE QUERY
+            $jobLocationCounts = Job::selectRaw('location, COUNT(*) as total')
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->where('status', 'approved')
+                ->where('job_status', 'open')
+                ->groupBy('location')
+                ->pluck('total', 'location'); // [location => count]
+
+            $locations = Location::where('is_visible', true)
+                ->select('id', 'name')
+                ->get()
+                ->map(function ($location) use ($jobLocationCounts) {
+
+                    $count = 0;
+
+                    foreach ($jobLocationCounts as $jobLocation => $total) {
+                        if (stripos($jobLocation, $location->name) !== false) {
+                            $count += $total;
+                        }
+                    }
+
+                    $location->jobs_count = $count;
+
                     return $location;
                 });
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RESPONSE
+        |--------------------------------------------------------------------------
+        */
 
             return response()->json([
                 'status' => true,
                 'data' => [
                     'categories' => $categories,
                     'locations' => $locations,
-                    'categories_count' => $categories->count(), // 🔥 total categories
-                    'locations_count' => $locations->count()    // 🔥 total locations
+                    'categories_count' => $categories->count(),
+                    'locations_count' => $locations->count()
                 ]
             ], 200);
         } catch (\Exception $e) {
