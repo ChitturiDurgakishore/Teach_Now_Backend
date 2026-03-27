@@ -216,8 +216,8 @@ class PublicAPIController extends Controller
 
                 $jobArray['employer'] = [
                     'id' => $job->employer->id ?? null,
-                    'name' => $job->employer->name ?? null,
-                    'logo' => $job->employer->logo ?? null, // ✅ NO BASE URL
+                    'company_name' => $job->employer->company_name ?? null,
+                    'company_logo' => $job->employer->company_logo ?? null, // ✅ NO BASE URL
                 ];
 
                 return $jobArray;
