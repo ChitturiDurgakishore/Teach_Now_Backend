@@ -7,6 +7,7 @@ use App\Models\CornEmailTemplate;
 use App\Models\Job;
 use App\Models\JobSeeker;
 use Illuminate\Support\Facades\Mail;
+use App\Models\EmailSetting;
 
 class SendEmails extends Command
 {
@@ -30,18 +31,47 @@ class SendEmails extends Command
     */
     private function sendWeeklyEmails()
     {
+        // 🔥 STEP 1: GET SETTINGS
+        $setting = EmailSetting::where('type', 'weekly')
+            ->where('is_active', true)
+            ->first();
+
+        if (!$setting) return;
+
+        // 🔥 STEP 2: CHECK DAY
+        $currentDay = strtolower(now()->format('l')); // monday, tuesday...
+
+        if ($currentDay !== $setting->day) return;
+
+        // 🔥 STEP 3: CHECK TIME
+        $currentTime = now()->format('H:i');
+        $scheduledTime = \Carbon\Carbon::parse($setting->time)->format('H:i');
+
+        if ($currentTime !== $scheduledTime) return;
+
+        // 🔥 STEP 4: PREVENT DUPLICATE
+        if (
+            $setting->last_sent_at &&
+            now()->diffInMinutes($setting->last_sent_at) < 60
+        ) {
+            return;
+        }
+
+        // 🔥 STEP 5: GET TEMPLATE
         $template = CornEmailTemplate::where('type', 'weekly')
             ->where('is_active', true)
             ->first();
 
         if (!$template) return;
 
+        // 🔥 STEP 6: GET USERS
         $users = JobSeeker::with('user')
             ->whereHas('user', function ($q) {
                 $q->whereNotNull('email');
             })
             ->get();
 
+        // 🔥 STEP 7: LOOP USERS
         foreach ($users as $user) {
 
             if (!$user->user) continue;
@@ -51,7 +81,9 @@ class SendEmails extends Command
 
             $skillsArray = array_filter(array_map('trim', explode(',', $skills)));
 
-            $jobs = Job::where('created_at', '>=', now()->subDays(7))
+            // 🔥 STEP 8: PERSONALIZED JOBS
+            $jobs = Job::with('employer')
+                ->where('created_at', '>=', now()->subDays(7))
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->where('status', 'approved')
@@ -71,19 +103,27 @@ class SendEmails extends Command
 
             if ($jobs->isEmpty()) continue;
 
+            // 🔥 STEP 9: GENERATE JOB HTML
             $jobsHtml = $this->generateJobsHtml($jobs);
 
+            // 🔥 STEP 10: REPLACE TEMPLATE VARIABLES
             $html = $template->html_template;
 
-            $html = str_replace('{{name}}', $user->user->name, $html);
+            $html = str_replace('{{name}}', $user->user->name ?? 'User', $html);
             $html = str_replace('{{jobs}}', $jobsHtml, $html);
             $html = str_replace('{{date}}', now()->format('d M Y'), $html);
 
+            // 🔥 STEP 11: SEND EMAIL
             Mail::html($html, function ($message) use ($user, $template) {
                 $message->to($user->user->email)
                     ->subject($template->subject);
             });
         }
+
+        // 🔥 STEP 12: UPDATE LAST SENT TIME
+        $setting->update([
+            'last_sent_at' => now()
+        ]);
     }
 
     /*

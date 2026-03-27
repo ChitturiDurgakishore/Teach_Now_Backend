@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmailSetting;
 use Illuminate\Http\Request;
 use App\Models\EmailTemplate;
 
@@ -38,7 +39,6 @@ class MailController extends Controller
                 'message' => 'Email template saved successfully',
                 'data' => $template
             ]);
-
         } catch (\Exception $e) {
 
             return response()->json([
@@ -71,7 +71,6 @@ class MailController extends Controller
                 'status' => true,
                 'data' => $template
             ]);
-
         } catch (\Exception $e) {
 
             return response()->json([
@@ -98,7 +97,6 @@ class MailController extends Controller
                 'total' => $templates->count(),
                 'data' => $templates
             ]);
-
         } catch (\Exception $e) {
 
             return response()->json([
@@ -136,7 +134,6 @@ class MailController extends Controller
                 'message' => 'Template status updated',
                 'data' => $template
             ]);
-
         } catch (\Exception $e) {
 
             return response()->json([
@@ -145,5 +142,43 @@ class MailController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    //Time Controlling by Admiin
+
+    public function saveEmailSettings(Request $request)
+    {
+        $request->validate([
+            'day' => 'required|string',
+            'time' => 'required',
+            'is_active' => 'nullable|boolean'
+        ]);
+
+        $setting = EmailSetting::updateOrCreate(
+            ['type' => 'weekly'],
+            [
+                'day' => strtolower($request->day),
+                'time' => $request->time,
+                'is_active' => $request->is_active ?? true
+            ]
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Email settings saved',
+            'data' => $setting
+        ]);
+    }
+
+    //Get Email Settings
+
+    public function getEmailSettings()
+    {
+        $setting = EmailSetting::where('type', 'weekly')->first();
+
+        return response()->json([
+            'status' => true,
+            'data' => $setting
+        ]);
     }
 }

@@ -297,6 +297,10 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::get('corn/{type}', [MailController::class, 'getTemplate']);
     Route::post('corn/toggle/{id}', [MailController::class, 'toggleTemplate']);
 
+    //Corn Job Time settings
+    Route::post('/mail/settings', [MailController::class, 'saveEmailSettings']);
+    Route::get('/mail/settings', [MailController::class, 'getEmailSettings']);
+
     // Teaching Resources management
     Route::get('/resources', [AdminCMSController::class, 'getResources']);
     Route::post('/resources', [AdminCMSController::class, 'createResource']);
