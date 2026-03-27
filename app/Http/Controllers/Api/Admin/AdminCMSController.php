@@ -2329,7 +2329,7 @@ class AdminCMSController extends Controller
     //Update single template
     public function updateCVTemplate(Request $request, $id)
     {
-        $template = CVTemplate::withTrashed()->find($id);
+        $template = CVTemplate::find($id);
 
         if (!$template) {
             return response()->json([
@@ -2371,7 +2371,7 @@ class AdminCMSController extends Controller
     // ✅ DELETE
     public function destroyCVTemplate($id)
     {
-        $template = CVTemplate::withTrashed()->find($id);
+        $template = CVTemplate::find($id);
 
         if (!$template) {
             return response()->json([
@@ -2391,7 +2391,7 @@ class AdminCMSController extends Controller
     // ✅ TOGGLE ACTIVE
     public function toggleStatusCVTemplate($id)
     {
-        $template = CVTemplate::withTrashed()->find($id);
+        $template = CVTemplate::find($id);
 
         if (!$template) {
             return response()->json([
