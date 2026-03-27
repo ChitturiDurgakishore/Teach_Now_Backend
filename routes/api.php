@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\JobSeekerController;
 use App\Http\Controllers\Api\ResumeController;
 use App\Http\Controllers\Api\CVController;
 use App\Http\Controllers\Api\Admin\AdminDeletedController;
+use App\Http\Controllers\Admin\MailController;
 
 Route::prefix('auth')->group(function () {
 
@@ -290,6 +291,12 @@ Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function (
     Route::delete('/email-templates/{id}', [AdminCMSController::class, 'deleteEmailTemplate']);
     Route::patch('/email-templates/{id}/toggle', [AdminCMSController::class, 'toggleEmailTemplate']);
 
+    //CORN Jobs for sending emails
+    Route::post('/save', [MailController::class, 'saveTemplate']);
+    Route::get('/all', [MailController::class, 'getAllTemplates']);
+    Route::get('/{type}', [MailController::class, 'getTemplate']);
+    Route::post('/toggle/{id}', [MailController::class, 'toggleTemplate']);
+
     // Teaching Resources management
     Route::get('/resources', [AdminCMSController::class, 'getResources']);
     Route::post('/resources', [AdminCMSController::class, 'createResource']);
@@ -493,9 +500,6 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
 
     //get active cvs
     Route::get('cv/templates', [CVController::class, 'getActiveTemplates']);
-
-
-
 });
 
 
