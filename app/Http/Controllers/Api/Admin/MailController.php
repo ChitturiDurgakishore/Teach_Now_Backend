@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\EmailSetting;
 use Illuminate\Http\Request;
-use App\Models\EmailTemplate;
+use App\Models\CornEmailTemplate;
 
 class MailController extends Controller
 {
@@ -25,7 +25,7 @@ class MailController extends Controller
                 'is_active' => 'nullable|boolean'
             ]);
 
-            $template = EmailTemplate::updateOrCreate(
+            $template = CornEmailTemplate::updateOrCreate(
                 ['type' => $request->type],
                 [
                     'subject' => $request->subject,
@@ -58,7 +58,7 @@ class MailController extends Controller
     {
         try {
 
-            $template = EmailTemplate::where('type', $type)->first();
+            $template = CornEmailTemplate::where('type', $type)->first();
 
             if (!$template) {
                 return response()->json([
@@ -90,7 +90,7 @@ class MailController extends Controller
     {
         try {
 
-            $templates = EmailTemplate::latest()->get();
+            $templates = CornEmailTemplate::latest()->get();
 
             return response()->json([
                 'status' => true,
@@ -116,7 +116,7 @@ class MailController extends Controller
     {
         try {
 
-            $template = EmailTemplate::find($id);
+            $template = CornEmailTemplate::find($id);
 
             if (!$template) {
                 return response()->json([
