@@ -2311,7 +2311,7 @@ class AdminCMSController extends Controller
     //Showing single template
     public function showCV($id)
     {
-        $template = CVTemplate::withTrashed()->find($id);
+        $template = CVTemplate::find($id);
 
         if (!$template) {
             return response()->json([
