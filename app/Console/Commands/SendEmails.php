@@ -95,14 +95,61 @@ class SendEmails extends Command
     {
         $html = '';
 
+        $baseUrl = "http://teachnowbackend.jobsvedika.in:8080/";
+
         foreach ($jobs as $job) {
 
+            $jobUrl = "https://yourfrontend.com/open/jobs/" . $job->slug;
+
+            $companyName = $job->employer->company_name ?? 'Company';
+
+            $logoPath = $job->employer->company_logo ?? '';
+            $companyLogo = $logoPath ? $baseUrl . $logoPath : '';
+
             $html .= "
-            <div style='margin-bottom:15px; padding:10px; border:1px solid #eee;'>
-                <strong>{$job->title}</strong><br>
-                {$job->location}<br>
-                Salary: {$job->salary_min} - {$job->salary_max}
-            </div>";
+        <div style='margin-bottom:18px; padding:15px; border:1px solid #e2e8f0; border-radius:8px;'>
+
+            <table width='100%' cellpadding='0' cellspacing='0'>
+                <tr>
+
+                    <td width='60' valign='top'>
+                        " . ($companyLogo ? "
+                        <img src='{$companyLogo}'
+                             alt='{$companyName}'
+                             style='width:50px; height:50px; object-fit:contain; border-radius:6px;' />
+                        " : "") . "
+                    </td>
+
+                    <td valign='top' style='padding-left:10px;'>
+
+                        <strong style='font-size:15px; color:#1e293b;'>
+                            {$job->title}
+                        </strong><br>
+
+                        <span style='font-size:12px; color:#475569;'>
+                            {$companyName}
+                        </span><br>
+
+                        <span style='font-size:12px; color:#64748b;'>
+                            {$job->location}
+                        </span><br>
+
+                        <span style='font-size:12px;'>
+                            Salary: {$job->salary_min} - {$job->salary_max}
+                        </span>
+
+                    </td>
+                </tr>
+            </table>
+
+            <div style='margin-top:10px;'>
+                <a href='{$jobUrl}'
+                   style='display:inline-block; padding:8px 14px; background:#4f46e5; color:#ffffff; text-decoration:none; font-size:12px; border-radius:5px;'>
+                   View Details
+                </a>
+            </div>
+
+        </div>";
         }
 
         return $html ?: "<p>No jobs found</p>";
