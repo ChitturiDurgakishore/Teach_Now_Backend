@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+
 class CVTemplate extends Model
 {
-    use SoftDeletes;
+
     public $table = 'cv_templates';
     protected $fillable = [
         'name',
