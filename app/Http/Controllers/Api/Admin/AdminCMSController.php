@@ -2278,7 +2278,7 @@ class AdminCMSController extends Controller
 
     public function GetAllTemplates()
     {
-        $templates = CVTemplate::withTrashed()->latest()->get();
+        $templates = CVTemplate::latest()->get();
 
         return response()->json([
             'status' => true,
@@ -2293,7 +2293,7 @@ class AdminCMSController extends Controller
             'html_template' => 'required'
         ]);
 
-        $template = CVTemplate::withTrashed()->create([
+        $template = CVTemplate::create([
             'name' => $request->name,
             'html_template' => $request->html_template,
             'is_active' => true,
