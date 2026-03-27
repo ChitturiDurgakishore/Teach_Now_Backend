@@ -37,17 +37,6 @@ class SendEmails extends Command
 
         if (!$template) return;
 
-        // last 7 days jobs
-        $jobs = Job::where('created_at', '>=', now()->subDays(7))
-            ->where('is_active', true)
-            ->where('expires_at', '>', now())
-            ->where('status', 'approved')
-            ->where('job_status', 'open')
-            ->limit(10)
-            ->get();
-
-        $jobsHtml = $this->generateJobsHtml($jobs);
-
         $users = JobSeeker::with('user')
             ->whereHas('user', function ($q) {
                 $q->whereNotNull('email');
@@ -55,6 +44,36 @@ class SendEmails extends Command
             ->get();
 
         foreach ($users as $user) {
+
+            if (!$user->user) continue;
+
+            // 🔥 USER DATA
+            $skills = $user->skills ?? '';
+            $location = $user->location ?? '';
+
+            // 🔥 PERSONALIZED JOBS
+            $jobs = Job::where('created_at', '>=', now()->subDays(7))
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->where('status', 'approved')
+                ->where('job_status', 'open')
+                ->where(function ($q) use ($skills, $location) {
+
+                    if ($skills) {
+                        $q->where('keywords', 'LIKE', "%{$skills}%");
+                    }
+
+                    if ($location) {
+                        $q->orWhere('location', 'LIKE', "%{$location}%");
+                    }
+                })
+                ->limit(10)
+                ->get();
+
+            // ❌ skip if no jobs
+            if ($jobs->isEmpty()) continue;
+
+            $jobsHtml = $this->generateJobsHtml($jobs);
 
             $html = $template->html_template;
 
