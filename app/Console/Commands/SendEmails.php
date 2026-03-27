@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\EmailTemplate;
+use App\Models\CornEmailTemplate;
 use App\Models\Job;
 use App\Models\JobSeeker;
 use Illuminate\Support\Facades\Mail;
@@ -31,7 +31,7 @@ class SendEmails extends Command
     */
     private function sendWeeklyEmails()
     {
-        $template = EmailTemplate::where('type', 'weekly')
+        $template = CornEmailTemplate::where('type', 'weekly')
             ->where('is_active', true)
             ->first();
 
@@ -72,7 +72,7 @@ class SendEmails extends Command
     */
     private function sendRecommendationEmails()
     {
-        $template = EmailTemplate::where('type', 'recommendation')
+        $template = CornEmailTemplate::where('type', 'recommendation')
             ->where('is_active', true)
             ->first();
 
