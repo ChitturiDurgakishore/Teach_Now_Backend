@@ -87,14 +87,16 @@ class PublicAPIController extends Controller
             $gender = $request->input('gender');
             $experience_type = $request->input('experience_type');
 
-            $query = Job::query()->where('is_active', true)
+            // ✅ ONLY CHANGE → added employer relation
+            $query = Job::with(['employer:id,name,logo'])
+                ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->where('status', 'approved')
                 ->where('job_status', 'open');
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 KEYWORD SEARCH (SMART + FLEXIBLE)
+        | 🔥 KEYWORD SEARCH (UNCHANGED)
         |--------------------------------------------------------------------------
         */
             if ($keyword) {
@@ -103,18 +105,15 @@ class PublicAPIController extends Controller
 
                 $query->where(function ($q) use ($keyword, $keywords) {
 
-                    // ✅ Exact phrase match (highest priority)
                     $q->where('title', 'LIKE', "%{$keyword}%")
                         ->orWhere('slug', 'LIKE', "%{$keyword}%");
 
-                    // ✅ Multi-word strict + flexible match
                     if (count($keywords) > 1) {
 
                         $q->orWhere(function ($sub) use ($keywords) {
 
                             foreach ($keywords as $word) {
 
-                                // 🔥 normalize word (teaching → teach)
                                 $root = preg_replace('/(ing|ed|s)$/', '', $word);
 
                                 $sub->where(function ($inner) use ($word, $root) {
@@ -122,7 +121,6 @@ class PublicAPIController extends Controller
                                     $inner->where('title', 'LIKE', "%{$word}%")
                                         ->orWhere('keywords', 'LIKE', "%{$word}%");
 
-                                    // 🔥 root match (important)
                                     if ($root && $root !== $word) {
                                         $inner->orWhere('title', 'LIKE', "%{$root}%")
                                             ->orWhere('keywords', 'LIKE', "%{$root}%");
@@ -132,7 +130,6 @@ class PublicAPIController extends Controller
                         });
                     } else {
 
-                        // ✅ Single word
                         $word = $keywords[0] ?? null;
 
                         if ($word) {
@@ -149,7 +146,6 @@ class PublicAPIController extends Controller
                     }
                 });
 
-                // 🔥 Relevance sorting
                 $query->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
@@ -164,7 +160,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FILTERS
+        | 🔥 FILTERS (UNCHANGED)
         |--------------------------------------------------------------------------
         */
 
@@ -210,7 +206,26 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 SEARCH LOG
+        | 🔥 TRANSFORM ONLY EMPLOYER (MINIMAL CHANGE)
+        |--------------------------------------------------------------------------
+        */
+
+            $jobsData = collect($jobs->items())->map(function ($job) {
+
+                $jobArray = $job->toArray();
+
+                $jobArray['employer'] = [
+                    'id' => $job->employer->id ?? null,
+                    'name' => $job->employer->name ?? null,
+                    'logo' => $job->employer->logo ?? null, // ✅ NO BASE URL
+                ];
+
+                return $jobArray;
+            });
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 SEARCH LOG (UNCHANGED)
         |--------------------------------------------------------------------------
         */
             if ($keyword || $location) {
@@ -234,7 +249,7 @@ class PublicAPIController extends Controller
                 'total_jobs' => $jobs->total(),
                 'current_page' => $jobs->currentPage(),
                 'last_page' => $jobs->lastPage(),
-                'data' => $jobs->items()
+                'data' => $jobsData
             ], 200);
         } catch (\Exception $e) {
 
