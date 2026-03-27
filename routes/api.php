@@ -494,9 +494,7 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
     //get active cvs
     Route::get('cv/templates', [CVController::class, 'getActiveTemplates']);
 
-    //Resource management
-    Route::get('resources', [JobSeekerController::class, 'getAllResources']);
-    Route::get('resources/{slug}', [JobSeekerController::class, 'getResourceBySlug']);
+
 
 });
 
