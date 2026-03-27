@@ -81,7 +81,7 @@ class PublicAPIController extends Controller
             $location = $request->input('location');
             $categoryId = $request->input('category_id');
             $jobType = $request->input('job_type');
-            $experience = $request->input('experience');
+            $experience_required = $request->input('experience_required');
             $salaryMin = $request->input('salary_min');
             $salaryMax = $request->input('salary_max');
             $gender = $request->input('gender');
@@ -176,8 +176,8 @@ class PublicAPIController extends Controller
                 $query->where('job_type', $jobType);
             }
 
-            if (!is_null($experience)) {
-                $query->where('experience_required', '<=', $experience);
+            if (!is_null($experience_required)) {
+                $query->where('experience_required', '<=', $experience_required);
             }
 
             if ($experience_type) {
