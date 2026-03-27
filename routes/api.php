@@ -18,7 +18,7 @@ use App\Http\Controllers\Api\JobSeekerController;
 use App\Http\Controllers\Api\ResumeController;
 use App\Http\Controllers\Api\CVController;
 use App\Http\Controllers\Api\Admin\AdminDeletedController;
-use App\Http\Controllers\Admin\MailController;
+use App\Http\Controllers\Api\Admin\MailController;
 
 Route::prefix('auth')->group(function () {
 
