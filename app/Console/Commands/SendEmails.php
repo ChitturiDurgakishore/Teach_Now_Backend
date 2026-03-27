@@ -48,18 +48,22 @@ class SendEmails extends Command
 
         $jobsHtml = $this->generateJobsHtml($jobs);
 
-        $users = JobSeeker::whereNotNull('email')->get();
+        $users = JobSeeker::with('user')
+            ->whereHas('user', function ($q) {
+                $q->whereNotNull('email');
+            })
+            ->get();
 
         foreach ($users as $user) {
 
             $html = $template->html_template;
 
-            $html = str_replace('{{name}}', $user->name, $html);
+            $html = str_replace('{{name}}', $user->user->name, $html);
             $html = str_replace('{{jobs}}', $jobsHtml, $html);
             $html = str_replace('{{date}}', now()->format('d M Y'), $html);
 
             Mail::html($html, function ($message) use ($user, $template) {
-                $message->to($user->email)
+                $message->to($user->user->email)
                     ->subject($template->subject);
             });
         }
@@ -78,7 +82,11 @@ class SendEmails extends Command
 
         if (!$template) return;
 
-        $users = JobSeeker::whereNotNull('email')->get();
+        $users = JobSeeker::with('user')
+            ->whereHas('user', function ($q) {
+                $q->whereNotNull('email');
+            })
+            ->get();
 
         foreach ($users as $user) {
 
@@ -99,12 +107,12 @@ class SendEmails extends Command
 
             $html = $template->html_template;
 
-            $html = str_replace('{{name}}', $user->name, $html);
+            $html = str_replace('{{name}}', $user->user->name, $html);
             $html = str_replace('{{jobs}}', $jobsHtml, $html);
             $html = str_replace('{{date}}', now()->format('d M Y'), $html);
 
             Mail::html($html, function ($message) use ($user, $template) {
-                $message->to($user->email)
+                $message->to($user->user->email)
                     ->subject($template->subject);
             });
         }
