@@ -1929,7 +1929,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $template = EmailTemplate::withTrashed()->find($id);
+            $template = EmailTemplate::find($id);
 
             if (!$template) {
                 return response()->json([
@@ -1960,7 +1960,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $template = EmailTemplate::withTrashed()->find($id);
+            $template = EmailTemplate::find($id);
 
             if (!$template) {
                 return response()->json([
@@ -2069,7 +2069,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $resources = TeachingResource::withTrashed()->all();
+            $resources = TeachingResource::all();
 
             return response()->json([
                 'status' => true,
@@ -2091,7 +2091,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $resource = TeachingResource::withTrashed()->find($id);
+            $resource = TeachingResource::find($id);
 
             if (!$resource) {
                 return response()->json([
@@ -2198,7 +2198,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $resource = TeachingResource::withTrashed()->find($id);
+            $resource = TeachingResource::find($id);
 
             if (!$resource) {
                 return response()->json([
@@ -2242,7 +2242,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $resource = TeachingResource::withTrashed()->find($id);
+            $resource = TeachingResource::find($id);
 
             if (!$resource) {
                 return response()->json([

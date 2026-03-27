@@ -3,9 +3,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
 class TeachingResource extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'title',
         'slug',

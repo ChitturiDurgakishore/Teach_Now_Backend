@@ -8,7 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class EmployerUser extends Authenticatable
 {
-    //
+
     use SoftDeletes;
     public function employer()
     {
