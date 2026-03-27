@@ -38,21 +38,26 @@ class SendEmails extends Command
 
         if (!$setting) return;
 
+        $now = now();
+        $scheduled = \Carbon\Carbon::parse($setting->time);
+
         // 🔥 STEP 2: CHECK DAY
-        $currentDay = strtolower(now()->format('l')); // monday, tuesday...
+        if (strtolower($now->format('l')) !== $setting->day) {
+            return;
+        }
 
-        if ($currentDay !== $setting->day) return;
+        // 🔥 STEP 3: CHECK TIME (ALLOW 5 MIN WINDOW)
+        if (
+            $now->format('H') != $scheduled->format('H') ||
+            abs($now->minute - $scheduled->minute) > 5
+        ) {
+            return;
+        }
 
-        // 🔥 STEP 3: CHECK TIME
-        $currentTime = now()->format('H:i');
-        $scheduledTime = \Carbon\Carbon::parse($setting->time)->format('H:i');
-
-        if ($currentTime !== $scheduledTime) return;
-
-        // 🔥 STEP 4: PREVENT DUPLICATE
+        // 🔥 STEP 4: PREVENT DUPLICATE (ONCE PER DAY)
         if (
             $setting->last_sent_at &&
-            now()->diffInMinutes($setting->last_sent_at) < 60
+            \Carbon\Carbon::parse($setting->last_sent_at)->isToday()
         ) {
             return;
         }

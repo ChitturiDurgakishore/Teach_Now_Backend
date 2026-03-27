@@ -13,4 +13,8 @@ class EmailSetting extends Model
         'is_active',
         'last_sent_at'
     ];
+
+    protected $casts = [
+        'last_sent_at' => 'datetime',
+    ];
 }
