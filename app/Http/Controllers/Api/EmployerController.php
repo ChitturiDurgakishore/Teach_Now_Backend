@@ -573,7 +573,7 @@ class EmployerController extends Controller
             // 🔥 Create Job (with keywords)
             $job = Job::create([
                 'employer_id' => $employer->id,
-                'created_by' => $employer->id,
+                'created_by' => null,
                 'category_id' => $request->category_id,
                 'title' => $request->title,
                 'description' => $request->description,
