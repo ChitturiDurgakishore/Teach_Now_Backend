@@ -144,7 +144,7 @@ class SendEmails extends Command
 
         foreach ($jobs as $job) {
 
-            $jobUrl = "https://yourfrontend.com/open/jobs/" . $job->slug;
+            $jobUrl = "http://teachnowbackend.jobsvedika.in:8080/open/jobs/" . $job->slug;
 
             $companyName = $job->employer->company_name ?? 'Company';
 
