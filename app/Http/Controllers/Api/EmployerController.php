@@ -819,7 +819,7 @@ class EmployerController extends Controller
             $recruiter = Auth::guard('employer')->user();
 
             $job = Job::where('id', $id)
-                ->where('created_by', $recruiter->id)
+                ->where('employer_id', $recruiter->id)
                 ->first();
 
             if (!$job) {
