@@ -140,7 +140,7 @@ class SendEmails extends Command
     {
         $html = '';
 
-        $baseUrl = "http://teachnowbackend.jobsvedika.in:8080/api/";
+        $baseUrl = "http://teachnowbackend.jobsvedika.in:8080/";
 
         foreach ($jobs as $job) {
 
