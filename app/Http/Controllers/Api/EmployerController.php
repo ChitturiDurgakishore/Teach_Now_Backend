@@ -224,18 +224,7 @@ class EmployerController extends Controller
 
             $employer = Auth::guard('employer')->user();
 
-            $request->validate([
-                'company_name' => 'required|string|max:200',
-                'company_description' => 'nullable|string',
-                'industry' => 'nullable|string|max:150',
-                'website' => 'nullable|string',
-                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-                'address' => 'nullable|string',
-                'phone' => 'nullable|string',
-                'country' => 'nullable|string',
-                'city' => 'nullable|string',
-                'map_link' => 'nullable|string'
-            ]);
+
 
             $logoPath = $employer->company_logo;
 
