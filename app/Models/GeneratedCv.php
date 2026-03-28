@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 class GeneratedCv extends Model
 {
-    use SoftDeletes;
+
     public function jobSeeker()
     {
         return $this->belongsTo(JobSeeker::class);

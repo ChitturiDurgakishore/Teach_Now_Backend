@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+
 class DocumentVerification extends Model
 {
-    use SoftDeletes;
+
     protected $fillable = [
         'employer_id',
         'document_name',
