@@ -34,7 +34,11 @@ Route::prefix('auth')->group(function () {
 
     //open for all
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/profile', [AuthController::class, 'profile']);
+
+    Route::middleware(['web', 'auth'])->group(function () {
+        Route::get('/profile', [AuthController::class, 'profile']);
+    });
+    // Route::get('/profile', [AuthController::class, 'profile']);
 });
 
 
