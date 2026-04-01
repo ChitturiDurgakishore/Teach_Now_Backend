@@ -34,13 +34,12 @@ Route::prefix('auth')->group(function () {
 
     //open for all
     Route::post('/logout', [AuthController::class, 'logout']);
-
-    Route::middleware('auth:sanctum', 'role:admin')->group(function () {
-        Route::get('/profile', [AuthController::class, 'profile']);
-    });
 });
 
 
+Route::middleware('auth', 'role:admin')->group(function () {
+    Route::get('/profile', [AuthController::class, 'profile']);
+});
 
 // ---------------------------------------------------------------------
 
@@ -364,6 +363,8 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
 
 
     Route::get('/applications', [EmployerController::class, 'getApplications']); //Get applications for company jobs
+
+    Route::get('/profile', [EmployerController::class, 'getCompanyProfile']); //Get company profile
     Route::put('/Update-Company', [EmployerController::class, 'updateCompanyProfile']); //Update company profile
 
 

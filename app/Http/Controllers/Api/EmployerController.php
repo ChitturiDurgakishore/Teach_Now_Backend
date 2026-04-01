@@ -218,6 +218,26 @@ class EmployerController extends Controller
         }
     }
 
+    public function getCompanyProfile(Request $request)
+    {
+        try {
+
+            $employer = Auth::guard('employer')->user();
+
+            return response()->json([
+                'status' => true,
+                'data' => $employer
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function updateCompanyProfile(Request $request)
     {
         try {
