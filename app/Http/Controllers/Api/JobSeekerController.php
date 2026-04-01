@@ -15,6 +15,9 @@ use App\Models\Employer;
 use App\Models\JobSeekerEducation;
 use App\Models\JobSeekerExperience;
 use App\Models\TeachingResource;
+use App\Models\JobApplication;
+use App\Models\BookmarkedJob;
+
 
 class JobSeekerController extends Controller
 {
@@ -687,4 +690,72 @@ class JobSeekerController extends Controller
     }
 
 
+    public function dashboard()
+    {
+        try {
+
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
+
+            if (!$jobSeeker) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job seeker profile not found'
+                ], 404);
+            }
+
+            // ✅ Total Applied Jobs
+            $totalApplied = JobApplication::where('job_seeker_id', $jobSeeker->id)->count();
+
+            // ✅ Total Shortlisted
+            $totalShortlisted = JobApplication::where('job_seeker_id', $jobSeeker->id)
+                ->where('status', 'shortlisted')
+                ->count();
+
+            // ✅ Bookmarked Jobs
+            $totalBookmarked = BookmarkedJob::where('job_seeker_id', $jobSeeker->id)->count();
+
+            // ✅ Recent 5 Applications
+            $recentApplications = JobApplication::with('job.employer')
+                ->where('job_seeker_id', $jobSeeker->id)
+                ->latest()
+                ->take(5)
+                ->get()
+                ->map(function ($app) {
+
+                    return [
+                        'job_id' => $app->job->id ?? null,
+                        'title' => $app->job->title ?? null,
+                        'company_name' => $app->job->employer->company_name ?? null,
+                        'status' => $app->status,
+                        'applied_at' => $app->created_at,
+                    ];
+                });
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'total_applied' => $totalApplied,
+                    'total_shortlisted' => $totalShortlisted,
+                    'total_bookmarked' => $totalBookmarked,
+                    'recent_applications' => $recentApplications
+                ]
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Dashboard fetch failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

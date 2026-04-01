@@ -506,6 +506,9 @@ Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(funct
 
     //get active cvs
     Route::get('cv/templates', [CVController::class, 'getActiveTemplates']);
+
+    //Dashboard
+    Route::get('/dashboard', [JobSeekerController::class, 'JobSeekerDashboard']);
 });
 
 
