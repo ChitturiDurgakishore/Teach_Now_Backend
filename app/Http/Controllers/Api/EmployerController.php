@@ -56,7 +56,9 @@ class EmployerController extends Controller
                 'country' => 'nullable|string',
                 'city' => 'nullable|string',
                 'map_link' => 'nullable|string',
-                'password' => 'required|min:6'
+                'password' => 'required|min:6',
+                'latitude' => 'nullable|numeric|between:-90,90',
+                'longitude' => 'nullable|numeric|between:-180,180',
             ]);
 
             // 🔥 Upload logo (FIXED)
@@ -84,6 +86,8 @@ class EmployerController extends Controller
                 'city' => $request->city,
                 'map_link' => $request->map_link,
                 'password' => Hash::make($request->password),
+                'latitude' => $request->latitude,   // ✅ NEW
+                'longitude' => $request->longitude,
             ]);
 
             // MAIL (unchanged)
@@ -242,13 +246,33 @@ class EmployerController extends Controller
     {
         try {
 
+            $request->validate([
+                'company_name' => 'nullable|string|max:200',
+                'company_description' => 'nullable|string',
+                'industry' => 'nullable|string|max:150',
+                'website' => 'nullable|string',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'address' => 'nullable|string',
+                'phone' => 'nullable|string',
+                'country' => 'nullable|string',
+                'city' => 'nullable|string',
+                'map_link' => 'nullable|string',
+                'latitude' => 'nullable|numeric|between:-90,90',     // ✅ NEW
+                'longitude' => 'nullable|numeric|between:-180,180', // ✅ NEW
+            ]);
+
             $employer = Auth::guard('employer')->user();
 
-
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
 
             $logoPath = $employer->company_logo;
 
-            // 🔥 Handle logo update (FIXED)
+            // 🔥 Handle logo update
             if ($request->hasFile('company_logo')) {
 
                 // delete old logo
@@ -262,23 +286,26 @@ class EmployerController extends Controller
 
                 // upload new logo
                 $file = $request->file('company_logo');
-
                 $path = Storage::disk('public')->putFile('media/company_logos', $file);
-
                 $logoPath = 'storage/' . $path;
             }
 
+            // 🔥 UPDATE DATA
             $employer->update([
-                'company_name' => $request->company_name,
-                'company_description' => $request->company_description,
-                'industry' => $request->industry,
-                'website' => $request->website,
+                'company_name' => $request->company_name ?? $employer->company_name,
+                'company_description' => $request->company_description ?? $employer->company_description,
+                'industry' => $request->industry ?? $employer->industry,
+                'website' => $request->website ?? $employer->website,
                 'company_logo' => $logoPath,
-                'address' => $request->address,
-                'phone' => $request->phone,
-                'country' => $request->country,
-                'city' => $request->city,
-                'map_link' => $request->map_link
+                'address' => $request->address ?? $employer->address,
+                'phone' => $request->phone ?? $employer->phone,
+                'country' => $request->country ?? $employer->country,
+                'city' => $request->city ?? $employer->city,
+                'map_link' => $request->map_link ?? $employer->map_link,
+
+                // ✅ NEW FIELDS
+                'latitude' => $request->latitude ?? $employer->latitude,
+                'longitude' => $request->longitude ?? $employer->longitude,
             ]);
 
             return response()->json([
@@ -295,7 +322,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
     // Create Employer User (Recruiter)
 
 
