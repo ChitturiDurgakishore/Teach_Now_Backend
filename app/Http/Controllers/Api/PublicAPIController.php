@@ -275,12 +275,32 @@ class PublicAPIController extends Controller
                 ], 404);
             }
 
-            $jobs = Job::where('is_active', true)
-                ->where('expires_at', '>', now())->where('category_id', $category->id)
+            $jobs = Job::with('employer') // 🔥 load employer
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->where('category_id', $category->id)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->latest()
                 ->get();
+
+            // 🔥 FORMAT RESPONSE
+            $jobs = $jobs->map(function ($job) {
+                return [
+                    'id' => $job->id,
+                    'title' => $job->title,
+                    'location' => $job->location,
+                    'salary_min' => $job->salary_min,
+                    'salary_max' => $job->salary_max,
+                    'job_type' => $job->job_type,
+
+                    // ✅ employer details
+                    'company_name' => $job->employer->company_name ?? null,
+                    'company_logo' => $job->employer
+                        ? url('http://teachnowbackend.jobsvedika.in:8080/' . $job->employer->company_logo)
+                        : null,
+                ];
+            });
 
             return response()->json([
                 'status' => true,
