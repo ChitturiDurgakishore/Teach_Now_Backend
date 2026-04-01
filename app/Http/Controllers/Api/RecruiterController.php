@@ -18,6 +18,8 @@ use App\Models\HomepageTestimonial;
 use App\Models\Employer;
 use Illuminate\Support\Facades\DB;
 use App\Services\SubscriptionService;
+use App\Models\Subscription;
+
 
 class RecruiterController extends Controller
 {
@@ -854,7 +856,18 @@ class RecruiterController extends Controller
     public function dashboard()
     {
         try {
+
             $recruiter = Auth::guard('employer_user')->user();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $employerId = $recruiter->employer_id;
+
             $activeJobs = Job::where('created_by', $recruiter->id)
                 ->where('job_status', 'open')
                 ->count();
@@ -866,6 +879,31 @@ class RecruiterController extends Controller
             $totalApplicants = JobApplication::whereHas('job', function ($q) use ($recruiter) {
                 $q->where('created_by', $recruiter->id);
             })->count();
+
+            // 🔥 CREDIT INFO (FROM EMPLOYER)
+            $subscriptions = Subscription::with('plan')
+                ->where('employer_id', $employerId)
+                ->where('status', 'active')
+                ->where('expires_at', '>', now())
+                ->get();
+
+            $totalCredits = $subscriptions->sum('job_posts_total');
+            $usedCredits = $subscriptions->sum('job_posts_used');
+            $remainingCredits = $totalCredits - $usedCredits;
+
+            // 🔥 CURRENT ACTIVE PLAN (for display)
+            $currentPlan = $subscriptions
+                ->sortBy('starts_at')
+                ->first();
+
+            $planData = null;
+
+            if ($currentPlan) {
+                $planData = [
+                    'plan_name' => $currentPlan->plan->name ?? null,
+                    'expires_at' => $currentPlan->expires_at
+                ];
+            }
 
             $recentJobs = Job::where('created_by', $recruiter->id)
                 ->withCount('jobApplications')
@@ -887,11 +925,21 @@ class RecruiterController extends Controller
                     'active_jobs' => $activeJobs,
                     'jobs_filled' => $jobsFilled,
                     'total_applicants' => $totalApplicants,
+
+                    // 🔥 NEW CREDIT DATA
+                    'credits' => [
+                        'total_credits' => $totalCredits,
+                        'used_credits' => $usedCredits,
+                        'remaining_credits' => $remainingCredits,
+                        'current_plan' => $planData
+                    ],
+
                     'recent_jobs' => $recentJobs,
                     'recent_applications' => $recentApplications
                 ]
             ], 200);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Dashboard fetch failed',

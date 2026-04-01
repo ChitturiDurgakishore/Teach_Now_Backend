@@ -19,7 +19,7 @@ use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\SubscriptionService;
-
+use App\Models\Subscription;
 
 class EmployerController extends Controller
 {
@@ -506,6 +506,13 @@ class EmployerController extends Controller
 
             $employer = Auth::guard('employer')->user();
 
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
             $totalRecruiters = EmployerUser::where('employer_id', $employer->id)->count();
 
             $totalJobs = Job::where('employer_id', $employer->id)->count();
@@ -519,14 +526,59 @@ class EmployerController extends Controller
                     $q->where('employer_id', $employer->id);
                 })->count();
 
-            // Latest 5 Jobs posted by recruiters
+            // 🔥 CURRENT ACTIVE SUBSCRIPTION
+            $subscription = Subscription::with('plan')
+                ->where('employer_id', $employer->id)
+                ->where('status', 'active')
+                ->where('expires_at', '>', now())
+                ->whereColumn('job_posts_used', '<', 'job_posts_total')
+                ->orderBy('starts_at', 'asc')
+                ->first();
+
+            $subscriptionData = null;
+
+            if ($subscription) {
+                $subscriptionData = [
+                    'plan_name' => $subscription->plan->name ?? null,
+                    'total_credits' => $subscription->job_posts_total,
+                    'used_credits' => $subscription->job_posts_used,
+                    'remaining_credits' => $subscription->job_posts_total - $subscription->job_posts_used,
+                    'expires_at' => $subscription->expires_at
+                ];
+            }
+
+            // 🔥 LAST 5 SUBSCRIPTION HISTORY
+            $subscriptionHistory = Subscription::with('plan')
+                ->where('employer_id', $employer->id)
+                ->latest()
+                ->limit(5)
+                ->get()
+                ->map(function ($sub) {
+                    return [
+                        'plan_name' => $sub->plan->name ?? null,
+                        'total_credits' => $sub->job_posts_total,
+                        'used_credits' => $sub->job_posts_used,
+                        'remaining_credits' => $sub->job_posts_total - $sub->job_posts_used,
+                        'purchase_date' => $sub->purchase_date,
+                        'starts_at' => $sub->starts_at,
+                        'expires_at' => $sub->expires_at,
+                        'status' => $sub->status
+                    ];
+                });
+
+            // 🔥 OPTIONAL: TOTAL REMAINING CREDITS (ALL ACTIVE PLANS)
+            $totalRemainingCredits = Subscription::where('employer_id', $employer->id)
+                ->where('expires_at', '>', now())
+                ->sum(DB::raw('job_posts_total - job_posts_used'));
+
+            // Latest 5 Jobs
             $latestJobs = Job::where('employer_id', $employer->id)
                 ->latest()
                 ->limit(5)
                 ->select('id', 'title', 'job_status', 'created_at')
                 ->get();
 
-            // Latest 5 Applications received
+            // Latest 5 Applications
             $latestApplications = JobApplication::whereHas('job', function ($q) use ($employer) {
                 $q->where('employer_id', $employer->id);
             })
@@ -546,6 +598,11 @@ class EmployerController extends Controller
                     'total_applications' => $totalApplications,
                     'shortlisted_candidates' => $shortlisted,
 
+                    // 🔥 NEW
+                    'subscription' => $subscriptionData,
+                    'subscription_history' => $subscriptionHistory,
+                    'total_remaining_credits' => $totalRemainingCredits,
+
                     'latest_jobs' => $latestJobs,
                     'latest_applications' => $latestApplications
                 ]
@@ -559,7 +616,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
     // Jobs Created by Company
 
 
