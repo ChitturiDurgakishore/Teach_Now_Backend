@@ -37,7 +37,7 @@ Route::prefix('auth')->group(function () {
 });
 
 
-Route::middleware('auth', 'role:admin')->group(function () {
+Route::prefix('auth')->middleware('auth')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
 });
 
