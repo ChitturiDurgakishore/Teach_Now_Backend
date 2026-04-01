@@ -275,7 +275,9 @@ class PublicAPIController extends Controller
                 ], 404);
             }
 
-            $jobs = Job::with('employer') // 🔥 load employer
+            $mediaUrl = config('app.media_url'); // ✅ fetch from env
+
+            $jobs = Job::with('employer:id,company_name,company_logo')
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->where('category_id', $category->id)
@@ -284,8 +286,7 @@ class PublicAPIController extends Controller
                 ->latest()
                 ->get();
 
-            // 🔥 FORMAT RESPONSE
-            $jobs = $jobs->map(function ($job) {
+            $jobs = $jobs->map(function ($job) use ($mediaUrl) {
                 return [
                     'id' => $job->id,
                     'title' => $job->title,
@@ -293,11 +294,11 @@ class PublicAPIController extends Controller
                     'salary_min' => $job->salary_min,
                     'salary_max' => $job->salary_max,
                     'job_type' => $job->job_type,
+                    'slug' => $job->slug,
 
-                    // ✅ employer details
                     'company_name' => $job->employer->company_name ?? null,
-                    'company_logo' => $job->employer
-                        ? url('http://teachnowbackend.jobsvedika.in:8080/' . $job->employer->company_logo)
+                    'company_logo' => $job->employer && $job->employer->company_logo
+                        ? $mediaUrl . '/' . $job->employer->company_logo
                         : null,
                 ];
             });
