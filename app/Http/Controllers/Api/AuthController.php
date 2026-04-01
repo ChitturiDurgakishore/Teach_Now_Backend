@@ -137,9 +137,10 @@ class AuthController extends Controller
 
     public function profile(Request $request)
     {
+        $user=Auth::user();
         return response()->json([
             'auth_check' => Auth::check(),
-            'user' => Auth::user(),
+            'user' => $user,
             'session' => session()->all(),
             'cookies' => $request->cookies->all()
         ]);
