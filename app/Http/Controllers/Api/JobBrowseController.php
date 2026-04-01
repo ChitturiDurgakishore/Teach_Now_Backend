@@ -145,10 +145,18 @@ class JobBrowseController extends Controller
             $request->validate([
                 'answers' => 'nullable|array',
                 'answers.*.question_id' => 'required|exists:job_questions,id',
-                'answers.*.candidate_answer' => 'required'
+                'answers.*.candidate_answer' => 'required',
+                'resume_id' => 'nullable|exists:resumes,id' // optional input
             ]);
 
             $user = Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
 
             $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
 
@@ -171,6 +179,7 @@ class JobBrowseController extends Controller
                 ], 404);
             }
 
+            // ❌ Prevent duplicate application
             $existing = JobApplication::where('job_id', $jobId)
                 ->where('job_seeker_id', $jobSeeker->id)
                 ->first();
@@ -182,20 +191,53 @@ class JobBrowseController extends Controller
                 ], 409);
             }
 
-            // 🔥 Resume is OPTIONAL now
-            $resume = Resume::where('job_seeker_id', $jobSeeker->id)
-                ->where('is_default', true)
-                ->first();
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RESUME HANDLING (MANDATORY VIA DEFAULT OR INPUT)
+        |--------------------------------------------------------------------------
+        */
 
-            // 🔹 Create Application
+            if ($request->filled('resume_id')) {
+
+                // ✅ Check if resume belongs to user
+                $resume = Resume::where('id', $request->resume_id)
+                    ->where('job_seeker_id', $jobSeeker->id)
+                    ->first();
+            } else {
+
+                // ✅ Get default resume
+                $resume = Resume::where('job_seeker_id', $jobSeeker->id)
+                    ->where('is_default', true)
+                    ->first();
+            }
+
+            // ❌ No resume found
+            if (!$resume) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Please upload or set a default resume before applying'
+                ], 422);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CREATE APPLICATION
+        |--------------------------------------------------------------------------
+        */
+
             $application = JobApplication::create([
                 'job_id' => $jobId,
                 'job_seeker_id' => $jobSeeker->id,
-                'resume_id' => $resume ? $resume->id : null, // ✅ FIX
+                'resume_id' => $resume->id,
                 'status' => 'applied'
             ]);
 
-            // 🔹 Save Answers
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 SAVE ANSWERS
+        |--------------------------------------------------------------------------
+        */
+
             if ($request->has('answers')) {
                 foreach ($request->answers as $ans) {
                     JobAnswer::create([
@@ -207,20 +249,19 @@ class JobBrowseController extends Controller
                 }
             }
 
-            // 🔥 MAIL (QUEUE + SAFE)
-            try {
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (SAFE)
+        |--------------------------------------------------------------------------
+        */
 
+            try {
                 $mailService = new MailService();
 
                 $mailService->send('job_applied', [
                     'name' => $user->name,
                     'job_title' => $job->title
                 ], $user->email);
-
-                Log::info('Job applied mail queued', [
-                    'job_id' => $jobId,
-                    'job_seeker_id' => $jobSeeker->id
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Job applied mail failed', [
@@ -247,6 +288,8 @@ class JobBrowseController extends Controller
             ], 500);
         }
     }
+
+
     //Get applied Jobs
 
     public function getAppliedJobs()
