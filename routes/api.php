@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\ResumeController;
 use App\Http\Controllers\Api\CVController;
 use App\Http\Controllers\Api\Admin\AdminDeletedController;
 use App\Http\Controllers\Api\Admin\MailController;
+use App\Http\Controllers\Api\Admin\PlanController;
 
 Route::prefix('auth')->group(function () {
 
@@ -340,6 +341,16 @@ Route::prefix('admin/deleted')->group(function () {
     Route::post('cvs/{id}/restore', [AdminDeletedController::class, 'restoreCV']);
     Route::post('testimonials/{id}/restore', [AdminDeletedController::class, 'restoreTestimonial']);
     Route::post('resumes/{id}/restore', [AdminDeletedController::class, 'restoreResume']);
+});
+
+//Plans Management for Admin
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+
+    Route::post('/plans', [PlanController::class, 'store']);
+    Route::get('/plans', [PlanController::class, 'index']);
+    Route::put('/plans/{id}', [PlanController::class, 'update']);
+    Route::patch('/plans/{id}', [PlanController::class, 'toggle']);
 });
 
 
