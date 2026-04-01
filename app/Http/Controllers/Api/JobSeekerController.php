@@ -690,7 +690,7 @@ class JobSeekerController extends Controller
     }
 
 
-    public function dashboard()
+    public function JobSeekerDashboard()
     {
         try {
 
