@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+
 
 Route::get('/login', function () {
     return response()->json([
@@ -8,3 +10,12 @@ Route::get('/login', function () {
         'message' => 'Please login to access this resource'
     ], 401);
 })->name('login');
+
+
+// routes/web.php
+
+Route::prefix('auth')->group(function () {
+    Route::middleware('auth')->group(function () {
+        Route::get('/profile', [AuthController::class, 'profile']);
+    });
+});
