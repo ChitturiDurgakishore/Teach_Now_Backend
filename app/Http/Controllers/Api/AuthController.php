@@ -139,7 +139,8 @@ class AuthController extends Controller
     {
         return response()->json([
             'status' => true,
-            'user' => $request->user()
+            'user' => $request->user(),
+            'auth_id'=>Auth::id()
         ]);
     }
 }
