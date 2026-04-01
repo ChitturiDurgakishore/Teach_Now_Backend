@@ -34,7 +34,9 @@ Route::prefix('auth')->group(function () {
 
     //open for all
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/profile', [AuthController::class, 'profile']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/profile', [AuthController::class, 'profile']);
+    });
 });
 
 
