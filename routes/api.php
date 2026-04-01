@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\CVController;
 use App\Http\Controllers\Api\Admin\AdminDeletedController;
 use App\Http\Controllers\Api\Admin\MailController;
 use App\Http\Controllers\Api\Admin\PlanController;
+use App\Http\Controllers\Payment\OrderController;
 
 Route::prefix('auth')->group(function () {
 
@@ -354,8 +355,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 });
 
 
+// =========================================================================================
 // ----------------------------------------------------------------------------------
 // Employer routes
+
+// Payments and Orders route
+
+Route::middleware(['auth:employer','role:employer'])->prefix('employer/payment')->group(function () {
+    Route::post('/create-order', [OrderController::class, 'createOrder']);
+    Route::post('/verify-payment', [OrderController::class, 'verifyPayment']);
+});
+
 
 Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group(function () {
 

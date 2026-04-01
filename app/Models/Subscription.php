@@ -17,4 +17,16 @@ class Subscription extends Model
     {
         return $this->belongsTo(SubscriptionPlan::class);
     }
+
+    public $fillable = [
+        'employer_id',
+        'plan_id',
+        'order_id',
+        'job_posts_total',
+        'job_posts_used',
+        'purchase_date',
+        'starts_at',
+        'expires_at',
+        'status'
+    ];
 }
