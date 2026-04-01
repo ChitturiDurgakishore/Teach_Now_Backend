@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\DocumentVerification;
 use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Services\SubscriptionService;
 
 
 class EmployerController extends Controller
@@ -586,6 +588,7 @@ class EmployerController extends Controller
 
     // Creating new Job for Company
 
+
     public function createJob(Request $request)
     {
         try {
@@ -601,9 +604,8 @@ class EmployerController extends Controller
                 'experience_required' => 'nullable|integer',
                 'job_type' => 'required|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
-                'keywords' => 'nullable|string', // 🔥 NEW
+                'keywords' => 'nullable|string',
                 'gender' => 'nullable|in:male,female,both',
-                // questions validation
                 'questions' => 'nullable|array',
                 'questions.*.question' => 'required_with:questions|string',
                 'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
@@ -620,7 +622,24 @@ class EmployerController extends Controller
                 ], 401);
             }
 
-            // 🔥 Create Job (with keywords)
+            DB::beginTransaction();
+
+            // 🔥 CHECK & CONSUME CREDIT
+            $subscriptionService = app(SubscriptionService::class);
+
+            $result = $subscriptionService->consumeJobCredit($employer->id);
+
+            if (!$result['status']) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => false,
+                    'message' => $result['message']
+                ], 403);
+            }
+
+            $subscription = $result['subscription'];
+
+            // 🔥 CREATE JOB
             $job = Job::create([
                 'employer_id' => $employer->id,
                 'created_by' => null,
@@ -634,18 +653,20 @@ class EmployerController extends Controller
                 'experience_required' => $request->experience_required,
                 'job_type' => $request->job_type,
                 'application_deadline' => $request->application_deadline,
-                'keywords' => $request->keywords, // ✅ NEW
+                'keywords' => $request->keywords,
                 'gender' => $request->gender ?? 'both',
                 'experience_type' => $request->experience_type,
-                'expires_at' => now()->addDays(30),
+
+                // 🔥 IMPORTANT: use plan job_live_days
+                'expires_at' => now()->addDays($subscription->plan->job_live_days),
+
                 'is_active' => true
             ]);
 
             $questionsCreated = [];
 
-            // 🔥 Add questions if provided
+            // 🔥 ADD QUESTIONS
             if ($request->has('questions')) {
-
                 foreach ($request->questions as $q) {
 
                     $question = JobQuestion::create([
@@ -659,6 +680,8 @@ class EmployerController extends Controller
                 }
             }
 
+            DB::commit();
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job created successfully',
@@ -668,6 +691,8 @@ class EmployerController extends Controller
                 ]
             ], 201);
         } catch (\Exception $e) {
+
+            DB::rollBack();
 
             return response()->json([
                 'status' => false,

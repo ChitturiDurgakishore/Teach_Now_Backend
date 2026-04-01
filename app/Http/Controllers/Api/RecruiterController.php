@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\JobSeeker;
 use App\Models\HomepageTestimonial;
 use App\Models\Employer;
+use Illuminate\Support\Facades\DB;
+use App\Services\SubscriptionService;
 
 class RecruiterController extends Controller
 {
@@ -136,8 +138,7 @@ class RecruiterController extends Controller
                 'experience_required' => 'nullable|integer',
                 'job_type' => 'required|in:full_time,part_time,internship,contract',
                 'application_deadline' => 'nullable|date',
-                'keywords' => 'nullable|string', // 🔥 NEW
-
+                'keywords' => 'nullable|string',
                 'questions' => 'nullable|array',
                 'questions.*.question' => 'required_with:questions|string',
                 'questions.*.question_type' => 'required_with:questions|in:mcq,boolean,numeric,text',
@@ -148,9 +149,36 @@ class RecruiterController extends Controller
 
             $recruiter = Auth::guard('employer_user')->user();
 
-            // 🔥 Create Job
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            DB::beginTransaction();
+
+            // 🔥 GET EMPLOYER ID
+            $employerId = $recruiter->employer_id;
+
+            // 🔥 CONSUME CREDIT FROM EMPLOYER PLAN
+            $subscriptionService = app(SubscriptionService::class);
+
+            $result = $subscriptionService->consumeJobCredit($employerId);
+
+            if (!$result['status']) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => false,
+                    'message' => $result['message']
+                ], 403);
+            }
+
+            $subscription = $result['subscription'];
+
+            // 🔥 CREATE JOB
             $job = Job::create([
-                'employer_id' => $recruiter->employer_id,
+                'employer_id' => $employerId,
                 'created_by' => $recruiter->id,
                 'category_id' => $request->category_id,
                 'title' => $request->title,
@@ -165,7 +193,10 @@ class RecruiterController extends Controller
                 'keywords' => $request->keywords,
                 'gender' => $request->gender ?? 'both',
                 'experience_type' => $request->experience_type,
-                'expires_at' => now()->addDays(30),
+
+                // 🔥 IMPORTANT: dynamic expiry from plan
+                'expires_at' => now()->addDays($subscription->plan->job_live_days),
+
                 'is_active' => true
             ]);
 
@@ -173,6 +204,7 @@ class RecruiterController extends Controller
 
             if ($request->has('questions')) {
                 foreach ($request->questions as $q) {
+
                     $question = JobQuestion::create([
                         'job_id' => $job->id,
                         'question' => $q['question'],
@@ -184,7 +216,7 @@ class RecruiterController extends Controller
                 }
             }
 
-            // 🔥 MAILS
+            // 🔥 MAILS (unchanged)
             try {
 
                 $mailService = new MailService();
@@ -207,6 +239,8 @@ class RecruiterController extends Controller
                 ]);
             }
 
+            DB::commit();
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job created successfully',
@@ -216,6 +250,8 @@ class RecruiterController extends Controller
                 ]
             ], 201);
         } catch (\Exception $e) {
+
+            DB::rollBack();
 
             Log::error('Job creation failed', [
                 'error' => $e->getMessage()
@@ -228,7 +264,6 @@ class RecruiterController extends Controller
             ], 500);
         }
     }
-
     // Job update
     public function updateJob(Request $request, $id)
     {

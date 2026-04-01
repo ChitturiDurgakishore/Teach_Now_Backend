@@ -14,6 +14,8 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Razorpay\Api\Errors\SignatureVerificationError;
 use App\Models\Subscription;
+use Carbon\Carbon;
+
 
 class OrderController extends Controller
 {
@@ -209,7 +211,7 @@ class OrderController extends Controller
 
             // ✅ Decide start date
             $startDate = $lastSubscription
-                ? $lastSubscription->expires_at
+                ? Carbon::parse($lastSubscription->expires_at)
                 : now();
 
             // ✅ Calculate expiry

@@ -15,7 +15,7 @@ class Subscription extends Model
 
     public function plan()
     {
-        return $this->belongsTo(SubscriptionPlan::class);
+        return $this->belongsTo(Plan::class);
     }
 
     public $fillable = [
@@ -29,4 +29,12 @@ class Subscription extends Model
         'expires_at',
         'status'
     ];
+
+    protected $casts = [
+        'starts_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'purchase_date' => 'datetime',
+    ];
+
+
 }
