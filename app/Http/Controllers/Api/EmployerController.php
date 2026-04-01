@@ -59,6 +59,7 @@ class EmployerController extends Controller
                 'password' => 'required|min:6',
                 'latitude' => 'nullable|numeric|between:-90,90',
                 'longitude' => 'nullable|numeric|between:-180,180',
+                'institution_type' => 'nullable|in:School,Intermediate,Diploma,UG,PG',
             ]);
 
             // 🔥 Upload logo (FIXED)
@@ -88,6 +89,7 @@ class EmployerController extends Controller
                 'password' => Hash::make($request->password),
                 'latitude' => $request->latitude,   // ✅ NEW
                 'longitude' => $request->longitude,
+                'institution_type' => $request->institution_type,
             ]);
 
             // MAIL (unchanged)
@@ -259,6 +261,7 @@ class EmployerController extends Controller
                 'map_link' => 'nullable|string',
                 'latitude' => 'nullable|numeric|between:-90,90',     // ✅ NEW
                 'longitude' => 'nullable|numeric|between:-180,180', // ✅ NEW
+                'institution_type' => 'nullable|in:School,Intermediate,Diploma,UG,PG',
             ]);
 
             $employer = Auth::guard('employer')->user();
@@ -306,6 +309,7 @@ class EmployerController extends Controller
                 // ✅ NEW FIELDS
                 'latitude' => $request->latitude ?? $employer->latitude,
                 'longitude' => $request->longitude ?? $employer->longitude,
+                'institution_type' => $request->institution_type ?? $employer->institution_type,
             ]);
 
             return response()->json([
