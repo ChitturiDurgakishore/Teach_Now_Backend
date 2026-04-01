@@ -14,8 +14,4 @@ Route::get('/login', function () {
 
 // routes/web.php
 
-Route::prefix('auth')->group(function () {
-    Route::middleware('auth')->group(function () {
-        Route::get('/profile', [AuthController::class, 'profile']);
-    });
-});
+
