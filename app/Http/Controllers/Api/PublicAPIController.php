@@ -824,15 +824,25 @@ class PublicAPIController extends Controller
         }
     }
 
-    public function listResources()
+    public function listResources(Request $request)
     {
         try {
 
-            $resources = TeachingResource::where('is_visible', true)->where('is_featured', true)->get();
+            $perPage = $request->get('per_page', 10); // default 10
+
+            $resources = TeachingResource::where('is_visible', true)
+                ->where('is_featured', true)
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
-                'data' => $resources
+                'data' => $resources->items(),
+                'pagination' => [
+                    'current_page' => $resources->currentPage(),
+                    'last_page' => $resources->lastPage(),
+                    'per_page' => $resources->perPage(),
+                    'total' => $resources->total(),
+                ]
             ]);
         } catch (\Exception $e) {
 
