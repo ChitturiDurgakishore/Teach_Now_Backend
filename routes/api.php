@@ -34,7 +34,8 @@ Route::prefix('auth')->group(function () {
 
     //open for all
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::middleware('auth:sanctum')->group(function () {
+
+    Route::middleware('auth:sanctum', 'role:admin')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
     });
 });
