@@ -86,10 +86,10 @@ class PublicAPIController extends Controller
             $salaryMax = $request->input('salary_max');
             $gender = $request->input('gender');
             $experience_type = $request->input('experience_type');
-            $institution_type= $request->input('institution_type');
+            $institution_type = $request->input('institution_type');
 
             // ✅ ONLY CHANGE → added employer relation
-            $query = Job::with(['employer:id,company_name,company_logo'])
+            $query = Job::with(['employer:id,company_name,company_logo,institution_type'])
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->where('status', 'approved')
@@ -184,9 +184,12 @@ class PublicAPIController extends Controller
             if ($experience_type) {
                 $query->where('experience_type', $experience_type);
             }
-            if($institution_type){
-                $query->where('institution_type', $institution_type);
+            if ($institution_type) {
+                $query->whereHas('employer', function ($q) use ($institution_type) {
+                    $q->where('institution_type', $institution_type);
+                });
             }
+
 
             if ($salaryMin) {
                 $query->where('salary_max', '>=', $salaryMin);

@@ -146,6 +146,13 @@ class JobSeekerController extends Controller
 
             $user = Auth::user();
 
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
             $profile = JobSeeker::where('user_id', $user->id)->first();
 
             if (!$profile) {
@@ -156,6 +163,7 @@ class JobSeekerController extends Controller
             }
 
             $request->validate([
+                'name' => 'nullable|string|max:150', // ✅ USER FIELD
                 'title' => 'nullable|string|max:150',
                 'phone' => 'nullable|string|max:20',
                 'location' => 'nullable|string|max:200',
@@ -169,22 +177,27 @@ class JobSeekerController extends Controller
                 'skills.*' => 'string|max:100'
             ]);
 
-            // 🔥 Handle profile photo update
+            // ✅ UPDATE USER TABLE
+            if ($request->has('name')) {
+                $user->update([
+                    'name' => $request->name
+                ]);
+            }
+
+            // 🔥 Handle profile photo
             if ($request->hasFile('profile_photo')) {
 
-                // delete old image
                 if ($profile->profile_photo) {
                     Storage::delete(str_replace('storage/', 'public/', $profile->profile_photo));
                 }
 
-                // upload new image
                 $profile->profile_photo = $this->uploadFile(
                     $request->file('profile_photo'),
                     'profile_images'
                 );
             }
 
-            // update other fields
+            // ✅ UPDATE PROFILE TABLE
             $profile->update($request->only([
                 'title',
                 'phone',
@@ -195,19 +208,17 @@ class JobSeekerController extends Controller
                 'portfolio_website',
                 'bio'
             ]));
+
+            // ✅ HANDLE SKILLS
             $skillIds = [];
 
             if ($request->has('skills')) {
 
                 foreach ($request->skills as $skill) {
 
-                    // 🔹 If numeric → existing skill ID
                     if (is_numeric($skill)) {
                         $skillIds[] = $skill;
-                    }
-                    // 🔹 If string → create/find skill
-                    else {
-
+                    } else {
                         $newSkill = Skill::firstOrCreate(
                             ['name' => strtolower(trim($skill))],
                             ['is_custom' => true]
@@ -223,7 +234,10 @@ class JobSeekerController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Profile updated successfully',
-                'data' => $profile
+                'data' => [
+                    'user' => $user,          // ✅ include user
+                    'profile' => $profile    // ✅ include profile
+                ]
             ], 200);
         } catch (\Exception $e) {
 
