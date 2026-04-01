@@ -124,7 +124,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        dd(Auth::check(), Auth::user());
+
         Auth::logout();
 
         $request->session()->invalidate();

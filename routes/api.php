@@ -32,11 +32,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/create-employer', [EmployerController::class, 'createCompany']);
     Route::post('/employer-login', [EmployerController::class, 'login']);
 
-    Route::middleware('auth:web')->group(function () {
-
-        Route::post('/logout', [AuthController::class, 'logout']);
-        Route::get('/profile', [AuthController::class, 'profile']);
-    });
+    //open for all
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/profile', [AuthController::class, 'profile']);
 });
 
 
