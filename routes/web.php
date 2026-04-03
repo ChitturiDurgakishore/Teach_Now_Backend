@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-
+use App\Http\Controllers\RouteListController;
 
 Route::get('/login', function () {
     return response()->json([
@@ -11,7 +11,7 @@ Route::get('/login', function () {
     ], 401);
 })->name('login');
 
-
+Route::get('/api-routes', [RouteListController::class, 'index']);
 // routes/web.php
 
 
