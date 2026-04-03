@@ -176,7 +176,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
 //Admin SEO Management routes
 
 
-Route::prefix('admin/seo')->middleware(['auth', 'role:admin'])->group(function () {
+Route::prefix('admin/seo')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
     Route::put('/job/{id}', [AdminSEOController::class, 'updateJobSEO']);
     Route::put('/category/{id}', [AdminSEOController::class, 'updateCategorySEO']);
@@ -193,7 +193,7 @@ Route::prefix('admin/seo')->middleware(['auth', 'role:admin'])->group(function (
 // ----------------------------------------------------------------------------------
 //Admin CMS Management routes
 
-Route::prefix('admin/cms')->middleware(['auth', 'role:admin'])->group(function () {
+Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
 
     //HeroSection
     Route::get('/hero', [AdminCMSController::class, 'getHeroSection']);
@@ -346,7 +346,7 @@ Route::prefix('admin/deleted')->group(function () {
 
 //Plans Management for Admin
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
 
     Route::post('/plans', [PlanController::class, 'store']);
     Route::get('/plans', [PlanController::class, 'index']);
@@ -473,7 +473,7 @@ Route::prefix('recruiter')->group(function () {
 
 
 
-Route::middleware(['auth', 'role:job_seeker'])->prefix('jobseeker')->group(function () {
+Route::middleware(['auth:sanctum', 'role:job_seeker'])->prefix('jobseeker')->group(function () {
 
     //Profile management
 
