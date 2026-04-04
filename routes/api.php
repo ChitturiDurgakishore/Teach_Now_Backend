@@ -34,7 +34,6 @@ Route::prefix('auth')->group(function () {
     Route::post('/create-employer', [EmployerController::class, 'createCompany']);
     Route::post('/employer-login', [EmployerController::class, 'login']);
 
-    //open for all
 
 });
 

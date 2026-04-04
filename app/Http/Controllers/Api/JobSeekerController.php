@@ -37,8 +37,16 @@ class JobSeekerController extends Controller
 
 
     //logout
-    public function logout(){
+    public function logout(Request $request)
+    {
         Auth::logout();
+
+        // Invalidate the user's session
+        $request->session()->invalidate();
+
+        // Regenerate the CSRF token to prevent CSRF fixation attacks
+        $request->session()->regenerateToken();
+
         return response()->json([
             'status' => true,
             'message' => 'Logged out successfully'
@@ -124,7 +132,7 @@ class JobSeekerController extends Controller
                 'skills', // 🔥 added
                 'experiences'
             ])->where('user_id', $user->id)->first();
-            $Company_logo=HomepageCompanyLogo::where('is_active',true)->get();
+            $Company_logo = HomepageCompanyLogo::where('is_active', true)->get();
             $skills = Skill::all();
             if (!$profile) {
                 return response()->json([
@@ -137,7 +145,7 @@ class JobSeekerController extends Controller
                 'status' => true,
                 'data' => $profile,
                 'skills' => $skills,
-                'company_logos'=>$Company_logo
+                'company_logos' => $Company_logo
             ], 200);
         } catch (\Exception $e) {
 
