@@ -39,12 +39,13 @@ class JobSeekerController extends Controller
     //logout
     public function logout(Request $request)
     {
-        Auth::logout();
+        // Use the web guard specifically to handle the session logout
+        Auth::guard('web')->logout();
 
-        // Invalidate the user's session
+        // Invalidate the session
         $request->session()->invalidate();
 
-        // Regenerate the CSRF token to prevent CSRF fixation attacks
+        // Regenerate the CSRF token for security
         $request->session()->regenerateToken();
 
         return response()->json([
