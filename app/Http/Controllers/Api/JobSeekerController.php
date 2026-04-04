@@ -17,7 +17,7 @@ use App\Models\JobSeekerExperience;
 use App\Models\TeachingResource;
 use App\Models\JobApplication;
 use App\Models\BookmarkedJob;
-
+use App\Models\HomepageCompanyLogo;
 
 class JobSeekerController extends Controller
 {
@@ -115,6 +115,7 @@ class JobSeekerController extends Controller
                 'skills', // 🔥 added
                 'experiences'
             ])->where('user_id', $user->id)->first();
+            $Company_logo=HomepageCompanyLogo::where('is_active',true)->get();
             $skills = Skill::all();
             if (!$profile) {
                 return response()->json([
@@ -126,7 +127,8 @@ class JobSeekerController extends Controller
             return response()->json([
                 'status' => true,
                 'data' => $profile,
-                'skills' => $skills
+                'skills' => $skills,
+                'company_logos'=>$Company_logo
             ], 200);
         } catch (\Exception $e) {
 

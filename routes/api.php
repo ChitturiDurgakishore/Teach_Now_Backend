@@ -35,12 +35,13 @@ Route::prefix('auth')->group(function () {
     Route::post('/employer-login', [EmployerController::class, 'login']);
 
     //open for all
-    Route::post('/logout', [AuthController::class, 'logout']);
+
 });
 
 
 Route::prefix('auth')->middleware('auth')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
 
 // ---------------------------------------------------------------------
@@ -361,7 +362,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
 
 // Payments and Orders route
 
-Route::middleware(['auth:employer','role:employer'])->prefix('employer/payment')->group(function () {
+Route::middleware(['auth:employer', 'role:employer'])->prefix('employer/payment')->group(function () {
     Route::post('/create-order', [OrderController::class, 'createOrder']);
     Route::post('/verify-payment', [OrderController::class, 'verifyPayment']);
 });
