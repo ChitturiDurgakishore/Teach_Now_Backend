@@ -880,41 +880,85 @@ class EmployerController extends Controller
     // Republish Job
     public function republishJob($id)
     {
-        $job = Job::find($id);
+        try {
 
-        if (!$job) {
+            $job = Job::find($id);
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            $employer = auth('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            // ✅ Ownership check
+            if ($job->employer_id !== $employer->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            DB::beginTransaction();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CHECK & CONSUME CREDIT (SAME AS CREATE JOB)
+        |--------------------------------------------------------------------------
+        */
+
+            $subscriptionService = app(SubscriptionService::class);
+
+            $result = $subscriptionService->consumeJobCredit($employer->id);
+
+            if (!$result['status']) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => false,
+                    'message' => $result['message']
+                ], 403);
+            }
+
+            $subscription = $result['subscription'];
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 REPUBLISH JOB
+        |--------------------------------------------------------------------------
+        */
+
+            $job->update([
+                // 🔥 Use plan's job_live_days
+                'expires_at' => now()->addDays($subscription->plan->job_live_days),
+                'is_active' => true,
+                'job_status' => 'open' // optional but recommended
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job republished successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
             return response()->json([
                 'status' => false,
-                'message' => 'Job not found'
-            ], 404);
+                'message' => 'Republish failed',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $employer = auth('employer')->user();
-
-        if (!$employer) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthenticated'
-            ], 401);
-        }
-
-        // ✅ SAFE CHECK
-        if ($job->employer_id !== $employer->id) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $job->update([
-            'expires_at' => now()->addDays(30),
-            'is_active' => true
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Job republished successfully'
-        ]);
     }
 
     // Expired Jobs
@@ -1049,8 +1093,8 @@ class EmployerController extends Controller
         }
     }
 
-    //Applications for Company Jobs
 
+    //Applications for Company Jobs
     public function getApplications()
     {
         try {
@@ -1424,8 +1468,8 @@ class EmployerController extends Controller
 
     //Invoices
 
-   //get invoice pdf
-   public function getInvoicePdf($id)
+    //get invoice pdf
+    public function getInvoicePdf($id)
     {
         $invoice = Invoice::findOrFail($id);
 

@@ -361,43 +361,101 @@ class RecruiterController extends Controller
         }
     }
     // Republish Job
+
     public function republishJob($id)
     {
-        $job = Job::find($id);
+        try {
 
-        if (!$job) {
+            $job = Job::find($id);
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            $recruiter = Auth::guard('employer_user')->user();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            // ✅ Employer ownership check
+            if ($job->employer_id !== $recruiter->employer_id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            DB::beginTransaction();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CHECK & CONSUME EMPLOYER CREDITS
+        |--------------------------------------------------------------------------
+        */
+
+            $subscriptionService = app(SubscriptionService::class);
+
+            $result = $subscriptionService->consumeJobCredit($recruiter->employer_id);
+
+            if (!$result['status']) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => false,
+                    'message' => $result['message']
+                ], 403);
+            }
+
+            $subscription = $result['subscription'];
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 OPTIONAL: Prevent republishing active job
+        |--------------------------------------------------------------------------
+        */
+
+            if ($job->is_active && $job->expires_at > now()) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job is already active'
+                ], 400);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 REPUBLISH JOB
+        |--------------------------------------------------------------------------
+        */
+
+            $job->update([
+                'expires_at' => now()->addDays($subscription->plan->job_live_days),
+                'is_active' => true,
+                'job_status' => 'open' // recommended
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job republished successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
             return response()->json([
                 'status' => false,
-                'message' => 'Job not found'
-            ], 404);
+                'message' => 'Republish failed',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $recruiter = Auth::guard('employer_user')->user();
-
-        if (!$recruiter) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthenticated'
-            ], 401);
-        }
-
-        // ✅ CORRECT CHECK
-        if ($job->employer_id !== $recruiter->employer_id) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        $job->update([
-            'expires_at' => now()->addDays(30),
-            'is_active' => true
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Job republished successfully'
-        ]);
     }
 
 
