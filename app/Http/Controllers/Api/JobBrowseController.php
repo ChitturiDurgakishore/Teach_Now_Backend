@@ -301,7 +301,9 @@ class JobBrowseController extends Controller
             $jobSeeker = JobSeeker::withTrashed()->where('user_id', $user->id)->first();
 
             $applications = JobApplication::where('job_seeker_id', $jobSeeker->id)
-                ->with('job')
+                ->with('job', function ($query) {
+                    $query->with('employer:id,company_name,company_logo,slug,city');
+                })
                 ->latest()
                 ->get();
 
