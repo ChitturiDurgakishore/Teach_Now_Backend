@@ -9,6 +9,8 @@ use App\Models\JobSeeker;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Http\Controllers\Api\CVController;
+use App\Models\JobSeekerCV;
 
 class ResumeController extends Controller
 {
@@ -79,11 +81,13 @@ class ResumeController extends Controller
             $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
 
             $resumes = Resume::where('job_seeker_id', $jobSeeker->id)->get();
+            $generatedResumes=JobSeekerCV::where('job_seeker_id', $jobSeeker->id)->get();
 
             return response()->json([
                 'status' => true,
                 'total' => $resumes->count(),
-                'data' => $resumes
+                'data' => $resumes,
+                'generated_resumes'=>$generatedResumes
             ], 200);
         } catch (\Exception $e) {
 

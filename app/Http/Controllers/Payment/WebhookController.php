@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Razorpay\Api\Api;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -22,15 +21,21 @@ class WebhookController extends Controller
             $signature = $request->header('X-Razorpay-Signature');
             $secret = env('RAZORPAY_WEBHOOK_SECRET');
 
-            // 🔒 VERIFY SIGNATURE
+            // 🔒 VERIFY SIGNATURE (SECURE)
             $expectedSignature = hash_hmac('sha256', $payload, $secret);
 
-            if ($expectedSignature !== $signature) {
+            if (!hash_equals($expectedSignature, $signature)) {
                 Log::error('Webhook signature mismatch');
                 return response()->json(['status' => false], 400);
             }
 
+            // 🔒 SAFE JSON PARSE
             $data = json_decode($payload, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Invalid JSON in webhook');
+                return response()->json(['status' => false], 400);
+            }
 
             $event = $data['event'] ?? null;
 
@@ -39,19 +44,29 @@ class WebhookController extends Controller
             }
 
             /*
-        |--------------------------------------------------------------------------
-        | 🔥 HANDLE EVENTS
-        |--------------------------------------------------------------------------
-        */
+            |--------------------------------------------------------------------------
+            | 🔥 HANDLE EVENTS
+            |--------------------------------------------------------------------------
+            */
 
             switch ($event) {
 
                 case 'payment.captured':
 
-                    $payment = $data['payload']['payment']['entity'];
+                    $payment = $data['payload']['payment']['entity'] ?? null;
 
-                    $razorpayOrderId = $payment['order_id'];
-                    $razorpayPaymentId = $payment['id'];
+                    if (!$payment) {
+                        Log::error('Webhook: payment entity missing');
+                        return response()->json(['status' => false], 400);
+                    }
+
+                    $razorpayOrderId = $payment['order_id'] ?? null;
+                    $razorpayPaymentId = $payment['id'] ?? null;
+
+                    if (!$razorpayOrderId || !$razorpayPaymentId) {
+                        Log::error('Webhook: missing payment data');
+                        return response()->json(['status' => false], 400);
+                    }
 
                     DB::transaction(function () use ($razorpayOrderId, $razorpayPaymentId) {
 
@@ -66,22 +81,22 @@ class WebhookController extends Controller
                             return;
                         }
 
-                        // 🔒 PREVENT DUPLICATE
-                        if ($order->status === 'paid') {
+                        // 🔒 PREVENT DUPLICATE PROCESSING
+                        if ($order->status === 'paid' && $order->razorpay_payment_id) {
                             return;
                         }
 
-                        // ✅ MARK PAID
+                        // ✅ MARK ORDER PAID
                         $order->update([
                             'status' => 'paid',
                             'razorpay_payment_id' => $razorpayPaymentId
                         ]);
 
-                        // 🔥 CREATE SUBSCRIPTION (IF NOT EXISTS)
+                        // 🔥 CHECK EXISTING SUBSCRIPTION
                         $existingSubscription = Subscription::where('order_id', $order->id)->first();
 
                         if ($existingSubscription) {
-                            return; // already created
+                            return;
                         }
 
                         $plan = Plan::find($order->plan_id);
@@ -105,7 +120,8 @@ class WebhookController extends Controller
 
                         $expiresAt = $startDate->copy()->addDays($plan->validity_days);
 
-                        Subscription::create([
+                        // ✅ CREATE SUBSCRIPTION
+                        $subscription = Subscription::create([
                             'employer_id' => $order->employer_id,
                             'plan_id' => $plan->id,
                             'order_id' => $order->id,
@@ -119,8 +135,9 @@ class WebhookController extends Controller
 
                             'status' => 'active'
                         ]);
-                        $invoiceService = app(InvoiceService::class);
 
+                        // 🔥 CREATE INVOICE
+                        $invoiceService = app(InvoiceService::class);
                         $invoiceService->generate($order, $subscription);
                     });
 
@@ -128,11 +145,18 @@ class WebhookController extends Controller
 
                 case 'payment.failed':
 
-                    $payment = $data['payload']['payment']['entity'];
-                    $razorpayOrderId = $payment['order_id'];
+                    $payment = $data['payload']['payment']['entity'] ?? null;
 
-                    Order::where('razorpay_order_id', $razorpayOrderId)
-                        ->update(['status' => 'failed']);
+                    if (!$payment) {
+                        return response()->json(['status' => false], 400);
+                    }
+
+                    $razorpayOrderId = $payment['order_id'] ?? null;
+
+                    if ($razorpayOrderId) {
+                        Order::where('razorpay_order_id', $razorpayOrderId)
+                            ->update(['status' => 'failed']);
+                    }
 
                     break;
             }
