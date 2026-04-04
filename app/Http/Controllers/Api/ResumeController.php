@@ -81,13 +81,13 @@ class ResumeController extends Controller
             $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
 
             $resumes = Resume::where('job_seeker_id', $jobSeeker->id)->get();
-            $generatedResumes=JobSeekerCV::where('job_seeker_id', $jobSeeker->id)->get();
+            $generatedResumes = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)->get();
 
             return response()->json([
                 'status' => true,
                 'total' => $resumes->count(),
                 'data' => $resumes,
-                'generated_resumes'=>$generatedResumes
+                'generated_resumes' => $generatedResumes
             ], 200);
         } catch (\Exception $e) {
 
@@ -103,29 +103,42 @@ class ResumeController extends Controller
     public function setDefaultResume($id)
     {
         try {
-
+            // 1. Try to find the record in the Resume table first
             $resume = Resume::find($id);
+            $generatedResume = null;
 
+            // 2. If not in Resume, check JobSeekerCV
             if (!$resume) {
+                $generatedResume = JobSeekerCV::find($id);
+            }
+
+            // If it doesn't exist in either table, return 404
+            if (!$resume && !$generatedResume) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Resume not found'
+                    'message' => 'Resume or CV not found'
                 ], 404);
             }
 
-            Resume::where('job_seeker_id', $resume->job_seeker_id)
-                ->update(['is_default' => false]);
+            // Get the job_seeker_id from whichever record we found
+            $jobSeekerId = $resume ? $resume->job_seeker_id : $generatedResume->job_seeker_id;
 
-            $resume->update([
-                'is_default' => true
-            ]);
+            // 3. Reset 'is_default' for ALL records belonging to this job seeker in BOTH tables
+            Resume::where('job_seeker_id', $jobSeekerId)->update(['is_default' => false]);
+            JobSeekerCV::where('job_seeker_id', $jobSeekerId)->update(['is_default' => false]);
+
+            // 4. Set the specific record as default
+            if ($resume) {
+                $resume->update(['is_default' => true]);
+            } else {
+                $generatedResume->update(['is_default' => true]);
+            }
 
             return response()->json([
                 'status' => true,
-                'message' => 'Default resume updated'
+                'message' => 'Default selection updated successfully'
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Operation failed',
