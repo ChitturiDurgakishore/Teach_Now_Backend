@@ -367,8 +367,6 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer/payment'
 
 Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group(function () {
 
-    Route::post('/logout', [EmployerController::class, 'logout']);
-
     // Recruiter management for employer
     Route::post('/users', [EmployerController::class, 'createEmployerUser']); //Employer user creation
     Route::get('/users', [EmployerController::class, 'getEmployerUsers']); //Get employer users
@@ -418,6 +416,10 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::get('/invoices', [EmployerController::class, 'getInvoices']);
     Route::get('/invoices', [EmployerController::class, 'getInvoicePdf']);
     Route::get('/invoices/{id}', [EmployerController::class, 'downloadInvoice']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [EmployerController::class, 'logout']);
+    });
 });
 
 // ----------------------------------------------------------------------------------
