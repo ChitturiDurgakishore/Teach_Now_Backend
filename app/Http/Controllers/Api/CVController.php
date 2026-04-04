@@ -203,7 +203,7 @@ class CVController extends Controller
             $fileName = time() . '_cv.pdf';
             $path = "media/cv/{$fileName}";
 
-            Storage::put($path, $pdf->output());
+            Storage::disk('public')->put($path, $pdf->output());
 
             $pdfPath = "storage/" . $path;
 

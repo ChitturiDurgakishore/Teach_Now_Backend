@@ -536,6 +536,9 @@ Route::middleware(['auth:sanctum', 'role:job_seeker'])->prefix('jobseeker')->gro
 
     //Dashboard
     Route::get('/dashboard', [JobSeekerController::class, 'JobSeekerDashboard']);
+
+    //Logout for jobseeker
+    Route::post('/logout', [JobSeekerController::class, 'logout']);
 });
 
 

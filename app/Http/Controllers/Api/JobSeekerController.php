@@ -36,6 +36,15 @@ class JobSeekerController extends Controller
     }
 
 
+    //logout
+    public function logout(){
+        Auth::logout();
+        return response()->json([
+            'status' => true,
+            'message' => 'Logged out successfully'
+        ], 200);
+    }
+
     // Profile creation
     public function createProfile(Request $request)
     {
