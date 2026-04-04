@@ -416,6 +416,10 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
     Route::put('testimonials/{id}', [RecruiterController::class, 'updateTestimonial']);
     Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
+
+    //Invoice management
+    Route::get('/invoices', [EmployerController::class, 'getInvoicePdf']);
+    Route::get('/invoices/{id}', [EmployerController::class, 'downloadInvoice']);
 });
 
 // ----------------------------------------------------------------------------------

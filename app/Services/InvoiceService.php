@@ -7,6 +7,9 @@ use App\Models\InvoiceSetting;
 use App\Models\EmailTemplate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Mail;
+use App\Jobs\SendEmailJob;
+use Illuminate\Support\Facades\Storage;
+
 
 class InvoiceService
 {
@@ -45,53 +48,99 @@ class InvoiceService
     /**
      * 🔥 Generate PDF from DB template + Send Email
      */
+
+
     public function generatePdfAndSend($invoice)
     {
         $invoice->load(['order.plan', 'employer']);
 
         $settings = InvoiceSetting::first();
-        $template = EmailTemplate::where('name', 'invoice_template')->first();
+        $plan = $invoice->order->plan;
+        $employer = $invoice->employer;
+
+        // 🔥 Get template
+        $template = EmailTemplate::where('slug', 'invoice_template')
+            ->where('is_active', true)
+            ->first();
 
         if (!$template) {
             throw new \Exception('Invoice template not found');
         }
 
-        $plan = $invoice->order->plan;
-        $employer = $invoice->employer;
+        // 🔥 Prepare data
+        $data = [
+            'company_name' => $settings->company_name ?? '',
+            'company_address' => $settings->address ?? '',
+            'footer' => $settings->footer ?? '',
 
-        // 🔥 TEMPLATE PARSING
-        $html = $template->body;
+            'invoice_number' => $invoice->invoice_number,
+            'invoice_date' => $invoice->invoice_date,
 
-        $replacements = [
-            '{{company_name}}' => $settings->company_name ?? '',
-            '{{company_address}}' => $settings->address ?? '',
-            '{{footer}}' => $settings->footer ?? '',
+            'employer_name' => $employer->company_name ?? '',
+            'employer_email' => $employer->email ?? '',
 
-            '{{invoice_number}}' => $invoice->invoice_number,
-            '{{invoice_date}}' => $invoice->invoice_date,
-
-            '{{employer_name}}' => $employer->company_name ?? '',
-            '{{employer_email}}' => $employer->email ?? '',
-
-            '{{plan_name}}' => $plan->name ?? '',
-            '{{amount}}' => $invoice->amount,
-            '{{currency}}' => $invoice->currency,
+            'plan_name' => $plan->name ?? '',
+            'amount' => $invoice->amount,
+            'currency' => $invoice->currency,
         ];
 
-        foreach ($replacements as $key => $value) {
-            $html = str_replace($key, $value, $html);
+        // 🔥 Replace variables
+        $html = $template->body;
+
+        foreach ($data as $key => $value) {
+            $html = str_replace('{' . $key . '}', $value, $html);
         }
 
-        // 🔥 GENERATE PDF
-        $pdf = Pdf::loadHTML($html);
+        /*
+    |--------------------------------------------------------------------------
+    | 🔥 CHECK IF PDF ALREADY EXISTS
+    |--------------------------------------------------------------------------
+    */
 
-        $fileName = 'invoice_' . $invoice->invoice_number . '.pdf';
+        if ($invoice->pdf_path && Storage::exists($invoice->pdf_path)) {
 
-        // 🔥 SEND EMAIL
-        Mail::send([], [], function ($message) use ($employer, $pdf, $fileName, $template) {
-            $message->to($employer->email)
-                ->subject($template->subject ?? 'Invoice')
-                ->attachData($pdf->output(), $fileName);
-        });
+            $pdfContent = base64_encode(Storage::get($invoice->pdf_path));
+        } else {
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GENERATE PDF
+        |--------------------------------------------------------------------------
+        */
+
+            $pdf = Pdf::loadHTML($html);
+
+            $fileName = 'invoice_' . $invoice->invoice_number . '.pdf';
+            $filePath = 'invoices/' . $fileName;
+
+            // 🔥 Store PDF
+            Storage::put($filePath, $pdf->output());
+
+            // 🔥 Save path in DB
+            $invoice->update([
+                'pdf_path' => $filePath
+            ]);
+
+            $pdfContent = base64_encode($pdf->output());
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | 🔥 SEND MAIL (QUEUE)
+    |--------------------------------------------------------------------------
+    */
+
+        SendEmailJob::dispatch(
+            $employer->email,
+            $template->subject,
+            $html,
+            [
+                [
+                    'content' => $pdfContent,
+                    'name' => 'invoice_' . $invoice->invoice_number . '.pdf',
+                    'mime' => 'application/pdf'
+                ]
+            ]
+        );
     }
 }

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\SubscriptionService;
 use App\Models\Subscription;
+use App\Models\Invoice;
 
 class EmployerController extends Controller
 {
@@ -1418,5 +1419,47 @@ class EmployerController extends Controller
         ]);
     }
 
-    //    testimonials wrote in recruiter controller - common for both recruiter and employer
+    //======================================================
+
+
+    //Invoices
+
+   //get invoice pdf
+   public function getInvoicePdf($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+
+        if (!$invoice->pdf_path || !Storage::exists($invoice->pdf_path)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invoice PDF not found'
+            ], 404);
+        }
+
+        $pdfContent = base64_encode(Storage::get($invoice->pdf_path));
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'pdf_base64' => $pdfContent
+            ]
+        ]);
+    }
+
+    public function downloadInvoice($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+
+        if (!$invoice->pdf_path || !Storage::exists($invoice->pdf_path)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invoice PDF not found'
+            ], 404);
+        }
+
+        return Storage::download(
+            $invoice->pdf_path,
+            'invoice_' . $invoice->invoice_number . '.pdf'
+        );
+    }
 }
