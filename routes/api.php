@@ -33,8 +33,6 @@ Route::prefix('auth')->group(function () {
     // Employer
     Route::post('/create-employer', [EmployerController::class, 'createCompany']);
     Route::post('/employer-login', [EmployerController::class, 'login']);
-
-
 });
 
 
@@ -432,7 +430,7 @@ Route::prefix('recruiter')->group(function () {
     Route::post('/login', [RecruiterController::class, 'login']);
     Route::middleware('auth:employer_user')->group(function () {
 
-        Route::post('/logout', [RecruiterController::class, 'logout']);
+
 
         //Profile management
 
@@ -468,6 +466,10 @@ Route::prefix('recruiter')->group(function () {
         Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
         Route::put('testimonials/{id}', [RecruiterController::class, 'updateTestimonial']);
         Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
+    });
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [RecruiterController::class, 'logout']);
     });
 });
 
