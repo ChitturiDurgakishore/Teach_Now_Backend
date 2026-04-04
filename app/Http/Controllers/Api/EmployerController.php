@@ -1462,4 +1462,16 @@ class EmployerController extends Controller
             'invoice_' . $invoice->invoice_number . '.pdf'
         );
     }
+
+    public function getInvoices()
+    {
+        $employer = Auth::guard('employer')->user();
+
+        $invoices = Invoice::where('employer_id', $employer->id)->latest()->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $invoices
+        ]);
+    }
 }
