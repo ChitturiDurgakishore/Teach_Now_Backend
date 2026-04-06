@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 use App\Services\SubscriptionService;
 use App\Models\Subscription;
 use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Plan;
 
 class EmployerController extends Controller
 {
@@ -1533,7 +1535,7 @@ class EmployerController extends Controller
 
             $employer = Auth::guard('employer')->user();
             $file = $request->file('document_file');
-            $file_type=$request->document_type;
+            $file_type = $request->document_type;
             $docName = $request->document_name ?? $file->getClientOriginalName();
 
             $filePath = $this->uploadFile($file, 'documents');
@@ -1655,5 +1657,84 @@ class EmployerController extends Controller
             'status' => true,
             'data' => $invoices
         ]);
+    }
+
+    //payments history
+
+    public function getPaymentHistory()
+    {
+        try {
+
+            $employer = Auth::guard('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CURRENT ACTIVE SUBSCRIPTION
+        |--------------------------------------------------------------------------
+        */
+
+            $currentSubscription = Subscription::where('employer_id', $employer->id)
+                ->where('status', 'active')
+                ->where('expires_at', '>', now())
+                ->latest()
+                ->first();
+
+            $currentPlanId = $currentSubscription?->plan_id;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 ALL PLANS (WITH CURRENT FLAG)
+        |--------------------------------------------------------------------------
+        */
+
+            $plans = Plan::get()->map(function ($plan) use ($currentPlanId) {
+                $plan->is_current = $plan->id === $currentPlanId;
+                return $plan;
+            });
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 PAYMENT HISTORY
+        |--------------------------------------------------------------------------
+        */
+
+            $payments = Payment::where('employer_id', $employer->id)
+                ->latest()
+                ->get();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 INVOICE HISTORY
+        |--------------------------------------------------------------------------
+        */
+
+            $invoices = Invoice::where('employer_id', $employer->id)
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'plans' => $plans,
+                    'current_subscription' => $currentSubscription,
+                    'payments' => $payments,
+                    'invoices' => $invoices
+                ]
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch payment data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

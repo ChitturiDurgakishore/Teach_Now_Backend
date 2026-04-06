@@ -456,9 +456,11 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::put('testimonials/{id}', [RecruiterController::class, 'updateTestimonial']);
     Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
 
+    //Payments
+    Route::get('payments-history', [EmployerController::class, 'getPaymentHistory']);
     //Invoice management
     Route::get('/invoices', [EmployerController::class, 'getInvoices']);
-    Route::get('/invoices', [EmployerController::class, 'getInvoicePdf']);
+    Route::get('/invoices/{id}', [EmployerController::class, 'getInvoicePdf']);
     Route::get('/invoices/{id}', [EmployerController::class, 'downloadInvoice']);
 
     Route::middleware('auth:sanctum')->group(function () {
