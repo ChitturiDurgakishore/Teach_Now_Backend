@@ -795,30 +795,99 @@ class JobSeekerController extends Controller
     }
 
 
-    //Soft deleting CV deletion
-    public function deleteCV($id){
+    public function deleteResumeOrCV($id)
+    {
         try {
+
             $user = Auth::user();
 
-            $cv = JobSeekerCV::where('id', $id)->where('job_seeker_id', $user->id)->first();
+            // 🔥 Get JobSeeker
+            $jobSeeker = JobSeeker::where('user_id', $user->id)->first();
 
-            if (!$cv) {
+            if (!$jobSeeker) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'CV not found'
+                    'message' => 'Profile not found'
                 ], 404);
             }
 
-            $cv->delete();
+            // 🔥 Try Resume
+            $resume = Resume::where('id', $id)
+                ->where('job_seeker_id', $jobSeeker->id)
+                ->first();
+
+            $generatedResume = null;
+
+            // 🔥 If not found, check CV table
+            if (!$resume) {
+                $generatedResume = JobSeekerCV::where('id', $id)
+                    ->where('job_seeker_id', $jobSeeker->id)
+                    ->first();
+            }
+
+            // ❌ Not found anywhere
+            if (!$resume && !$generatedResume) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Resume or CV not found'
+                ], 404);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 HANDLE DEFAULT EDGE CASE
+        |--------------------------------------------------------------------------
+        */
+
+            $isDefault = $resume
+                ? $resume->is_default
+                : $generatedResume->is_default;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 DELETE RECORD
+        |--------------------------------------------------------------------------
+        */
+
+            if ($resume) {
+                $resume->delete(); // soft delete
+            } else {
+                $generatedResume->delete(); // soft delete
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 IF DEFAULT DELETED → ASSIGN NEW DEFAULT
+        |--------------------------------------------------------------------------
+        */
+
+            if ($isDefault) {
+
+                // try to find another resume
+                $newDefault = Resume::where('job_seeker_id', $jobSeeker->id)
+                    ->whereNull('deleted_at')
+                    ->first();
+
+                if (!$newDefault) {
+                    $newDefault = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)
+                        ->whereNull('deleted_at')
+                        ->first();
+                }
+
+                if ($newDefault) {
+                    $newDefault->update(['is_default' => true]);
+                }
+            }
 
             return response()->json([
                 'status' => true,
-                'message' => 'CV deleted successfully'
+                'message' => 'Resume/CV deleted successfully'
             ], 200);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
-                'message' => 'CV deletion failed',
+                'message' => 'Deletion failed',
                 'error' => $e->getMessage()
             ], 500);
         }

@@ -534,7 +534,7 @@ Route::middleware(['auth:sanctum', 'role:job_seeker'])->prefix('jobseeker')->gro
     Route::post('cv/generate-base', [CVController::class, 'generateBaseCV']);
     Route::post('cv/generate-job', [CVController::class, 'generateJobCV']);
     //cv deletion
-    Route::delete('cv/{id}', [JobSeekerController::class, 'deleteCV']);
+    Route::delete('cv/{id}', [JobSeekerController::class, 'deleteResumeOrCV']);
     //get active cvs
     Route::get('cv/templates', [CVController::class, 'getActiveTemplates']);
 
