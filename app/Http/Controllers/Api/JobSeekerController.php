@@ -18,6 +18,7 @@ use App\Models\TeachingResource;
 use App\Models\JobApplication;
 use App\Models\BookmarkedJob;
 use App\Models\HomepageCompanyLogo;
+use App\Models\JobSeekerCV;
 
 class JobSeekerController extends Controller
 {
@@ -788,6 +789,36 @@ class JobSeekerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Dashboard fetch failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    //Soft deleting CV deletion
+    public function deleteCV($id){
+        try {
+            $user = Auth::user();
+
+            $cv = JobSeekerCV::where('id', $id)->where('job_seeker_id', $user->id)->first();
+
+            if (!$cv) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'CV not found'
+                ], 404);
+            }
+
+            $cv->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'CV deleted successfully'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'CV deletion failed',
                 'error' => $e->getMessage()
             ], 500);
         }
