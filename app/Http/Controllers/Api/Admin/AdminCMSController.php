@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AboutUsSection;
 use App\Models\HomepageHeroSection;
 use App\Models\HomepageStat;
 use App\Models\HomepageTestimonial;
@@ -25,7 +26,8 @@ use App\Models\Location;
 use App\Models\EmailTemplate;
 use App\Models\TeachingResource;
 use App\Models\CVTemplate;
-
+use App\Models\PrivacyPolicySections;
+use App\Models\TermsConditionsSections;
 
 class AdminCMSController extends Controller
 {
@@ -2409,4 +2411,7 @@ class AdminCMSController extends Controller
             'data' => $template
         ]);
     }
+
+
 }
+

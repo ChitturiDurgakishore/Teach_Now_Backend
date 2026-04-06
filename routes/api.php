@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\JobSeekerController;
 use App\Http\Controllers\Api\ResumeController;
 use App\Http\Controllers\Api\CVController;
 use App\Http\Controllers\Api\Admin\AdminDeletedController;
+use App\Http\Controllers\Api\Admin\ContentPagesController;
 use App\Http\Controllers\Api\Admin\MailController;
 use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Payment\OrderController;
@@ -105,6 +106,11 @@ Route::prefix('open')->group(function () {
     //Teacher Resources
     Route::get('/resources/{slug}', [PublicAPIController::class, 'viewResource']);
     Route::get('/resources', [PublicAPIController::class, 'listResources']);
+
+    //Open Pages Content
+    Route::get('/about-us', [PublicAPIController::class, 'aboutUs']);
+    Route::get('/privacy-policy', [PublicAPIController::class, 'privacyPolicy']);
+    Route::get('/terms-conditions', [PublicAPIController::class, 'termsConditions']);
 });
 
 //resource download
@@ -318,6 +324,25 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
     Route::put('/cv-templates/{id}', [AdminCMSController::class, 'updateCVTemplate']);
     Route::delete('/cv-templates/{id}', [AdminCMSController::class, 'destroyCVTemplate']);
     Route::patch('/cv-templates/{id}/toggle', [AdminCMSController::class, 'toggleStatusCVTemplate']);
+
+
+    //About Us Page management
+    Route::get('/', [ContentPagesController::class, 'AboutUsIndex']);
+    Route::post('/', [ContentPagesController::class, 'AboutUsStore']);
+    Route::put('/{id}', [ContentPagesController::class, 'AboutUsUpdate']);
+    Route::delete('/{id}', [ContentPagesController::class, 'AboutUsDestroy']);
+
+    //Terms and Conditions management
+    Route::get('/', [ContentPagesController::class, 'TermsAndConditionsIndex']);
+    Route::post('/', [ContentPagesController::class, 'TermsAndConditionsStore']);
+    Route::put('/{id}', [ContentPagesController::class, 'TermsAndConditionsUpdate']);
+    Route::delete('/{id}', [ContentPagesController::class, 'TermsAndConditionsDestroy']);
+
+    //Privacy Policy management
+    Route::get('/', [ContentPagesController::class, 'PrivacyPolicyIndex']);
+    Route::post('/', [ContentPagesController::class, 'PrivacyPolicyStore']);
+    Route::put('/{id}', [ContentPagesController::class, 'PrivacyPolicyUpdate']);
+    Route::delete('/{id}', [ContentPagesController::class, 'PrivacyPolicyDestroy']);
 });
 
 // =================================================================================

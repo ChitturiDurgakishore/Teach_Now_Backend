@@ -18,16 +18,17 @@ use App\Models\Blog;
 use App\Models\Category;
 use App\Models\SearchLog;
 use App\Models\Location;
-use App\Models\PopularTitle;
+
 use App\Models\TeachingResource;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ResourceDownload;
-use App\Models\Resume;
-use App\Models\JobSeekerCV;
-use App\Models\Invoice;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Resource;
 
+use Illuminate\Support\Facades\Auth;
+
+use App\Models\AboutUsSection;
+use App\Models\PrivacyPolicySections;
+
+use App\Models\TermsConditionsSections;
 
 class PublicAPIController extends Controller
 {
@@ -1044,5 +1045,53 @@ class PublicAPIController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+
+    //Public pages APIs
+    public function aboutUs()
+    {
+        $data = AboutUsSection::whereNull('parent_id')
+            ->where('is_active', true)
+            ->with(['children' => function ($q) {
+                $q->where('is_active', true)->orderBy('display_order');
+            }])
+            ->orderBy('display_order')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+
+    //privacy policy
+    public function privacyPolicy()
+    {
+        $data = PrivacyPolicySections::whereNull('parent_id')
+            ->where('is_active', true)
+            ->with('children')
+            ->orderBy('display_order')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
+    }
+
+    //TnC
+    public function termsConditions()
+    {
+        $data = TermsConditionsSections::whereNull('parent_id')
+            ->where('is_active', true)
+            ->with('children')
+            ->orderBy('display_order')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data
+        ]);
     }
 }
