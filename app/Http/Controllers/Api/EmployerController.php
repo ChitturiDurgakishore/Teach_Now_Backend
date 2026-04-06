@@ -693,7 +693,7 @@ class EmployerController extends Controller
     // Jobs Created by Company
 
 
-    public function getCompanyJobs()
+    public function getCompanyJobs(Request $request)
     {
         try {
 
@@ -706,38 +706,36 @@ class EmployerController extends Controller
                 ], 401);
             }
 
+            $perPage = $request->get('per_page', 10); // default 10
+
             /*
         |--------------------------------------------------------------------------
-        | 🔥 ACTIVE JOBS
+        | 🔥 ACTIVE JOBS (PAGINATED)
         |--------------------------------------------------------------------------
         */
 
             $activeJobs = Job::where('employer_id', $employer->id)
                 ->where('expires_at', '>', now())
                 ->latest()
-                ->get();
+                ->paginate($perPage, ['*'], 'active_page');
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 EXPIRED JOBS
+        | 🔥 EXPIRED JOBS (PAGINATED)
         |--------------------------------------------------------------------------
         */
 
             $expiredJobs = Job::where('employer_id', $employer->id)
                 ->where('expires_at', '<=', now())
                 ->latest()
-                ->get();
+                ->paginate($perPage, ['*'], 'expired_page');
 
             return response()->json([
                 'status' => true,
 
-                'total_active_jobs' => $activeJobs->count(),
-                'total_expired_jobs' => $expiredJobs->count(),
+                'active_jobs' => $activeJobs,
+                'expired_jobs' => $expiredJobs
 
-                'data' => [
-                    'active_jobs' => $activeJobs,
-                    'expired_jobs' => $expiredJobs
-                ]
             ], 200);
         } catch (\Exception $e) {
 
