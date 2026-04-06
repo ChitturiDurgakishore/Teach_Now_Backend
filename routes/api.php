@@ -327,22 +327,22 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
 
 
     //About Us Page management
-    Route::get('/', [ContentPagesController::class, 'AboutUsIndex']);
-    Route::post('/', [ContentPagesController::class, 'AboutUsStore']);
-    Route::put('/{id}', [ContentPagesController::class, 'AboutUsUpdate']);
-    Route::delete('/{id}', [ContentPagesController::class, 'AboutUsDestroy']);
+    Route::get('/about-us', [ContentPagesController::class, 'AboutUsIndex']);
+    Route::post('/about-us', [ContentPagesController::class, 'AboutUsStore']);
+    Route::put('/about-us/{id}', [ContentPagesController::class, 'AboutUsUpdate']);
+    Route::delete('/about-us/{id}', [ContentPagesController::class, 'AboutUsDestroy']);
 
     //Terms and Conditions management
-    Route::get('/', [ContentPagesController::class, 'TermsAndConditionsIndex']);
-    Route::post('/', [ContentPagesController::class, 'TermsAndConditionsStore']);
-    Route::put('/{id}', [ContentPagesController::class, 'TermsAndConditionsUpdate']);
-    Route::delete('/{id}', [ContentPagesController::class, 'TermsAndConditionsDestroy']);
+    Route::get('/terms-and-conditions', [ContentPagesController::class, 'TermsAndConditionsIndex']);
+    Route::post('/terms-and-conditions', [ContentPagesController::class, 'TermsAndConditionsStore']);
+    Route::put('/terms-and-conditions/{id}', [ContentPagesController::class, 'TermsAndConditionsUpdate']);
+    Route::delete('/terms-and-conditions/{id}', [ContentPagesController::class, 'TermsAndConditionsDestroy']);
 
     //Privacy Policy management
-    Route::get('/', [ContentPagesController::class, 'PrivacyPolicyIndex']);
-    Route::post('/', [ContentPagesController::class, 'PrivacyPolicyStore']);
-    Route::put('/{id}', [ContentPagesController::class, 'PrivacyPolicyUpdate']);
-    Route::delete('/{id}', [ContentPagesController::class, 'PrivacyPolicyDestroy']);
+    Route::get('/privacy-policy', [ContentPagesController::class, 'PrivacyPolicyIndex']);
+    Route::post('/privacy-policy', [ContentPagesController::class, 'PrivacyPolicyStore']);
+    Route::put('/privacy-policy/{id}', [ContentPagesController::class, 'PrivacyPolicyUpdate']);
+    Route::delete('/privacy-policy/{id}', [ContentPagesController::class, 'PrivacyPolicyDestroy']);
 });
 
 // =================================================================================
