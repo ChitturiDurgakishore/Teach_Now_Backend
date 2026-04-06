@@ -343,20 +343,54 @@ class EmployerController extends Controller
 
     //Employer Profile flag API
 
-    public function profileflag(){
+    public function profileFlag()
+    {
         try {
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CHECK EMPLOYER LOGIN
+        |--------------------------------------------------------------------------
+        */
+
             $employer = Auth::guard('employer')->user();
 
-            if (!$employer) {
+            if ($employer) {
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthenticated'
-                ], 401);
+                    'status' => true,
+                    'is_profile_complete' => $employer->is_profile_verified
+                ], 200);
             }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CHECK RECRUITER LOGIN
+        |--------------------------------------------------------------------------
+        */
+
+            $recruiter = Auth::guard('employer_user')->user();
+
+            if ($recruiter) {
+
+                // 🔥 get employer
+                $employer = \App\Models\Employer::find($recruiter->employer_id);
+
+                return response()->json([
+                    'status' => true,
+                    'is_profile_complete' => $employer ? $employer->is_profile_verified : false
+                ], 200);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | ❌ NO AUTH
+        |--------------------------------------------------------------------------
+        */
+
             return response()->json([
-                'status' => true,
-                'is_profile_complete' => $employer->is_profile_verified
-            ], 200);
+                'status' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
         } catch (\Exception $e) {
 
             return response()->json([
