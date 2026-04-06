@@ -699,12 +699,45 @@ class EmployerController extends Controller
 
             $employer = Auth::guard('employer')->user();
 
-            $jobs = Job::where('expires_at', '>', now())->where('employer_id', $employer->id)->latest()->get();
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 ACTIVE JOBS
+        |--------------------------------------------------------------------------
+        */
+
+            $activeJobs = Job::where('employer_id', $employer->id)
+                ->where('expires_at', '>', now())
+                ->latest()
+                ->get();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 EXPIRED JOBS
+        |--------------------------------------------------------------------------
+        */
+
+            $expiredJobs = Job::where('employer_id', $employer->id)
+                ->where('expires_at', '<=', now())
+                ->latest()
+                ->get();
 
             return response()->json([
                 'status' => true,
-                'total_jobs' => $jobs->count(),
-                'data' => $jobs
+
+                'total_active_jobs' => $activeJobs->count(),
+                'total_expired_jobs' => $expiredJobs->count(),
+
+                'data' => [
+                    'active_jobs' => $activeJobs,
+                    'expired_jobs' => $expiredJobs
+                ]
             ], 200);
         } catch (\Exception $e) {
 
@@ -719,7 +752,8 @@ class EmployerController extends Controller
 
     //Job details specific for company
 
-    public function getJobDetails($id){
+    public function getJobDetails($id)
+    {
         try {
             $employer = Auth::guard('employer')->user();
 
