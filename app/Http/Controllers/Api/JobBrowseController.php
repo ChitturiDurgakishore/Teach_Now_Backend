@@ -16,6 +16,7 @@ use App\Models\Location;
 use App\Models\User;
 use App\Models\JobQuestion;
 use App\Models\JobAnswer;
+use App\Models\JobSeekerCV;
 use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
 
@@ -146,7 +147,7 @@ class JobBrowseController extends Controller
                 'answers' => 'nullable|array',
                 'answers.*.question_id' => 'required|exists:job_questions,id',
                 'answers.*.candidate_answer' => 'required',
-                'resume_id' => 'nullable|exists:resumes,id' // optional input
+                'resume_id' => 'nullable|integer' // 🔥 removed exists rule (since 2 tables)
             ]);
 
             $user = Auth::user();
@@ -193,29 +194,45 @@ class JobBrowseController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 RESUME HANDLING (MANDATORY VIA DEFAULT OR INPUT)
+        | 🔥 CV / RESUME HANDLING (CV FIRST)
         |--------------------------------------------------------------------------
         */
 
+            $resume = null;
+
             if ($request->filled('resume_id')) {
 
-                // ✅ Check if resume belongs to user
-                $resume = Resume::where('id', $request->resume_id)
+                // 🔥 1. CHECK CV FIRST
+                $resume = JobSeekerCV::where('id', $request->resume_id)
                     ->where('job_seeker_id', $jobSeeker->id)
                     ->first();
+
+                // 🔥 2. IF NOT CV → CHECK RESUME
+                if (!$resume) {
+                    $resume = Resume::where('id', $request->resume_id)
+                        ->where('job_seeker_id', $jobSeeker->id)
+                        ->first();
+                }
             } else {
 
-                // ✅ Get default resume
-                $resume = Resume::where('job_seeker_id', $jobSeeker->id)
+                // 🔥 1. DEFAULT CV
+                $resume = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)
                     ->where('is_default', true)
                     ->first();
+
+                // 🔥 2. DEFAULT RESUME (fallback)
+                if (!$resume) {
+                    $resume = Resume::where('job_seeker_id', $jobSeeker->id)
+                        ->where('is_default', true)
+                        ->first();
+                }
             }
 
-            // ❌ No resume found
+            // ❌ Nothing found
             if (!$resume) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Please upload or set a default resume before applying'
+                    'message' => 'Please upload or set a default CV/Resume before applying'
                 ], 422);
             }
 
@@ -228,7 +245,10 @@ class JobBrowseController extends Controller
             $application = JobApplication::create([
                 'job_id' => $jobId,
                 'job_seeker_id' => $jobSeeker->id,
+
+                // 🔥 IMPORTANT: works for both CV & Resume IDs
                 'resume_id' => $resume->id,
+
                 'status' => 'applied'
             ]);
 
@@ -251,7 +271,7 @@ class JobBrowseController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 MAIL (SAFE)
+        | 🔥 MAIL
         |--------------------------------------------------------------------------
         */
 
@@ -288,7 +308,6 @@ class JobBrowseController extends Controller
             ], 500);
         }
     }
-
 
     //Get applied Jobs
 
