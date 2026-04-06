@@ -1263,7 +1263,7 @@ class EmployerController extends Controller
 
                     // 🔥 Applicant details
                     'jobSeeker',
-
+                    'jobSeeker.user',
                     // 🔥 Resume (if needed)
                     'resume:id,file_name,file_url'
                 ])
