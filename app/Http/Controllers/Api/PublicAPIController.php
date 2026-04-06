@@ -908,7 +908,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 GET RESOURCE BY SLUG
+        | 🔥 GET RESOURCE
         |--------------------------------------------------------------------------
         */
 
@@ -923,20 +923,7 @@ class PublicAPIController extends Controller
                 ], 404);
             }
 
-            $filePath = $resource->pdf;
-
-            /*
-        |--------------------------------------------------------------------------
-        | ❌ FILE NOT IN STORAGE
-        |--------------------------------------------------------------------------
-        */
-
-            if (!Storage::exists($filePath)) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'File missing in storage'
-                ], 404);
-            }
+            $filePath = public_path($resource->pdf); // ✅ IMPORTANT FIX
 
             /*
         |--------------------------------------------------------------------------
@@ -948,20 +935,11 @@ class PublicAPIController extends Controller
                 'user_id' => $user->id,
                 'resource_type' => 'teaching_resource',
                 'resource_id' => $resource->id,
-                'file_name' => basename($filePath),
-                'file_path' => $filePath,
+                'file_name' => basename($resource->pdf),
+                'file_path' => $resource->pdf,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent()
             ]);
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 OPTIONAL: increment download count
-        |--------------------------------------------------------------------------
-        */
-
-            // add column if needed
-            // $resource->increment('download_count');
 
             /*
         |--------------------------------------------------------------------------
@@ -969,7 +947,7 @@ class PublicAPIController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            return Storage::download(
+            return response()->download(
                 $filePath,
                 $resource->title . '.pdf'
             );
