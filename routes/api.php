@@ -38,6 +38,14 @@ Route::prefix('auth')->group(function () {
 });
 
 
+Route::prefix('auth')->group(function () {
+
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+});
+
+
 Route::prefix('auth')->middleware('auth')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
     Route::post('/logout', [AuthController::class, 'logout']);

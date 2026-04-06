@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Exception;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+
 
 class AuthController extends Controller
 {
@@ -140,7 +142,222 @@ class AuthController extends Controller
         return response()->json([
             'status' => true,
             'user' => $request->user(),
-            'auth_id'=>Auth::id()
+            'auth_id' => Auth::id()
         ]);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'email' => 'required|email'
+            ]);
+
+            $email = $request->email;
+            $role = null;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 DETECT ROLE
+        |--------------------------------------------------------------------------
+        */
+
+            if (\App\Models\Employer::where('email', $email)->exists()) {
+                $role = 'employer';
+            } elseif (\App\Models\EmployerUser::where('email', $email)->exists()) {
+                $role = 'recruiter';
+            } elseif (\App\Models\User::where('email', $email)->exists()) {
+                $role = 'jobseeker';
+            }
+
+            if (!$role) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Email not found'
+                ], 404);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GENERATE OTP
+        |--------------------------------------------------------------------------
+        */
+
+            $otp = rand(100000, 999999);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 SAVE / UPDATE OTP
+        |--------------------------------------------------------------------------
+        */
+
+            DB::table('password_resets')->updateOrInsert(
+                ['email' => $email],
+                [
+                    'role' => $role,
+                    'otp' => $otp,
+                    'expires_at' => now()->addMinutes(10),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 SEND MAIL
+        |--------------------------------------------------------------------------
+        */
+
+            try {
+                $mailService = new \App\Services\MailService();
+
+                $mailService->send('forgot_password', [
+                    'otp' => $otp
+                ], $email);
+            } catch (\Exception $mailException) {
+                Log::error('Forgot password mail failed', [
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'OTP sent to email'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to process request',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'email' => 'required|email',
+                'otp' => 'required'
+            ]);
+
+            $record = DB::table('password_resets')
+                ->where('email', $request->email)
+                ->first();
+
+            if (!$record) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid request'
+                ], 400);
+            }
+
+            if ($record->otp != $request->otp) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid OTP'
+                ], 400);
+            }
+
+            if (now()->gt($record->expires_at)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'OTP expired'
+                ], 400);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'OTP verified'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Verification failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function resetPassword(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'email' => 'required|email',
+                'otp' => 'required',
+                'password' => 'required|min:6|confirmed'
+            ]);
+
+            $record = DB::table('password_resets')
+                ->where('email', $request->email)
+                ->first();
+
+            if (!$record || $record->otp != $request->otp) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid OTP'
+                ], 400);
+            }
+
+            if (now()->gt($record->expires_at)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'OTP expired'
+                ], 400);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 UPDATE PASSWORD BASED ON ROLE
+        |--------------------------------------------------------------------------
+        */
+
+            $hashedPassword = bcrypt($request->password);
+
+            switch ($record->role) {
+
+                case 'employer':
+                    \App\Models\Employer::where('email', $request->email)
+                        ->update(['password' => $hashedPassword]);
+                    break;
+
+                case 'recruiter':
+                    \App\Models\EmployerUser::where('email', $request->email)
+                        ->update(['password' => $hashedPassword]);
+                    break;
+
+                case 'jobseeker':
+                    \App\Models\User::where('email', $request->email)
+                        ->update(['password' => $hashedPassword]);
+                    break;
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 DELETE OTP
+        |--------------------------------------------------------------------------
+        */
+
+            DB::table('password_resets')
+                ->where('email', $request->email)
+                ->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Password reset successful'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Reset failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
