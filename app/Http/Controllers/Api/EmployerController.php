@@ -725,7 +725,7 @@ class EmployerController extends Controller
 
             $job = Job::where('id', $id)
                 ->where('employer_id', $employer->id)
-                ->with(['jobQuestions', 'category'])
+                ->with(['questions', 'category'])
                 ->first();
 
             if (!$job) {
