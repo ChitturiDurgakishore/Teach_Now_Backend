@@ -1233,19 +1233,46 @@ class EmployerController extends Controller
 
 
     //Applications for Company Jobs
-    public function getApplications()
+    public function getApplications(Request $request)
     {
         try {
 
             $employer = Auth::guard('employer')->user();
 
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $perPage = $request->get('per_page', 10);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FETCH APPLICATIONS WITH RELATIONS
+        |--------------------------------------------------------------------------
+        */
+
             $applications = JobApplication::whereHas('job', function ($q) use ($employer) {
                 $q->where('employer_id', $employer->id);
-            })->latest()->get();
+            })
+                ->with([
+                    // 🔥 Job details
+                    'job:id,title,job_status,expires_at',
+
+                    // 🔥 Applicant details
+                    'jobSeeker:id,user_id',
+                    'jobSeeker.user:id,name,email',
+
+                    // 🔥 Resume (if needed)
+                    'resume:id,file_name,file_url'
+                ])
+                ->latest()
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
-                'total_applications' => $applications->count(),
                 'data' => $applications
             ], 200);
         } catch (\Exception $e) {
