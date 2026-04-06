@@ -370,6 +370,8 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer/payment'
 
 Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group(function () {
 
+    //Profile flag API
+    Route::get('/profile/flag', [EmployerController::class, 'getProfileFlags']); //Get profile flags for employer
     // Recruiter management for employer
     Route::post('/users', [EmployerController::class, 'createEmployerUser']); //Employer user creation
     Route::get('/users', [EmployerController::class, 'getEmployerUsers']); //Get employer users
@@ -440,8 +442,9 @@ Route::prefix('recruiter')->group(function () {
         //Profile management
 
 
-        Route::get('/profile', [RecruiterController::class, 'getProfile']); //Get recruiter profile
-
+        Route::get('/profile', [RecruiterController::class, 'profileflag']); //Get recruiter profile
+        //Flag
+        Route::get('/profile/flag', [RecruiterController::class, 'profileflag']); //Get profile flags for recruiter
 
         // Jobs management
         Route::get('/jobs/expired', [RecruiterController::class, 'getExpiredJobsForRecruiter']); //Expired jobs

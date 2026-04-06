@@ -313,7 +313,18 @@ class EmployerController extends Controller
                 'latitude' => $request->latitude ?? $employer->latitude,
                 'longitude' => $request->longitude ?? $employer->longitude,
                 'institution_type' => $request->institution_type ?? $employer->institution_type,
+
+
             ]);
+            if (
+                $employer->company_name &&
+                $employer->company_description &&
+                $employer->industry &&
+                $employer->phone
+            ) {
+                $employer->is_profile_verified = 1;
+                $employer->save();
+            }
 
             return response()->json([
                 'status' => true,
@@ -325,6 +336,32 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Company update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //Employer Profile flag API
+
+    public function profileflag(){
+        try {
+            $employer = Auth::guard('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+            return response()->json([
+                'status' => true,
+                'is_profile_complete' => $employer->is_profile_verified
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to check profile status',
                 'error' => $e->getMessage()
             ], 500);
         }

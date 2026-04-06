@@ -122,6 +122,32 @@ class RecruiterController extends Controller
         }
     }
 
+    //Recruiter profile flag api
+    public function profileflag()
+    {
+        try {
+            $employer = Auth::guard('employer_user')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+            return response()->json([
+                'status' => true,
+                'is_profile_complete' => $employer->is_profile_verified
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to check profile status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // Recruiter Job creation
 
 
