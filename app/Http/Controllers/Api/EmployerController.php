@@ -36,7 +36,7 @@ class EmployerController extends Controller
 
         $path = $file->storeAs("storage/media/$folder", $filename);
 
-        return  $path;
+        return str_replace('public/', 'storage/', $path);
     }
 
 
