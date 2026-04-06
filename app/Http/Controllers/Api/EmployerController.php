@@ -1262,8 +1262,7 @@ class EmployerController extends Controller
                     'job:id,title,job_status,expires_at',
 
                     // 🔥 Applicant details
-                    'jobSeeker:id,user_id',
-                    'jobSeeker.user:id,name,email',
+                    'jobSeeker',
 
                     // 🔥 Resume (if needed)
                     'resume:id,file_name,file_url'
