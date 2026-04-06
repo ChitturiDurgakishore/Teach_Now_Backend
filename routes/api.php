@@ -437,10 +437,11 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
 
     Route::get('/jobs/expired', [EmployerController::class, 'getExpiredJobsForEmployer']); //Employer expiry jobs
     Route::put('/jobs/{id}/republish', [EmployerController::class, 'republishJob']); //Republish job
+
     // Application management
 
-    Route::get('/jobs/{jobId}', [EmployerController::class, 'getJobApplications']);
-    Route::get('/profile/{applicationId}', [EmployerController::class, 'viewApplicantProfile']);
+    Route::get('/jobs/{jobId}', [EmployerController::class, 'getJobApplications']); //specific job applications
+    Route::get('/profile/{applicationId}', [EmployerController::class, 'viewApplicantProfile']); //View applicant profile
     Route::patch('/shortlist/{applicationId}', [EmployerController::class, 'shortlistCandidate']);
     Route::patch('/reject/{applicationId}', [EmployerController::class, 'rejectCandidate']);
     Route::get('/shortlisted/{jobId}', [EmployerController::class, 'getShortlistedCandidates']);

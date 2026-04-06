@@ -1526,19 +1526,21 @@ class EmployerController extends Controller
         try {
 
             $request->validate([
+                'document_type' => 'required|string',
                 'document_name' => 'nullable|string',
                 'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240'
             ]);
 
             $employer = Auth::guard('employer')->user();
             $file = $request->file('document_file');
-
+            $file_type=$request->document_type;
             $docName = $request->document_name ?? $file->getClientOriginalName();
 
             $filePath = $this->uploadFile($file, 'documents');
 
             $doc = DocumentVerification::create([
                 'employer_id' => $employer->id,
+                'document_type' => $file_type,
                 'document_name' => $docName,
                 'document_file' => $filePath,
                 'status' => 'pending'
@@ -1551,7 +1553,7 @@ class EmployerController extends Controller
 
                 $mailService->send('document_uploaded', [
                     'name' => $employer->company_name,
-                    'document_name' => $docName
+                    'document_name' => $file_type
                 ], $employer->email);
 
                 Log::info('Document upload mail queued', [
