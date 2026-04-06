@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\Admin\AdminDeletedController;
 use App\Http\Controllers\Api\Admin\MailController;
 use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Payment\OrderController;
+use App\Http\Controllers\Api\ResourceController;
 
 Route::prefix('auth')->group(function () {
 
@@ -106,6 +107,8 @@ Route::prefix('open')->group(function () {
     Route::get('/resources', [PublicAPIController::class, 'listResources']);
 });
 
+//resource download
+Route::middleware(['auth'])->get('/download/{slug}', [PublicAPIController::class, 'download']);
 
 // ---------------------------------------------------------------------
 
@@ -478,7 +481,6 @@ Route::prefix('recruiter')->group(function () {
 
 // ----------------------------------------------------------------------------------
 // Job-Seeker routes
-
 
 
 

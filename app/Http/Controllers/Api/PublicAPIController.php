@@ -20,6 +20,14 @@ use App\Models\SearchLog;
 use App\Models\Location;
 use App\Models\PopularTitle;
 use App\Models\TeachingResource;
+use Illuminate\Support\Facades\Storage;
+use App\Models\ResourceDownload;
+use App\Models\Resume;
+use App\Models\JobSeekerCV;
+use App\Models\Invoice;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Resource;
+
 
 class PublicAPIController extends Controller
 {
@@ -878,6 +886,94 @@ class PublicAPIController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch resources',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //download resource API
+    public function download(Request $request, $slug)
+    {
+        try {
+
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GET RESOURCE BY SLUG
+        |--------------------------------------------------------------------------
+        */
+
+            $resource = TeachingResource::where('slug', $slug)
+                ->where('is_visible', true)
+                ->first();
+
+            if (!$resource || !$resource->file_path) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Resource not found'
+                ], 404);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | ❌ FILE NOT IN STORAGE
+        |--------------------------------------------------------------------------
+        */
+
+            if (!Storage::exists($resource->file_path)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'File missing in storage'
+                ], 404);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 LOG DOWNLOAD
+        |--------------------------------------------------------------------------
+        */
+
+            ResourceDownload::create([
+                'user_id' => $user->id,
+                'resource_type' => 'teaching_resource',
+                'resource_id' => $resource->id,
+                'file_name' => basename($resource->file_path),
+                'file_path' => $resource->file_path,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent()
+            ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 OPTIONAL: increment counter
+        |--------------------------------------------------------------------------
+        */
+
+            $resource->increment('download_count');
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RETURN DOWNLOAD
+        |--------------------------------------------------------------------------
+        */
+
+            return Storage::download(
+                $resource->file_path,
+                $resource->title . '.' . pathinfo($resource->file_path, PATHINFO_EXTENSION)
+            );
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Download failed',
                 'error' => $e->getMessage()
             ], 500);
         }
