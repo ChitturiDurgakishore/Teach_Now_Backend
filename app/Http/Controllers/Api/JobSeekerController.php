@@ -19,6 +19,10 @@ use App\Models\JobApplication;
 use App\Models\BookmarkedJob;
 use App\Models\HomepageCompanyLogo;
 use App\Models\JobSeekerCV;
+use App\Http\Controllers\Api\CVController;
+use App\Models\Resume;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class JobSeekerController extends Controller
 {
