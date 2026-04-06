@@ -662,6 +662,7 @@ class EmployerController extends Controller
                 ->limit(5)
                 ->get();
 
+            $Company_verification = $employer->is_verified;
             return response()->json([
                 'status' => true,
                 'data' => [
@@ -676,7 +677,8 @@ class EmployerController extends Controller
                     'total_remaining_credits' => $totalRemainingCredits,
 
                     'latest_jobs' => $latestJobs,
-                    'latest_applications' => $latestApplications
+                    'latest_applications' => $latestApplications,
+                    'company_verification' => $Company_verification
                 ]
             ], 200);
         } catch (\Exception $e) {
