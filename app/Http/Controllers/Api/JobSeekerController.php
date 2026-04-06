@@ -815,16 +815,27 @@ class JobSeekerController extends Controller
                 ], 404);
             }
 
-            // 🔥 Try Resume
-            $resume = Resume::where('id', $id)
+            $generatedResume = null;
+            $resume = null;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FIRST CHECK CV TABLE
+        |--------------------------------------------------------------------------
+        */
+
+            $generatedResume = JobSeekerCV::where('id', $id)
                 ->where('job_seeker_id', $jobSeeker->id)
                 ->first();
 
-            $generatedResume = null;
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 IF NOT FOUND → CHECK RESUME TABLE
+        |--------------------------------------------------------------------------
+        */
 
-            // 🔥 If not found, check CV table
-            if (!$resume) {
-                $generatedResume = JobSeekerCV::where('id', $id)
+            if (!$generatedResume) {
+                $resume = Resume::where('id', $id)
                     ->where('job_seeker_id', $jobSeeker->id)
                     ->first();
             }
@@ -843,9 +854,9 @@ class JobSeekerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $isDefault = $resume
-                ? $resume->is_default
-                : $generatedResume->is_default;
+            $isDefault = $generatedResume
+                ? $generatedResume->is_default
+                : $resume->is_default;
 
             /*
         |--------------------------------------------------------------------------
@@ -853,10 +864,10 @@ class JobSeekerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            if ($resume) {
-                $resume->delete(); // soft delete
+            if ($generatedResume) {
+                $generatedResume->delete(); // CV delete
             } else {
-                $generatedResume->delete(); // soft delete
+                $resume->delete(); // Resume delete
             }
 
             /*
@@ -867,13 +878,14 @@ class JobSeekerController extends Controller
 
             if ($isDefault) {
 
-                // try to find another resume
-                $newDefault = Resume::where('job_seeker_id', $jobSeeker->id)
+                // 🔥 First try another CV
+                $newDefault = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)
                     ->whereNull('deleted_at')
                     ->first();
 
+                // 🔥 Then fallback to Resume
                 if (!$newDefault) {
-                    $newDefault = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)
+                    $newDefault = Resume::where('job_seeker_id', $jobSeeker->id)
                         ->whereNull('deleted_at')
                         ->first();
                 }
