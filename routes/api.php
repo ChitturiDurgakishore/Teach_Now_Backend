@@ -420,6 +420,8 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
 
     //Jobs management
     Route::get('/jobs', [EmployerController::class, 'getCompanyJobs']); //Get company jobs
+    //separate api for specific job details
+    Route::get('/jobs/{id}', [EmployerController::class, 'getJobDetails']); //Get specific job details
     Route::post('/jobs/create', [EmployerController::class, 'createJob']); //Create job posting
     Route::put('/jobs/update/{id}', [EmployerController::class, 'updateJob']); //Update job posting
     Route::delete('/jobs/delete/{id}', [EmployerController::class, 'deleteJob']); //Delete job posting

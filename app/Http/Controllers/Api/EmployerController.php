@@ -716,6 +716,37 @@ class EmployerController extends Controller
         }
     }
 
+
+    //Job details specific for company
+
+    public function getJobDetails($id){
+        try {
+            $employer = Auth::guard('employer')->user();
+
+            $job = Job::where('id', $id)
+                ->where('employer_id', $employer->id)
+                ->with(['questions', 'category'])
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $job
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch job details',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     // Creating new Job for Company
 
 
