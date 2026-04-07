@@ -649,6 +649,19 @@ class RecruiterController extends Controller
 
             $recruiter = Auth::guard('employer_user')->user();
 
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 VALIDATE JOB (RECRUITER OWNERSHIP)
+        |--------------------------------------------------------------------------
+        */
+
             $job = Job::where('id', $jobId)
                 ->where('created_by', $recruiter->id)
                 ->first();
@@ -660,33 +673,78 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FETCH APPLICATIONS
+        |--------------------------------------------------------------------------
+        */
+
             $applications = JobApplication::where('job_id', $jobId)
-                ->with(['jobSeeker.user'])
+                ->with([
+                    'jobSeeker.user:id,name,email,role',
+                    'jobSeeker:id,user_id,title,phone,location,experience_years,availability,dob,portfolio_website,bio,profile_photo'
+                ])
                 ->latest()
                 ->get();
 
-            // Manually load the answers for each application to avoid the SQL error
-            // Manually load the answers for each application
-            $applications = JobApplication::where('job_id', $jobId)
-                ->with(['jobSeeker.user'])
-                ->latest()
-                ->get();
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 TRANSFORM DATA (SAME STRUCTURE)
+        |--------------------------------------------------------------------------
+        */
 
-            foreach ($applications as $application) {
-                // We fetch the answers manually
-                $answers = \App\Models\JobAnswer::where('job_id', $application->job_id)
-                    ->where('job_seeker_id', $application->job_seeker_id)
-                    ->with('question')
-                    ->get();
+            $data = $applications->map(function ($app) {
 
-                // We force the 'answers' attribute to contain this data
-                $application->setAttribute('answers', $answers);
-            }
+                $answers = \App\Models\JobAnswer::where('job_id', $app->job_id)
+                    ->where('job_seeker_id', $app->job_seeker_id)
+                    ->with('question:id,question,question_type,recruiter_answer')
+                    ->get()
+                    ->map(function ($ans) {
+                        return [
+                            'id' => $ans->question->id ?? null,
+                            'question_type' => $ans->question->question_type ?? null,
+                            'question' => $ans->question->question ?? null,
+                            'recruiter_answer' => $ans->question->recruiter_answer ?? null,
+                            'candidate_answer' => $ans->candidate_answer
+                        ];
+                    });
+
+                return [
+                    'id' => $app->id,
+                    'job_id' => $app->job_id,
+                    'job_seeker_id' => $app->job_seeker_id,
+                    'resume_id' => $app->resume_id,
+                    'cover_letter' => $app->cover_letter,
+                    'status' => $app->status,
+                    'contact_status' => $app->contact_status,
+
+                    'answers' => $answers,
+
+                    'job_seeker' => [
+                        'id' => $app->jobSeeker->id ?? null,
+                        'user_id' => $app->jobSeeker->user_id ?? null,
+                        'title' => $app->jobSeeker->title ?? null,
+                        'phone' => $app->jobSeeker->phone ?? null,
+                        'location' => $app->jobSeeker->location ?? null,
+                        'experience_years' => $app->jobSeeker->experience_years ?? 0,
+                        'availability' => $app->jobSeeker->availability ?? null,
+                        'dob' => $app->jobSeeker->dob ?? null,
+                        'portfolio_website' => $app->jobSeeker->portfolio_website ?? null,
+                        'bio' => $app->jobSeeker->bio ?? null,
+                        'profile_photo' => $app->jobSeeker->profile_photo ?? null,
+
+                        // merged user
+                        'name' => $app->jobSeeker->user->name ?? null,
+                        'email' => $app->jobSeeker->user->email ?? null,
+                        'role' => $app->jobSeeker->user->role ?? null,
+                    ]
+                ];
+            });
 
             return response()->json([
                 'status' => true,
-                'total_applications' => $applications->count(),
-                'data' => $applications
+                'total_applications' => $data->count(),
+                'data' => $data
             ], 200);
         } catch (\Exception $e) {
 
