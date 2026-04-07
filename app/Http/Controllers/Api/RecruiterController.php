@@ -830,14 +830,31 @@ class RecruiterController extends Controller
     public function viewApplicantProfile($applicationId)
     {
         try {
-            // 1. Fetch the application with basics
+
+            $recruiter = Auth::guard('employer_user')->user();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FETCH APPLICATION WITH JOB CHECK
+        |--------------------------------------------------------------------------
+        */
+
             $application = JobApplication::with([
-                'jobSeeker.user',
+                'jobSeeker.user:id,name,email',
                 'jobSeeker.skills:id,name',
-                'resume',
-                'jobSeeker.educations',     // ✅ ADD
+                'jobSeeker.educations',
                 'jobSeeker.experiences',
-            ])->find($applicationId);
+                'job:id,created_by'
+            ])
+                ->where('id', $applicationId)
+                ->first();
 
             if (!$application) {
                 return response()->json([
@@ -846,21 +863,112 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
-            // 2. Manually load the answers using the application's data
-            // This ensures $application->job_id and $application->job_seeker_id are available
+            // 🔥 SECURITY CHECK
+            if ($application->job->created_by != $recruiter->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 HANDLE RESUME / CV USING TYPE (FIXED 🔥)
+        |--------------------------------------------------------------------------
+        */
+
+            $resume = null;
+
+            if ($application->resume_type === 'cv') {
+                $resume = \App\Models\JobSeekerCV::find($application->resume_id);
+            } else {
+                $resume = \App\Models\Resume::find($application->resume_id);
+            }
+
+            $resumeData = null;
+
+            if ($resume) {
+
+                // 🔥 HANDLE BOTH TYPES CORRECTLY
+                if ($application->resume_type === 'cv') {
+
+                    $filePath = $resume->pdf_path ?? null;
+                } else {
+
+                    $filePath = $resume->file_url ?? null;
+                }
+
+                $resumeData = [
+                    'id' => $resume->id,
+                    'file_name' => $resume->file_name ?? $resume->title ?? null,
+                    'file_url' => $filePath ? asset($filePath) : null,
+                    'type' => $application->resume_type
+                ];
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 QUESTIONS + ANSWERS MERGED
+        |--------------------------------------------------------------------------
+        */
+
             $answers = JobAnswer::where('job_id', $application->job_id)
                 ->where('job_seeker_id', $application->job_seeker_id)
-                ->with('question')
-                ->get();
+                ->with('question:id,question,question_type,recruiter_answer')
+                ->get()
+                ->map(function ($ans) {
+                    return [
+                        'question_id' => $ans->question->id,
+                        'question' => $ans->question->question,
+                        'question_type' => $ans->question->question_type,
+                        'expected_answer' => $ans->question->recruiter_answer,
+                        'candidate_answer' => $ans->candidate_answer,
+                        'is_correct' => strtolower($ans->candidate_answer) === strtolower($ans->question->recruiter_answer)
+                    ];
+                })
+                ->values();
 
-            // 3. Attach it to the application object
-            $application->setRelation('answers', $answers);
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FINAL RESPONSE
+        |--------------------------------------------------------------------------
+        */
+
+            $data = [
+                'application_id' => $application->id,
+                'job_id' => $application->job_id,
+                'status' => $application->status,
+                'contact_status' => $application->contact_status,
+
+                'resume' => $resumeData,
+
+                'answers' => $answers,
+
+                'job_seeker' => [
+                    'id' => $application->jobSeeker->id,
+                    'title' => $application->jobSeeker->title,
+                    'phone' => $application->jobSeeker->phone,
+                    'location' => $application->jobSeeker->location,
+                    'experience_years' => $application->jobSeeker->experience_years,
+                    'availability' => $application->jobSeeker->availability,
+                    'bio' => $application->jobSeeker->bio,
+                    'profile_photo' => $application->jobSeeker->profile_photo,
+
+                    'name' => $application->jobSeeker->user->name ?? null,
+                    'email' => $application->jobSeeker->user->email ?? null,
+
+                    'skills' => $application->jobSeeker->skills->pluck('name'),
+                    'educations' => $application->jobSeeker->educations,
+                    'experiences' => $application->jobSeeker->experiences,
+                ]
+            ];
 
             return response()->json([
                 'status' => true,
-                'data' => $application
-            ], 200);
+                'data' => $data
+            ]);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch profile',

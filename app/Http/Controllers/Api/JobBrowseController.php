@@ -147,7 +147,7 @@ class JobBrowseController extends Controller
                 'answers' => 'nullable|array',
                 'answers.*.question_id' => 'required|exists:job_questions,id',
                 'answers.*.candidate_answer' => 'required',
-                'resume_id' => 'nullable|integer' // 🔥 removed exists rule (since 2 tables)
+                'resume_id' => 'nullable|integer'
             ]);
 
             $user = Auth::user();
@@ -180,7 +180,7 @@ class JobBrowseController extends Controller
                 ], 404);
             }
 
-            // ❌ Prevent duplicate application
+            // ❌ Prevent duplicate
             $existing = JobApplication::where('job_id', $jobId)
                 ->where('job_seeker_id', $jobSeeker->id)
                 ->first();
@@ -194,37 +194,54 @@ class JobBrowseController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 CV / RESUME HANDLING (CV FIRST)
+        | 🔥 RESUME / CV HANDLING (WITH TYPE)
         |--------------------------------------------------------------------------
         */
 
             $resume = null;
+            $resumeType = null;
 
             if ($request->filled('resume_id')) {
 
-                // 🔥 1. CHECK CV FIRST
+                // 🔥 CHECK CV FIRST
                 $resume = JobSeekerCV::where('id', $request->resume_id)
                     ->where('job_seeker_id', $jobSeeker->id)
                     ->first();
 
-                // 🔥 2. IF NOT CV → CHECK RESUME
+                if ($resume) {
+                    $resumeType = 'cv';
+                }
+
+                // 🔥 ELSE CHECK RESUME
                 if (!$resume) {
                     $resume = Resume::where('id', $request->resume_id)
                         ->where('job_seeker_id', $jobSeeker->id)
                         ->first();
+
+                    if ($resume) {
+                        $resumeType = 'resume';
+                    }
                 }
             } else {
 
-                // 🔥 1. DEFAULT CV
+                // 🔥 DEFAULT CV
                 $resume = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)
                     ->where('is_default', true)
                     ->first();
 
-                // 🔥 2. DEFAULT RESUME (fallback)
+                if ($resume) {
+                    $resumeType = 'cv';
+                }
+
+                // 🔥 DEFAULT RESUME
                 if (!$resume) {
                     $resume = Resume::where('job_seeker_id', $jobSeeker->id)
                         ->where('is_default', true)
                         ->first();
+
+                    if ($resume) {
+                        $resumeType = 'resume';
+                    }
                 }
             }
 
@@ -245,10 +262,8 @@ class JobBrowseController extends Controller
             $application = JobApplication::create([
                 'job_id' => $jobId,
                 'job_seeker_id' => $jobSeeker->id,
-
-                // 🔥 IMPORTANT: works for both CV & Resume IDs
                 'resume_id' => $resume->id,
-
+                'resume_type' => $resumeType, // 🔥 KEY CHANGE
                 'status' => 'applied'
             ]);
 
@@ -283,7 +298,6 @@ class JobBrowseController extends Controller
                     'job_title' => $job->title
                 ], $user->email);
             } catch (\Exception $mailException) {
-
                 Log::error('Job applied mail failed', [
                     'job_id' => $jobId,
                     'error' => $mailException->getMessage()
@@ -308,7 +322,6 @@ class JobBrowseController extends Controller
             ], 500);
         }
     }
-
     //Get applied Jobs
 
     public function getAppliedJobs()

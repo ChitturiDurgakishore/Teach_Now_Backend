@@ -1414,14 +1414,16 @@ class EmployerController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 HANDLE RESUME OR CV
+        | 🔥 HANDLE RESUME / CV USING TYPE (CLEAN 🔥)
         |--------------------------------------------------------------------------
         */
 
-            $resume = \App\Models\Resume::find($application->resume_id);
+            $resume = null;
 
-            if (!$resume) {
+            if ($application->resume_type === 'cv') {
                 $resume = \App\Models\JobSeekerCV::find($application->resume_id);
+            } else {
+                $resume = \App\Models\Resume::find($application->resume_id);
             }
 
             /*
@@ -1433,11 +1435,21 @@ class EmployerController extends Controller
             $resumeData = null;
 
             if ($resume) {
+
+                // 🔥 HANDLE BOTH TYPES CORRECTLY
+                if ($application->resume_type === 'cv') {
+
+                    $filePath = $resume->pdf_path ?? null;
+                } else {
+
+                    $filePath = $resume->file_url ?? null;
+                }
+
                 $resumeData = [
                     'id' => $resume->id,
-                    'file_name' => $resume->file_name ?? null,
-                    'file_url' => $resume->file_url ?? null,
-                    'type' => $resume instanceof \App\Models\Resume ? 'resume' : 'cv'
+                    'file_name' => $resume->file_name ?? $resume->title ?? null,
+                    'file_url' => $filePath ? asset($filePath) : null,
+                    'type' => $application->resume_type
                 ];
             }
 
@@ -1465,7 +1477,7 @@ class EmployerController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 CLEAN FINAL RESPONSE
+        | 🔥 FINAL RESPONSE
         |--------------------------------------------------------------------------
         */
 
@@ -1489,11 +1501,9 @@ class EmployerController extends Controller
                     'bio' => $application->jobSeeker->bio,
                     'profile_photo' => $application->jobSeeker->profile_photo,
 
-                    // 🔥 merged user fields
                     'name' => $application->jobSeeker->user->name ?? null,
                     'email' => $application->jobSeeker->user->email ?? null,
 
-                    // 🔥 extra
                     'skills' => $application->jobSeeker->skills->pluck('name'),
                     'educations' => $application->jobSeeker->educations,
                     'experiences' => $application->jobSeeker->experiences,
@@ -1513,7 +1523,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
     //Shortlist applicant
     public function shortlistCandidate($applicationId)
     {
