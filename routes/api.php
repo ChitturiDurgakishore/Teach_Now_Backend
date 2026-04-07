@@ -127,6 +127,10 @@ Route::middleware(['auth'])->get('/download/{slug}', [PublicAPIController::class
 // ---------------------------------------------------------------------
 
 
+Route::prefix('admin')->group(function(){
+     Route::post('/login', [AuthController::class, 'AdminLogin']);
+});
+
 // Admin routes
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
 

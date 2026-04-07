@@ -119,6 +119,60 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'An unexpected error occurred during login',
+                'role'=>'job_seeker',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function AdminLogin(Request $request)
+    {
+        try {
+            // Validate Input
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required'
+            ]);
+
+            //  Attempt Authentication
+            if (!Auth::attempt($request->only('email', 'password'))) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid email or password'
+                ], 401);
+            }
+
+            // 3. Check Account Status
+            $user = Auth::user();
+            if ($user->is_active == 0) {
+                Auth::logout();
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your account is disabled. Please contact support.'
+                ], 403);
+            }
+
+            $request->session()->regenerate();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Login successful',
+                'role'=>'admin',
+                'user' => $user
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation Error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            // Log the actual error for debugging
+            Log::error("Login Error: " . $e->getMessage());
+
+            return response()->json([
+                'status' => false,
+                'message' => 'An unexpected error occurred during login',
                 'error' => $e->getMessage()
             ], 500);
         }

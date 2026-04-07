@@ -192,6 +192,7 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Employer login successful',
+                'role'=>'employer',
                 'user' => $user
             ], 200);
         } catch (\Exception $e) {
