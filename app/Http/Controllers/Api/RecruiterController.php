@@ -93,6 +93,35 @@ class RecruiterController extends Controller
         }
     }
 
+
+    //Company profile
+    public function getCompanyProfile()
+    {
+        try {
+            $user = Auth::guard('employer_user')->user();
+            $companyProfile = Employer::find($user->employer_id);
+
+            if (!$companyProfile) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Company profile not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Company profile fetched successfully',
+                'data' => $companyProfile
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch company profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // Recruiter profile
     // Get Recruiter Profile with Company Details
     public function getProfile()

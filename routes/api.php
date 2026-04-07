@@ -487,10 +487,9 @@ Route::prefix('recruiter')->group(function () {
     Route::middleware('auth:employer_user')->group(function () {
 
 
-
+        //Company profile for recruiter
+        Route::get('/company-profile', [RecruiterController::class, 'getCompanyProfile']); //Get company profile for recruiter
         //Profile management
-
-
         Route::get('/profile', [RecruiterController::class, 'profileflag']); //Get recruiter profile
 
         // Jobs management
