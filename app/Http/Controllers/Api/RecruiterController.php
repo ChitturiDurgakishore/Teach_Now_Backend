@@ -901,7 +901,7 @@ class RecruiterController extends Controller
                 $resumeData = [
                     'id' => $resume->id,
                     'file_name' => $resume->file_name ?? $resume->title ?? null,
-                    'file_url' => $filePath ? asset($filePath) : null,
+                    'file_url' => $filePath,
                     'type' => $application->resume_type
                 ];
             }
