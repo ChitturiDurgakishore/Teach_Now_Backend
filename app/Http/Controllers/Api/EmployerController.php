@@ -1809,8 +1809,22 @@ class EmployerController extends Controller
         */
 
             $payments = Payment::where('employer_id', $employer->id)
+                ->with(['subscription.plan:id,name'])
                 ->latest()
-                ->get();
+                ->get()
+                ->map(function ($payment) {
+                    return [
+                        'id' => $payment->id,
+                        'amount' => $payment->amount,
+                        'payment_method' => $payment->payment_method,
+                        'payment_status' => $payment->payment_status,
+                        'transaction_id' => $payment->transaction_id,
+                        'created_at' => $payment->created_at,
+
+                        // 🔥 attach plan name
+                        'plan_name' => $payment->subscription->plan->name ?? null
+                    ];
+                });
 
             /*
         |--------------------------------------------------------------------------
