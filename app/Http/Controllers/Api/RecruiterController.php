@@ -1159,7 +1159,8 @@ class RecruiterController extends Controller
                 'photo' => $photo,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'rating' => $request->rating
             ]);
 
             return response()->json([
@@ -1259,6 +1260,7 @@ class RecruiterController extends Controller
                     $designation = 'Recruiter';
                     $company = $employer->company_name;
                     $photo = $employer->company_logo;
+                    $rating = $request->rating;
                 }
             }
 
@@ -1281,6 +1283,7 @@ class RecruiterController extends Controller
                 'message' => $request->message ?? $testimonial->message,
                 'photo' => $photo,
                 'display_order' => $request->display_order ?? $testimonial->display_order,
+                'rating' => $request->rating
             ]);
 
             return response()->json([

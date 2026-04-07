@@ -16,6 +16,7 @@ class HomepageTestimonial extends Model
         'message',
         'display_order',
         'is_active',
-        'user_id'
+        'user_id',
+        'rating'
     ];
 }

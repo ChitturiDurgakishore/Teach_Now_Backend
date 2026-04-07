@@ -352,7 +352,8 @@ class JobSeekerController extends Controller
                 'photo' => $photo,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'rating' => $request->rating
             ]);
 
             return response()->json([
@@ -439,7 +440,8 @@ class JobSeekerController extends Controller
                 'message' => $request->message ?? $testimonial->message,
                 'photo' => $photo, // ✅ auto controlled
                 'display_order' => $request->display_order ?? $testimonial->display_order,
-                'user_id' => $user->id
+                'user_id' => $user->id,
+                'rating' => $request->rating
             ]);
 
             return response()->json([

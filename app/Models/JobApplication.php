@@ -49,4 +49,6 @@ public function applicationAnswers()
 
     return $this->hasMany(JobAnswer::class, 'job_id', 'job_id');
 }
+
+
 }
