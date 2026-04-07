@@ -56,6 +56,7 @@ class RecruiterController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Recruiter login successful',
+                'role'=>'recruiter',
                 'user' => $user
             ], 200);
         } catch (\Exception $e) {
