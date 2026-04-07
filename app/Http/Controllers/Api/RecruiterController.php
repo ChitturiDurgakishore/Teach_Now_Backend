@@ -19,6 +19,10 @@ use App\Models\Employer;
 use Illuminate\Support\Facades\DB;
 use App\Services\SubscriptionService;
 use App\Models\Subscription;
+use App\Models\HomepageCompanyLogo;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 
 class RecruiterController extends Controller
@@ -66,7 +70,7 @@ class RecruiterController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $platformCompany = \App\Models\HomePageCompanyLogo::select(
+            $platformCompany = HomepageCompanyLogo::select(
                 'company_name',
                 'company_logo',
                 'company_link'
