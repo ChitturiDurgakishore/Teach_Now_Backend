@@ -1394,17 +1394,15 @@ class EmployerController extends Controller
         }
     }
 
-    // View applicant profile
     public function viewApplicantProfile($applicationId)
     {
         try {
-            // 1. Fetch the application with basics
+
             $application = JobApplication::with([
-                'jobSeeker.user',
+                'jobSeeker.user:id,name,email',
                 'jobSeeker.skills:id,name',
-                'resume',
-                'jobSeeker.educations',     // ✅ ADD
-                'jobSeeker.experiences',
+                'jobSeeker.educations',
+                'jobSeeker.experiences'
             ])->find($applicationId);
 
             if (!$application) {
@@ -1414,21 +1412,100 @@ class EmployerController extends Controller
                 ], 404);
             }
 
-            // 2. Manually load the answers using the application's data
-            // This ensures $application->job_id and $application->job_seeker_id are available
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 HANDLE RESUME OR CV
+        |--------------------------------------------------------------------------
+        */
+
+            $resume = \App\Models\Resume::find($application->resume_id);
+
+            if (!$resume) {
+                $resume = \App\Models\JobSeekerCV::find($application->resume_id);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FORMAT RESUME RESPONSE
+        |--------------------------------------------------------------------------
+        */
+
+            $resumeData = null;
+
+            if ($resume) {
+                $resumeData = [
+                    'id' => $resume->id,
+                    'file_name' => $resume->file_name ?? null,
+                    'file_url' => $resume->file_url ?? null,
+                    'type' => $resume instanceof \App\Models\Resume ? 'resume' : 'cv'
+                ];
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 QUESTIONS + ANSWERS MERGED
+        |--------------------------------------------------------------------------
+        */
+
             $answers = JobAnswer::where('job_id', $application->job_id)
                 ->where('job_seeker_id', $application->job_seeker_id)
-                ->with('question')
-                ->get();
+                ->with('question:id,question,question_type,recruiter_answer')
+                ->get()
+                ->map(function ($ans) {
+                    return [
+                        'question_id' => $ans->question->id,
+                        'question' => $ans->question->question,
+                        'question_type' => $ans->question->question_type,
+                        'expected_answer' => $ans->question->recruiter_answer,
+                        'candidate_answer' => $ans->candidate_answer,
+                        'is_correct' => strtolower($ans->candidate_answer) === strtolower($ans->question->recruiter_answer)
+                    ];
+                })
+                ->values();
 
-            // 3. Attach it to the application object
-            $application->setRelation('answers', $answers);
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CLEAN FINAL RESPONSE
+        |--------------------------------------------------------------------------
+        */
+
+            $data = [
+                'application_id' => $application->id,
+                'job_id' => $application->job_id,
+                'status' => $application->status,
+                'contact_status' => $application->contact_status,
+
+                'resume' => $resumeData,
+
+                'answers' => $answers,
+
+                'job_seeker' => [
+                    'id' => $application->jobSeeker->id,
+                    'title' => $application->jobSeeker->title,
+                    'phone' => $application->jobSeeker->phone,
+                    'location' => $application->jobSeeker->location,
+                    'experience_years' => $application->jobSeeker->experience_years,
+                    'availability' => $application->jobSeeker->availability,
+                    'bio' => $application->jobSeeker->bio,
+                    'profile_photo' => $application->jobSeeker->profile_photo,
+
+                    // 🔥 merged user fields
+                    'name' => $application->jobSeeker->user->name ?? null,
+                    'email' => $application->jobSeeker->user->email ?? null,
+
+                    // 🔥 extra
+                    'skills' => $application->jobSeeker->skills->pluck('name'),
+                    'educations' => $application->jobSeeker->educations,
+                    'experiences' => $application->jobSeeker->experiences,
+                ]
+            ];
 
             return response()->json([
                 'status' => true,
-                'data' => $application
-            ], 200);
+                'data' => $data
+            ]);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch profile',
