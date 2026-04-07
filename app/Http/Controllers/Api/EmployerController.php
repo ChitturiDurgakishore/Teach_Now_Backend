@@ -36,7 +36,7 @@ class EmployerController extends Controller
     {
         $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
 
-        $path = $file->storeAs("storage/media/$folder", $filename);
+        $path = $file->storeAs("public/media/$folder", $filename);
 
         return str_replace('public/', 'storage/', $path);
     }
