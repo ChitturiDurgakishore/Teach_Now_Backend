@@ -36,9 +36,10 @@ class EmployerController extends Controller
     {
         $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
 
-        $path = $file->storeAs("public/media/$folder", $filename);
+        // ✅ FORCE public disk (NO duplication)
+        $path = Storage::disk('public')->putFileAs("media/$folder", $file, $filename);
 
-        return str_replace('public/', 'storage/', $path);
+        return 'storage/' . $path;
     }
 
 
@@ -1448,7 +1449,7 @@ class EmployerController extends Controller
                 $resumeData = [
                     'id' => $resume->id,
                     'file_name' => $resume->file_name ?? $resume->title ?? null,
-                    'file_url' => $filePath ,
+                    'file_url' => $filePath,
                     'type' => $application->resume_type
                 ];
             }
