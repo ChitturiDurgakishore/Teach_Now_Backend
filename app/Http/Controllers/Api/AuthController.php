@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\HomepageCompanyLogo;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -119,7 +120,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'An unexpected error occurred during login',
-                'role'=>'job_seeker',
+                'role' => 'job_seeker',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -157,7 +158,7 @@ class AuthController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Login successful',
-                'role'=>'admin',
+                'role' => 'admin',
                 'user' => $user
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -193,11 +194,44 @@ class AuthController extends Controller
 
     public function profile(Request $request)
     {
-        return response()->json([
-            'status' => true,
-            'user' => $request->user(),
-            'auth_id' => Auth::id()
-        ]);
+        try {
+
+            $user = $request->user();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GET PLATFORM COMPANY DETAILS
+        |--------------------------------------------------------------------------
+        */
+
+            $platformCompany = HomepageCompanyLogo::select(
+                'company_name',
+                'company_logo',
+                'company_link'
+            )->first();
+
+            return response()->json([
+                'status' => true,
+
+                'user' => $user,
+                'auth_id' => Auth::id(),
+
+                // 🔥 Platform company details
+                'platform' => [
+                    'company_name' => $platformCompany->company_name ?? null,
+                    'company_logo' => $platformCompany->company_logo ?? null,
+                    'company_link' => $platformCompany->company_link ?? null
+                ]
+
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function forgotPassword(Request $request)
