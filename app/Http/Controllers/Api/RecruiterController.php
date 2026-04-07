@@ -1063,7 +1063,7 @@ class RecruiterController extends Controller
             })
                 ->latest()
                 ->limit(5)
-                ->with(['jobSeeker', 'user:name,email'])
+                ->with(['jobSeeker', 'jobSeeker.user:id,name,email'])
                 ->get();
 
             return response()->json([
