@@ -1788,21 +1788,16 @@ class EmployerController extends Controller
                 'validity_days',
                 'job_live_days'
             )
-                ->where('is_active', 1)
-                ->get()
+                ->get() // 🔥 removed is_active filter
                 ->map(function ($plan) use ($currentPlanId) {
                     return [
                         'id' => $plan->id,
                         'name' => $plan->name,
-
-                        // 🔥 correct fields
                         'actual_price' => $plan->actual_price,
                         'offer_price' => $plan->offer_price,
-
                         'job_posts_limit' => $plan->job_posts_limit,
                         'validity_days' => $plan->validity_days,
                         'job_live_days' => $plan->job_live_days,
-
                         'is_current' => $plan->id == $currentPlanId
                     ];
                 });
