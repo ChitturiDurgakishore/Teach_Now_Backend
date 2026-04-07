@@ -13,7 +13,8 @@ class DocumentVerification extends Model
         'document_file',
         'is_verified',
         'status',
-        'admin_remark'
+        'admin_remark',
+        'document_type',
     ];
 
     public function employer()

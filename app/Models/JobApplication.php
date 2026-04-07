@@ -28,7 +28,8 @@ class JobApplication extends Model
         'resume_id',
         'cover_letter',
         'status',
-        'slug'
+        'slug',
+        'contact_status'
     ];
 
     public function answers()
