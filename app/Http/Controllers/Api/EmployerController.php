@@ -192,7 +192,7 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Employer login successful',
-                'role'=>'employer',
+                'role' => 'employer',
                 'user' => $user
             ], 200);
         } catch (\Exception $e) {
@@ -1760,6 +1760,62 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch payment data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    //Contact status update
+
+    public function updateContactStatusByEmployer(Request $request, $id)
+    {
+        try {
+
+            $request->validate([
+                'contact_status' => 'required|in:called,messaged,not_picked,not_reachable'
+            ]);
+
+            $employer = Auth::guard('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $application = JobApplication::with('job')->find($id);
+
+            if (!$application) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Application not found'
+                ], 404);
+            }
+
+            // 🔥 Employer owns the job
+            if ($application->job->employer_id != $employer->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $application->update([
+                'contact_status' => $request->contact_status
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Contact status updated (Employer)',
+                'data' => $application
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed',
                 'error' => $e->getMessage()
             ], 500);
         }

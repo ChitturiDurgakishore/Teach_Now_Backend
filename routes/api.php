@@ -439,6 +439,10 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::delete('/jobs/delete/{id}', [EmployerController::class, 'deleteJob']); //Delete job posting
     Route::put('/jobs/{id}/filled', [EmployerController::class, 'markJobFilled']); //Mark job as filled
 
+    //COntact status update for applications
+    Route::patch('/applications/contact-status/{id}', [EmployerController::class, 'updateContactStatusByEmployer']);
+
+    // Separate API for expired jobs
     Route::get('/jobs/expired', [EmployerController::class, 'getExpiredJobsForEmployer']); //Employer expiry jobs
     Route::put('/jobs/{id}/republish', [EmployerController::class, 'republishJob']); //Republish job
 
@@ -512,6 +516,9 @@ Route::prefix('recruiter')->group(function () {
         Route::get('/shortlisted', [RecruiterController::class, 'getAllShortlistedCandidates']); //Get all shortlisted candidates
         Route::get('/dashboard', [RecruiterController::class, 'dashboard']);
 
+
+        //Contact status update for applications
+        Route::patch('/applications/contact-status/{id}', [RecruiterController::class, 'updateContactStatusByRecruiter']);
         //Testimonials management
         Route::get('testimonials', [RecruiterController::class, 'getTestimonials']);
         Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
