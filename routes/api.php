@@ -489,8 +489,7 @@ Route::prefix('recruiter')->group(function () {
 
         //Company profile for recruiter
         Route::get('/company-profile', [RecruiterController::class, 'getCompanyProfile']); //Get company profile for recruiter
-        //Profile management
-        Route::get('/profile', [RecruiterController::class, 'profileflag']); //Get recruiter profile
+
 
         // Jobs management
         Route::get('/jobs/expired', [RecruiterController::class, 'getExpiredJobsForRecruiter']); //Expired jobs
