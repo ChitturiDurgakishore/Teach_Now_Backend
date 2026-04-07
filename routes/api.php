@@ -498,7 +498,7 @@ Route::prefix('recruiter')->group(function () {
         Route::put('/jobs/{id}/filled', [RecruiterController::class, 'markJobFilled']); //Mark job as filled
         Route::get('/jobs', [RecruiterController::class, 'getRecruiterJobs']); //Get recruiter jobs
         Route::put('/jobs/{id}/republish', [RecruiterController::class, 'republishJob']); //Republish job
-
+        Route::get('/jobs/specific-job/{id}', [RecruiterController::class, 'getJobDetails']); //Get specific job details
 
         // Feature JOb
         Route::post('/job/{id}/toggle-feature', [RecruiterController::class, 'toggleJobFeatured']);

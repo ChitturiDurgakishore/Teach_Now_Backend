@@ -1377,4 +1377,44 @@ class RecruiterController extends Controller
             ], 500);
         }
     }
+
+    //Specific job details for recruiter
+    public function getJobDetails($id)
+    {
+        try {
+
+            $recruiter = Auth::guard('employer_user')->user();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $job = Job::where('id', $id)
+                ->where('created_by', $recruiter->id)
+                ->withCount('jobApplications')
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $job
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch job details',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
