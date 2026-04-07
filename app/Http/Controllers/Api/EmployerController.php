@@ -1779,10 +1779,17 @@ class EmployerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $plans = Plan::get()->map(function ($plan) use ($currentPlanId) {
-                $plan->is_current = $plan->id === $currentPlanId;
-                return $plan;
-            });
+            $plans = Plan::select('id', 'name', 'price', 'job_credits')
+                ->get()
+                ->map(function ($plan) use ($currentPlanId) {
+                    return [
+                        'id' => $plan->id,
+                        'name' => $plan->name,
+                        'price' => $plan->price,
+                        'job_credits' => $plan->job_credits,
+                        'is_current' => $plan->id == $currentPlanId
+                    ];
+                });
 
             /*
         |--------------------------------------------------------------------------
