@@ -73,7 +73,7 @@ class RecruiterController extends Controller
             $platformCompany = HomepageCompanyLogo::select(
                 'company_name',
                 'company_logo',
-                'company_link'
+                'company_url'
             )->first();
 
             return response()->json([
@@ -97,7 +97,7 @@ class RecruiterController extends Controller
                 'platform' => [
                     'company_name' => $platformCompany->company_name ?? null,
                     'company_logo' => $platformCompany->company_logo ?? null,
-                    'company_link' => $platformCompany->company_link ?? null
+                    'company_link' => $platformCompany->company_url ?? null
                 ]
 
             ], 200);
