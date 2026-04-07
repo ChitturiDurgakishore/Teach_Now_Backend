@@ -42,7 +42,7 @@ class RecruiterController extends Controller
                 ], 401);
             }
 
-            if (!$user->is_active == 1) {
+            if ($user->is_active != 1) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Account disabled'
@@ -50,14 +50,52 @@ class RecruiterController extends Controller
             }
 
             Auth::guard('employer_user')->login($user);
-
             $request->session()->regenerate();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GET EMPLOYER DETAILS
+        |--------------------------------------------------------------------------
+        */
+
+            $employer = \App\Models\Employer::find($user->employer_id);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GET PLATFORM COMPANY DETAILS
+        |--------------------------------------------------------------------------
+        */
+
+            $platformCompany = \App\Models\HomePageCompanyLogo::select(
+                'company_name',
+                'company_logo',
+                'company_link'
+            )->first();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Recruiter login successful',
                 'role' => 'recruiter',
-                'user' => $user
+
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'employer_id' => $user->employer_id
+                ],
+
+                // 🔥 Employer company logo
+                'employer' => [
+                    'company_logo' => $employer->company_logo ?? null
+                ],
+
+                // 🔥 Platform company details
+                'platform' => [
+                    'company_name' => $platformCompany->company_name ?? null,
+                    'company_logo' => $platformCompany->company_logo ?? null,
+                    'company_link' => $platformCompany->company_link ?? null
+                ]
+
             ], 200);
         } catch (\Exception $e) {
 
