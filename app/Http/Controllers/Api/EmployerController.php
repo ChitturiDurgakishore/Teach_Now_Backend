@@ -1779,14 +1779,30 @@ class EmployerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $plans = Plan::select('id', 'name', 'price', 'job_credits')
+            $plans = Plan::select(
+                'id',
+                'name',
+                'actual_price',
+                'offer_price',
+                'job_posts_limit',
+                'validity_days',
+                'job_live_days'
+            )
+                ->where('is_active', 1)
                 ->get()
                 ->map(function ($plan) use ($currentPlanId) {
                     return [
                         'id' => $plan->id,
                         'name' => $plan->name,
-                        'price' => $plan->price,
-                        'job_credits' => $plan->job_credits,
+
+                        // 🔥 correct fields
+                        'actual_price' => $plan->actual_price,
+                        'offer_price' => $plan->offer_price,
+
+                        'job_posts_limit' => $plan->job_posts_limit,
+                        'validity_days' => $plan->validity_days,
+                        'job_live_days' => $plan->job_live_days,
+
                         'is_current' => $plan->id == $currentPlanId
                     ];
                 });
