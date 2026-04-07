@@ -51,20 +51,12 @@ class EmployerController extends Controller
 
             $request->validate([
                 'company_name' => 'required|string|max:200',
-                'company_description' => 'nullable|string',
-                'industry' => 'nullable|string|max:150',
-                'website' => 'nullable|string',
-                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-                'address' => 'nullable|string',
+
                 'email' => 'required|email',
                 'phone' => 'nullable|string',
-                'country' => 'nullable|string',
-                'city' => 'nullable|string',
-                'map_link' => 'nullable|string',
+
                 'password' => 'required|min:6',
-                'latitude' => 'nullable|numeric|between:-90,90',
-                'longitude' => 'nullable|numeric|between:-180,180',
-                'institution_type' => 'nullable|in:School,Intermediate,Diploma,UG,PG',
+
             ]);
 
             // 🔥 Upload logo (FIXED)
