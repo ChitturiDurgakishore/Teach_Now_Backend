@@ -405,7 +405,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
 
 // Payments and Orders route
 
-Route::middleware(['auth:employer', 'role:employer'])->prefix('employer/payment')->group(function () {
+Route::middleware(['auth:sanctum', 'role:employer'])->prefix('employer/payment')->group(function () {
     Route::post('/create-order', [OrderController::class, 'createOrder']);
     Route::post('/verify-payment', [OrderController::class, 'verifyPayment']);
 });
