@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Admin\MailController;
 use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Payment\OrderController;
 use App\Http\Controllers\Api\ResourceController;
+use App\Http\Controllers\Api\NotificationController;
 
 Route::prefix('auth')->group(function () {
 
@@ -148,6 +149,11 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
 
     // Dashboard and analytics
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
+
+    //Notifications
+    Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 
     //Jobs Management for Admin
 
@@ -471,6 +477,11 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::get('/invoices/{id}', [EmployerController::class, 'getInvoicePdf']);
     Route::get('/invoices/{id}', [EmployerController::class, 'downloadInvoice']);
 
+    //Notifications
+    Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [EmployerController::class, 'logout']);
     });
@@ -522,6 +533,12 @@ Route::prefix('recruiter')->group(function () {
         Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
         Route::put('testimonials/{id}', [RecruiterController::class, 'updateTestimonial']);
         Route::delete('testimonials/{id}', [RecruiterController::class, 'deleteTestimonial']);
+
+        //Notifications
+
+        Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
     });
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -596,16 +613,14 @@ Route::middleware(['auth:sanctum', 'role:job_seeker'])->prefix('jobseeker')->gro
 
     //Logout for jobseeker
     Route::post('/logout', [JobSeekerController::class, 'logout']);
+
+    //Notifications
+    Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 });
 
 
 // ----------------------------------------------------------------------------------
 
-use App\Http\Controllers\Api\NotificationController;
-//Notifications API
-Route::middleware(['auth:sanctum'])->group(function () {
 
-    Route::get('/notifications', [NotificationController::class, 'getNotifications']);
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-});
