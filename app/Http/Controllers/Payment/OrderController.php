@@ -169,7 +169,6 @@ class OrderController extends Controller
 
     //Verify payment
 
-
     public function verifyPayment(Request $request)
     {
         try {
@@ -272,7 +271,7 @@ class OrderController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔔 NOTIFICATIONS (FIXED)
+        | 🔔 NOTIFICATIONS
         |--------------------------------------------------------------------------
         */
 
@@ -289,20 +288,54 @@ class OrderController extends Controller
                 ]
             );
 
-            // ✅ Admin Notifications (FIXED ✅)
-            $admins = \App\Models\User::where('role', 'admin')->get();
+            // ✅ Admin Notifications
+            $admins = \App\Models\User::where('role', 'admin')
+                ->whereNotNull('email')
+                ->get();
 
             foreach ($admins as $admin) {
                 $this->notification->send(
                     'payment_success',
                     'admin',
-                    $admin->id, // 🔥 FIX: no more null
+                    $admin->id,
                     'Payment Received',
                     "Payment received from '{$employer->company_name}'",
                     [
                         'order_id' => $order->id
                     ]
                 );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 📧 MAILS
+        |--------------------------------------------------------------------------
+        */
+
+            try {
+
+                $mailService = new \App\Services\MailService();
+
+                // ✅ Employer Mail
+                $mailService->send('payment_success', [
+                    'name' => $employer->company_name,
+                    'plan_name' => $plan->name,
+                    'amount' => $order->amount
+                ], $employer->email);
+
+                // ✅ Admin Mails
+                foreach ($admins as $admin) {
+                    $mailService->send('payment_received_admin', [
+                        'company_name' => $employer->company_name,
+                        'plan_name' => $plan->name,
+                        'amount' => $order->amount
+                    ], $admin->email);
+                }
+            } catch (\Exception $mailException) {
+
+                Log::error('Payment mail failed (verifyPayment)', [
+                    'error' => $mailException->getMessage()
+                ]);
             }
 
             return response()->json([
