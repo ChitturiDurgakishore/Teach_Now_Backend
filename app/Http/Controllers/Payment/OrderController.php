@@ -38,7 +38,7 @@ class OrderController extends Controller
             ]);
 
             // ✅ AUTH CHECK
-            $employer = Auth::user();
+            $employer = Auth::guard('employer')->user();
 
             if (!$employer) {
                 return response()->json([
