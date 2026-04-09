@@ -229,9 +229,24 @@ class EmployerController extends Controller
 
             $employer = Auth::guard('employer')->user();
 
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            // 🔥 FETCH COMPANY LOGOS (ACTIVE + ORDERED)
+            $companyLogos = \App\Models\HomePageCompanyLogo::where('is_active', 1)
+                ->orderBy('display_order', 'asc')
+                ->get();
+
             return response()->json([
                 'status' => true,
-                'data' => $employer
+                'data' => [
+                    'employer' => $employer,
+                    'company_logos' => $companyLogos
+                ]
             ], 200);
         } catch (\Exception $e) {
 
