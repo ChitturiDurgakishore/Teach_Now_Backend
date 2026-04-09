@@ -15,6 +15,7 @@ use App\Models\JobAnswer;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Models\DocumentVerification;
+use App\Models\HomepageCompanyLogo;
 use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -237,7 +238,7 @@ class EmployerController extends Controller
             }
 
             // 🔥 FETCH COMPANY LOGOS (ACTIVE + ORDERED)
-            $companyLogos = \App\Models\HomePageCompanyLogo::where('is_active', 1)
+            $companyLogos = HomepageCompanyLogo::where('is_active', 1)
                 ->orderBy('display_order', 'asc')
                 ->get();
 
