@@ -127,8 +127,8 @@ Route::middleware(['auth'])->get('/download/{slug}', [PublicAPIController::class
 // ---------------------------------------------------------------------
 
 
-Route::prefix('admin')->group(function(){
-     Route::post('/login', [AuthController::class, 'AdminLogin']);
+Route::prefix('admin')->group(function () {
+    Route::post('/login', [AuthController::class, 'AdminLogin']);
 });
 
 // Admin routes
@@ -600,3 +600,12 @@ Route::middleware(['auth:sanctum', 'role:job_seeker'])->prefix('jobseeker')->gro
 
 
 // ----------------------------------------------------------------------------------
+
+use App\Http\Controllers\Api\NotificationController;
+//Notifications API
+Route::middleware(['auth:sanctum'])->group(function () {
+
+    Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+});

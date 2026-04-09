@@ -19,9 +19,20 @@ use App\Models\JobAnswer;
 use App\Models\JobSeekerCV;
 use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
+use App\Services\Notification;
 
 class JobBrowseController extends Controller
 {
+
+
+    //Notification service
+    protected $notification;
+
+    public function __construct(Notification $notification)
+    {
+        $this->notification = $notification;
+    }
+
 
     //Open route for job seekers to browse approved and open jobs
     public function browseJobs()
@@ -194,7 +205,7 @@ class JobBrowseController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 RESUME / CV HANDLING (WITH TYPE)
+        | 🔥 RESUME / CV HANDLING
         |--------------------------------------------------------------------------
         */
 
@@ -203,7 +214,7 @@ class JobBrowseController extends Controller
 
             if ($request->filled('resume_id')) {
 
-                // 🔥 CHECK CV FIRST
+                // CV first
                 $resume = JobSeekerCV::where('id', $request->resume_id)
                     ->where('job_seeker_id', $jobSeeker->id)
                     ->first();
@@ -212,7 +223,7 @@ class JobBrowseController extends Controller
                     $resumeType = 'cv';
                 }
 
-                // 🔥 ELSE CHECK RESUME
+                // Resume fallback
                 if (!$resume) {
                     $resume = Resume::where('id', $request->resume_id)
                         ->where('job_seeker_id', $jobSeeker->id)
@@ -224,7 +235,7 @@ class JobBrowseController extends Controller
                 }
             } else {
 
-                // 🔥 DEFAULT CV
+                // Default CV
                 $resume = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)
                     ->where('is_default', true)
                     ->first();
@@ -233,7 +244,7 @@ class JobBrowseController extends Controller
                     $resumeType = 'cv';
                 }
 
-                // 🔥 DEFAULT RESUME
+                // Default Resume
                 if (!$resume) {
                     $resume = Resume::where('job_seeker_id', $jobSeeker->id)
                         ->where('is_default', true)
@@ -245,7 +256,6 @@ class JobBrowseController extends Controller
                 }
             }
 
-            // ❌ Nothing found
             if (!$resume) {
                 return response()->json([
                     'status' => false,
@@ -263,9 +273,43 @@ class JobBrowseController extends Controller
                 'job_id' => $jobId,
                 'job_seeker_id' => $jobSeeker->id,
                 'resume_id' => $resume->id,
-                'resume_type' => $resumeType, // 🔥 KEY CHANGE
+                'resume_type' => $resumeType,
                 'status' => 'applied'
             ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS (🔥 MAIN PART)
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Notify Employer
+            $this->notification->send(
+                'job_applied',
+                'employer',
+                $job->employer_id,
+                'New Application',
+                "{$user->name} applied for your job",
+                [
+                    'job_id' => $job->id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            // ✅ Notify Recruiter (if exists)
+            if ($job->created_by) {
+                $this->notification->send(
+                    'job_applied',
+                    'recruiter',
+                    $job->created_by,
+                    'New Application',
+                    "{$user->name} applied for your job",
+                    [
+                        'job_id' => $job->id,
+                        'application_id' => $application->id
+                    ]
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------

@@ -23,10 +23,20 @@ use App\Models\HomepageCompanyLogo;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-
+use App\Services\Notification;
 
 class RecruiterController extends Controller
 {
+
+    //Notification service
+    protected $notification;
+
+    public function __construct(Notification $notification)
+    {
+        $this->notification = $notification;
+    }
+
+
     // Recruiter login
     public function login(Request $request)
     {
@@ -315,6 +325,36 @@ class RecruiterController extends Controller
             }
 
             DB::commit();
+            /*
+|--------------------------------------------------------------------------
+| 🔔 NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
+
+            // ✅ Notify Recruiter (self confirmation)
+            $this->notification->send(
+                'job_created',
+                'recruiter',
+                $recruiter->id,
+                'Job Created',
+                "Your job '{$job->title}' has been created successfully",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ✅ Notify Employer (important)
+            $this->notification->send(
+                'job_created',
+                'employer',
+                $employerId,
+                'New Job Posted',
+                "{$recruiter->name} created a job '{$job->title}'",
+                [
+                    'job_id' => $job->id,
+                    'recruiter_id' => $recruiter->id
+                ]
+            );
 
             return response()->json([
                 'status' => true,
@@ -514,6 +554,49 @@ class RecruiterController extends Controller
             ]);
 
             DB::commit();
+            /*
+|--------------------------------------------------------------------------
+| 🔔 NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
+
+            // ✅ Recruiter (self confirmation)
+            $this->notification->send(
+                'job_republished',
+                'recruiter',
+                $recruiter->id,
+                'Job Republished',
+                "Your job '{$job->title}' has been republished",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ✅ Employer
+            $this->notification->send(
+                'job_republished',
+                'employer',
+                $job->employer_id,
+                'Job Republished',
+                "{$recruiter->name} republished job '{$job->title}'",
+                [
+                    'job_id' => $job->id,
+                    'recruiter_id' => $recruiter->id
+                ]
+            );
+
+            // ✅ Admin (GLOBAL)
+            $this->notification->send(
+                'job_republished',
+                'admin',
+                null, // 🔥 important (means all admins or system-wide)
+                'Job Republished',
+                "Job '{$job->title}' has been republished",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $job->employer_id
+                ]
+            );
 
             return response()->json([
                 'status' => true,
