@@ -35,9 +35,9 @@ class JobSeekerController extends Controller
     {
         $filename = time() . '_' . Str::random(10) . '.' . $file->getClientOriginalExtension();
 
-        $path = $file->storeAs("public/media/$folder", $filename);
+        $path = $file->storeAs("media/$folder", $filename, 'public');
 
-        return str_replace('public/', 'storage/', $path);
+        return "storage/$path";
     }
 
 
