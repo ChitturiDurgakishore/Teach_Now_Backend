@@ -24,13 +24,22 @@ use App\Models\Subscription;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Plan;
+use App\Services\Notification;
+
 
 class EmployerController extends Controller
 {
 
 
+    //Notification service
+    protected $notification;
 
-    //    //Helper function for Media Uploads
+    public function __construct(Notification $notification)
+    {
+        $this->notification = $notification;
+    }
+
+    //Helper function for Media Uploads
 
 
     public function uploadFile($file, $folder)
@@ -53,23 +62,18 @@ class EmployerController extends Controller
 
             $request->validate([
                 'company_name' => 'required|string|max:200',
-
                 'email' => 'required|email',
                 'phone' => 'nullable|string',
-
                 'password' => 'required|min:6',
-
             ]);
 
-            // 🔥 Upload logo (FIXED)
+            // 🔥 Upload logo
             $logoPath = null;
 
             if ($request->hasFile('company_logo')) {
 
                 $file = $request->file('company_logo');
-
                 $path = Storage::disk('public')->putFile('media/company_logos', $file);
-
                 $logoPath = 'storage/' . $path;
             }
 
@@ -86,12 +90,35 @@ class EmployerController extends Controller
                 'city' => $request->city,
                 'map_link' => $request->map_link,
                 'password' => Hash::make($request->password),
-                'latitude' => $request->latitude,   // ✅ NEW
+                'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'institution_type' => $request->institution_type,
             ]);
 
-            // MAIL (unchanged)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATION (ADMIN)
+        |--------------------------------------------------------------------------
+        */
+
+            $this->notification->send(
+                'company_created',
+                'admin',
+                null, // 🔥 all admins
+                'New Company Registered',
+                "A new company '{$employer->company_name}' has registered",
+                [
+                    'employer_id' => $employer->id,
+                    'company_name' => $employer->company_name
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
                 $mailService = new MailService();
 
@@ -100,6 +127,7 @@ class EmployerController extends Controller
                     'email' => $employer->email
                 ], $employer->email);
             } catch (\Exception $mailException) {
+
                 Log::error('Employer welcome mail failed', [
                     'employer_id' => $employer->id,
                     'error' => $mailException->getMessage()
@@ -124,6 +152,8 @@ class EmployerController extends Controller
             ], 500);
         }
     }
+
+
     // EMployer Feature
 
     public function toggleEmployerFeatured($id)

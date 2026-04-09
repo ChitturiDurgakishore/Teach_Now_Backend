@@ -355,6 +355,18 @@ class RecruiterController extends Controller
                     'recruiter_id' => $recruiter->id
                 ]
             );
+            // ✅ Admin (GLOBAL)
+            $this->notification->send(
+                'job_created',
+                'admin',
+                null, // 🔥 important (means all admins or system-wide)
+                'Job Created',
+                "Job '{$job->title}' has been created",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $job->employer_id
+                ]
+            );
 
             return response()->json([
                 'status' => true,
@@ -622,8 +634,66 @@ class RecruiterController extends Controller
 
             $job = Job::findOrFail($id);
 
+            $recruiter = Auth::guard('employer_user')->user();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            // Toggle
             $job->featured = !$job->featured;
             $job->save();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            $statusText = $job->featured ? 'featured' : 'unfeatured';
+
+            // ✅ Recruiter
+            $this->notification->send(
+                'job_featured',
+                'recruiter',
+                $recruiter->id,
+                'Job Feature Updated',
+                "Your job '{$job->title}' is now {$statusText}",
+                [
+                    'job_id' => $job->id,
+                    'featured' => $job->featured
+                ]
+            );
+
+            // ✅ Employer
+            $this->notification->send(
+                'job_featured',
+                'employer',
+                $job->employer_id,
+                'Job Feature Updated',
+                "{$recruiter->name} marked job '{$job->title}' as {$statusText}",
+                [
+                    'job_id' => $job->id,
+                    'featured' => $job->featured
+                ]
+            );
+
+            // ✅ Admin
+            $this->notification->send(
+                'job_featured',
+                'admin',
+                null,
+                'Job Feature Updated',
+                "Job '{$job->title}' is now {$statusText}",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $job->employer_id,
+                    'featured' => $job->featured
+                ]
+            );
 
             return response()->json([
                 'status' => true,
@@ -646,12 +716,18 @@ class RecruiterController extends Controller
         }
     }
 
-    // Mark job as filled
     public function markJobFilled($id)
     {
         try {
 
             $recruiter = Auth::guard('employer_user')->user();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
 
             $job = Job::where('id', $id)
                 ->where('created_by', $recruiter->id)
@@ -668,28 +744,72 @@ class RecruiterController extends Controller
                 'job_status' => 'filled'
             ]);
 
-            // 🔥 MAILS (QUEUE + SAFE)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Recruiter
+            $this->notification->send(
+                'job_filled',
+                'recruiter',
+                $recruiter->id,
+                'Job Filled',
+                "Your job '{$job->title}' has been marked as filled",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ✅ Employer
+            $this->notification->send(
+                'job_filled',
+                'employer',
+                $job->employer_id,
+                'Job Filled',
+                "{$recruiter->name} marked job '{$job->title}' as filled",
+                [
+                    'job_id' => $job->id,
+                    'recruiter_id' => $recruiter->id
+                ]
+            );
+
+            // ✅ Admin
+            $this->notification->send(
+                'job_filled',
+                'admin',
+                null,
+                'Job Filled',
+                "Job '{$job->title}' has been marked as filled",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $job->employer_id
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAILS (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $mailService = new MailService();
 
-                // ✅ Recruiter mail
+                // Recruiter mail
                 $mailService->send('job_filled_recruiter', [
                     'name' => $recruiter->name,
                     'job_title' => $job->title
                 ], $recruiter->email);
 
-                // ✅ Employer mail
+                // Employer mail
                 $mailService->send('job_filled_employer', [
                     'company_name' => $recruiter->employer->company_name,
                     'job_title' => $job->title,
                     'recruiter_name' => $recruiter->name
                 ], $recruiter->employer->email);
-
-                Log::info('Job filled mails queued', [
-                    'job_id' => $job->id,
-                    'recruiter_id' => $recruiter->id
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Job filled mail failed', [
@@ -1066,6 +1186,15 @@ class RecruiterController extends Controller
     {
         try {
 
+            $recruiter = Auth::guard('employer_user')->user();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
             $application = JobApplication::with(['job', 'jobSeeker.user'])->find($applicationId);
 
             if (!$application) {
@@ -1079,21 +1208,54 @@ class RecruiterController extends Controller
                 'status' => 'shortlisted'
             ]);
 
-            // 🔥 MAIL (QUEUE)
-            try {
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
 
-                $user = $application->jobSeeker->user;
+            $jobSeekerUser = $application->jobSeeker->user;
+
+            // ✅ Job Seeker (MAIN)
+            $this->notification->send(
+                'application_shortlisted',
+                'job_seeker',
+                $jobSeekerUser->id,
+                'You are shortlisted 🎉',
+                "You have been shortlisted for '{$application->job->title}'",
+                [
+                    'job_id' => $application->job->id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            // ✅ Recruiter (confirmation)
+            $this->notification->send(
+                'application_shortlisted',
+                'recruiter',
+                $recruiter->id,
+                'Candidate Shortlisted',
+                "You shortlisted a candidate for '{$application->job->title}'",
+                [
+                    'job_id' => $application->job->id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
+            try {
 
                 $mailService = new MailService();
 
                 $mailService->send('candidate_shortlisted', [
-                    'name' => $user->name,
+                    'name' => $jobSeekerUser->name,
                     'job_title' => $application->job->title
-                ], $user->email);
-
-                Log::info('Recruiter shortlisted mail queued', [
-                    'application_id' => $applicationId
-                ]);
+                ], $jobSeekerUser->email);
             } catch (\Exception $mailException) {
 
                 Log::error('Recruiter shortlist mail failed', [
@@ -1128,6 +1290,15 @@ class RecruiterController extends Controller
     {
         try {
 
+            $recruiter = Auth::guard('employer_user')->user();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
             $application = JobApplication::with(['job', 'jobSeeker.user'])->find($applicationId);
 
             if (!$application) {
@@ -1141,21 +1312,54 @@ class RecruiterController extends Controller
                 'status' => 'rejected'
             ]);
 
-            // 🔥 MAIL (QUEUE)
-            try {
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
 
-                $user = $application->jobSeeker->user;
+            $jobSeekerUser = $application->jobSeeker->user;
+
+            // ✅ Job Seeker (MAIN)
+            $this->notification->send(
+                'application_rejected',
+                'job_seeker',
+                $jobSeekerUser->id,
+                'Application Update',
+                "Your application for '{$application->job->title}' was not selected",
+                [
+                    'job_id' => $application->job->id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            // ✅ Recruiter (confirmation)
+            $this->notification->send(
+                'application_rejected',
+                'recruiter',
+                $recruiter->id,
+                'Candidate Rejected',
+                "You rejected a candidate for '{$application->job->title}'",
+                [
+                    'job_id' => $application->job->id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
+            try {
 
                 $mailService = new MailService();
 
                 $mailService->send('candidate_rejected', [
-                    'name' => $user->name,
+                    'name' => $jobSeekerUser->name,
                     'job_title' => $application->job->title
-                ], $user->email);
-
-                Log::info('Recruiter rejected mail queued', [
-                    'application_id' => $applicationId
-                ]);
+                ], $jobSeekerUser->email);
             } catch (\Exception $mailException) {
 
                 Log::error('Recruiter reject mail failed', [
@@ -1578,7 +1782,7 @@ class RecruiterController extends Controller
                 ], 401);
             }
 
-            $application = JobApplication::with('job')->find($id);
+            $application = JobApplication::with(['job', 'jobSeeker.user'])->find($id);
 
             if (!$application) {
                 return response()->json([
@@ -1587,7 +1791,7 @@ class RecruiterController extends Controller
                 ], 404);
             }
 
-            // 🔥 Recruiter belongs to employer
+            // 🔥 Ownership check
             if ($application->job->employer_id != $recruiter->employer_id) {
                 return response()->json([
                     'status' => false,
@@ -1598,6 +1802,37 @@ class RecruiterController extends Controller
             $application->update([
                 'contact_status' => $request->contact_status
             ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATION (JOB SEEKER)
+        |--------------------------------------------------------------------------
+        */
+
+            $jobSeekerUser = $application->jobSeeker->user;
+
+            // Optional: human readable message
+            $statusMessages = [
+                'called' => 'You were contacted by recruiter',
+                'messaged' => 'You received a message from recruiter',
+                'not_picked' => 'Recruiter tried to contact you (not picked)',
+                'not_reachable' => 'Recruiter could not reach you'
+            ];
+
+            $messageText = $statusMessages[$request->contact_status] ?? 'Contact update from recruiter';
+
+            $this->notification->send(
+                'contact_status_updated',
+                'job_seeker',
+                $jobSeekerUser->id,
+                'Recruiter Activity',
+                "{$messageText} for '{$application->job->title}'",
+                [
+                    'job_id' => $application->job->id,
+                    'application_id' => $application->id,
+                    'contact_status' => $request->contact_status
+                ]
+            );
 
             return response()->json([
                 'status' => true,
