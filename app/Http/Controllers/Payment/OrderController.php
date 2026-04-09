@@ -193,7 +193,7 @@ class OrderController extends Controller
 
             // ✅ FIND ORDER
             $order = Order::where('razorpay_order_id', $request->razorpay_order_id)
-                ->lockForUpdate() // 🔥 prevents race condition
+                ->lockForUpdate()
                 ->first();
 
             if (!$order) {
@@ -237,22 +237,19 @@ class OrderController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 STACKING LOGIC (VERY IMPORTANT)
+        | 🔥 STACKING LOGIC
         |--------------------------------------------------------------------------
         */
 
-            // Get latest active/future subscription
             $lastSubscription = Subscription::where('employer_id', $employer->id)
                 ->where('expires_at', '>', now())
                 ->orderBy('expires_at', 'desc')
                 ->first();
 
-            // ✅ Decide start date
             $startDate = $lastSubscription
                 ? Carbon::parse($lastSubscription->expires_at)
                 : now();
 
-            // ✅ Calculate expiry
             $expiresAt = (clone $startDate)->addDays($plan->validity_days);
 
             // ✅ CREATE SUBSCRIPTION
@@ -274,11 +271,12 @@ class OrderController extends Controller
             DB::commit();
 
             /*
-|--------------------------------------------------------------------------
-| 🔔 NOTIFICATIONS
-|--------------------------------------------------------------------------
-*/
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS (FIXED)
+        |--------------------------------------------------------------------------
+        */
 
+            // ✅ Employer Notification
             $this->notification->send(
                 'payment_success',
                 'employer',
@@ -291,16 +289,21 @@ class OrderController extends Controller
                 ]
             );
 
-            $this->notification->send(
-                'payment_success',
-                'admin',
-                null,
-                'Payment Received',
-                "Payment received from '{$employer->company_name}'",
-                [
-                    'order_id' => $order->id
-                ]
-            );
+            // ✅ Admin Notifications (FIXED ✅)
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'payment_success',
+                    'admin',
+                    $admin->id, // 🔥 FIX: no more null
+                    'Payment Received',
+                    "Payment received from '{$employer->company_name}'",
+                    [
+                        'order_id' => $order->id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
