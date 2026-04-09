@@ -135,15 +135,73 @@ class WebhookController extends Controller
 
                             'status' => 'active'
                         ]);
+                        // 🔥 GET EMPLOYER
+                        $employer = \App\Models\Employer::find($order->employer_id);
+
+                        /*
+|--------------------------------------------------------------------------
+| 🔔 NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
+
+                        // ✅ Employer
+                        app(\App\Services\Notification::class)->send(
+                            'payment_success',
+                            'employer',
+                            $employer->id,
+                            'Payment Successful',
+                            "Your payment for '{$plan->name}' plan is successful",
+                            [
+                                'order_id' => $order->id,
+                                'plan_id' => $plan->id,
+                                'subscription_id' => $subscription->id
+                            ]
+                        );
+
+                        // ✅ Admin
+                        app(\App\Services\Notification::class)->send(
+                            'payment_success',
+                            'admin',
+                            null,
+                            'New Payment Received',
+                            "Payment received from '{$employer->company_name}' for '{$plan->name}' plan",
+                            [
+                                'order_id' => $order->id,
+                                'employer_id' => $employer->id
+                            ]
+                        );
 
                         // 🔥 CREATE INVOICE
                         $invoiceService = app(InvoiceService::class);
                         $invoiceService->generate($order, $subscription);
+
+                        try {
+
+                            $mailService = new \App\Services\MailService();
+
+                            // ✅ Employer mail
+                            $mailService->send('payment_success', [
+                                'name' => $employer->company_name,
+                                'plan_name' => $plan->name,
+                                'amount' => $order->amount
+                            ], $employer->email);
+
+                            // ✅ Admin mail
+                            $mailService->send('payment_received_admin', [
+                                'company_name' => $employer->company_name,
+                                'plan_name' => $plan->name,
+                                'amount' => $order->amount
+                            ], config('mail.admin_email')); // 🔥 set in env
+
+                        } catch (\Exception $e) {
+                            Log::error('Payment mail failed', ['error' => $e->getMessage()]);
+                        }
                     });
 
                     break;
 
                 case 'payment.failed':
+
 
                     $payment = $data['payload']['payment']['entity'] ?? null;
 
@@ -152,6 +210,35 @@ class WebhookController extends Controller
                     }
 
                     $razorpayOrderId = $payment['order_id'] ?? null;
+                    $order = Order::where('razorpay_order_id', $razorpayOrderId)->first();
+
+                    if ($order) {
+
+                        $employer = \App\Models\Employer::find($order->employer_id);
+
+                        // 🔔 Notification
+                        app(\App\Services\Notification::class)->send(
+                            'payment_failed',
+                            'employer',
+                            $employer->id,
+                            'Payment Failed',
+                            "Your payment for plan failed. Please try again",
+                            [
+                                'order_id' => $order->id
+                            ]
+                        );
+
+                        // 📧 Mail
+                        try {
+                            $mailService = new \App\Services\MailService();
+
+                            $mailService->send('payment_failed', [
+                                'name' => $employer->company_name
+                            ], $employer->email);
+                        } catch (\Exception $e) {
+                            Log::error('Payment failed mail error', ['error' => $e->getMessage()]);
+                        }
+                    }
 
                     if ($razorpayOrderId) {
                         Order::where('razorpay_order_id', $razorpayOrderId)

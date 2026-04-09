@@ -15,10 +15,19 @@ use Illuminate\Support\Facades\DB;
 use Razorpay\Api\Errors\SignatureVerificationError;
 use App\Models\Subscription;
 use Carbon\Carbon;
-
+use App\Services\Notification;
 
 class OrderController extends Controller
 {
+
+    //Notification service
+    protected $notification;
+
+    public function __construct(Notification $notification)
+    {
+        $this->notification = $notification;
+    }
+
 
     public function createOrder(Request $request)
     {
@@ -234,6 +243,35 @@ class OrderController extends Controller
             ]);
 
             DB::commit();
+
+            /*
+|--------------------------------------------------------------------------
+| 🔔 NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
+
+            $this->notification->send(
+                'payment_success',
+                'employer',
+                $employer->id,
+                'Payment Successful',
+                "Your payment for '{$plan->name}' plan is successful",
+                [
+                    'order_id' => $order->id,
+                    'subscription_id' => $subscription->id
+                ]
+            );
+
+            $this->notification->send(
+                'payment_success',
+                'admin',
+                null,
+                'Payment Received',
+                "Payment received from '{$employer->company_name}'",
+                [
+                    'order_id' => $order->id
+                ]
+            );
 
             return response()->json([
                 'status' => true,
