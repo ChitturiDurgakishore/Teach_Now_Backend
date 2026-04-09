@@ -33,12 +33,18 @@ class OrderController extends Controller
     {
         try {
 
+            Log::info('Create Order API HIT');
+
             $request->validate([
                 'plan_id' => 'required|integer|exists:plans,id'
             ]);
 
             // ✅ AUTH CHECK
             $employer = Auth::guard('employer')->user();
+
+            Log::info('Employer check', [
+                'employer' => $employer
+            ]);
 
             if (!$employer) {
                 return response()->json([
@@ -50,6 +56,10 @@ class OrderController extends Controller
             // ✅ FETCH PLAN
             $plan = Plan::where('id', $request->plan_id)->first();
 
+            Log::info('Plan fetched', [
+                'plan' => $plan
+            ]);
+
             if (!$plan) {
                 return response()->json([
                     'status' => false,
@@ -57,7 +67,6 @@ class OrderController extends Controller
                 ], 404);
             }
 
-            // ✅ CHECK ACTIVE
             if (!$plan->is_active) {
                 return response()->json([
                     'status' => false,
@@ -65,8 +74,11 @@ class OrderController extends Controller
                 ], 403);
             }
 
-            // ✅ VALIDATE PRICE
             $price = $plan->offer_price ?? $plan->actual_price;
+
+            Log::info('Price calculated', [
+                'price' => $price
+            ]);
 
             if (!$price || $price <= 0) {
                 return response()->json([
@@ -75,30 +87,46 @@ class OrderController extends Controller
                 ], 422);
             }
 
-            // ✅ CONVERT TO PAISE
             $amount = (int) ($price * 100);
 
-            // 🔒 DB TRANSACTION (SAFE)
+            Log::info('Amount in paise', [
+                'amount' => $amount
+            ]);
+
             DB::beginTransaction();
 
-            // ✅ RAZORPAY INIT
-            $api = new Api(
-                config('services.razorpay.key'),
-                config('services.razorpay.secret')
-            );
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RAZORPAY DEBUG
+        |--------------------------------------------------------------------------
+        */
 
-            // ✅ CREATE ORDER IN RAZORPAY
+            $key = config('services.razorpay.key');
+            $secret = config('services.razorpay.secret');
+
+            Log::info('Razorpay config', [
+                'key' => $key,
+                'secret_present' => $secret ? true : false
+            ]);
+
+            $api = new Api($key, $secret);
+
+            Log::info('Creating Razorpay order...');
+
             $razorpayOrder = $api->order->create([
                 'receipt' => 'order_' . Str::random(12),
                 'amount' => $amount,
                 'currency' => 'INR'
             ]);
 
+            Log::info('Razorpay response', [
+                'response' => $razorpayOrder
+            ]);
+
             if (!isset($razorpayOrder['id'])) {
                 throw new \Exception('Failed to create Razorpay order');
             }
 
-            // ✅ STORE ORDER
             $order = Order::create([
                 'employer_id' => $employer->id,
                 'plan_id' => $plan->id,
@@ -118,7 +146,7 @@ class OrderController extends Controller
                     'order_id' => $razorpayOrder['id'],
                     'amount' => $amount,
                     'currency' => 'INR',
-                    'key' => config('services.razorpay.key'),
+                    'key' => $key,
                     'plan' => $plan
                 ]
             ]);
@@ -126,8 +154,9 @@ class OrderController extends Controller
 
             DB::rollBack();
 
-            Log::error('Order creation failed', [
-                'error' => $e->getMessage()
+            Log::error('Order creation failed FULL', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
