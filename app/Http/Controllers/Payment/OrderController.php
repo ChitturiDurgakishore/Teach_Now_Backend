@@ -37,8 +37,7 @@ class OrderController extends Controller
                 'plan_id' => 'required|integer|exists:plans,id'
             ]);
 
-            // ✅ AUTH CHECK
-            $employer = Auth::guard('employer')->user();
+
 
             if (!$employer) {
                 return response()->json([
