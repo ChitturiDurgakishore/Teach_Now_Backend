@@ -15,10 +15,22 @@ use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Services\Notification;
 
 
 class AdminController extends Controller
 {
+
+
+    //Notification service
+    protected $notification;
+
+    public function __construct(Notification $notification)
+    {
+        $this->notification = $notification;
+    }
+
+
     // Dashboard and analytics
     public function dashboard()
     {
@@ -162,6 +174,51 @@ class AdminController extends Controller
                 'status' => 'approved'
             ]);
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Employer (MAIN)
+            $this->notification->send(
+                'job_approved',
+                'employer',
+                $job->employer_id,
+                'Job Approved',
+                "Your job '{$job->title}' has been approved",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ✅ Recruiter (if exists)
+            if ($job->created_by) {
+                $this->notification->send(
+                    'job_approved',
+                    'recruiter',
+                    $job->created_by,
+                    'Job Approved',
+                    "Your job '{$job->title}' has been approved",
+                    [
+                        'job_id' => $job->id
+                    ]
+                );
+            }
+
+            // ✅ Admin (optional log notification)
+            $this->notification->send(
+                'job_approved',
+                'admin',
+                null,
+                'Job Approved',
+                "Job '{$job->title}' approved successfully",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $job->employer_id
+                ]
+            );
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job approved successfully'
@@ -176,7 +233,7 @@ class AdminController extends Controller
         }
     }
 
-    //Reject a Job Posting
+    // Reject a Job Posting
     public function rejectJob($id)
     {
         try {
@@ -194,6 +251,51 @@ class AdminController extends Controller
                 'status' => 'rejected'
             ]);
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ❌ Employer (MAIN)
+            $this->notification->send(
+                'job_rejected',
+                'employer',
+                $job->employer_id,
+                'Job Rejected',
+                "Your job '{$job->title}' has been rejected",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ❌ Recruiter (if exists)
+            if ($job->created_by) {
+                $this->notification->send(
+                    'job_rejected',
+                    'recruiter',
+                    $job->created_by,
+                    'Job Rejected',
+                    "Your job '{$job->title}' has been rejected",
+                    [
+                        'job_id' => $job->id
+                    ]
+                );
+            }
+
+            // ⚙️ Admin (optional log)
+            $this->notification->send(
+                'job_rejected',
+                'admin',
+                null,
+                'Job Rejected',
+                "Job '{$job->title}' has been rejected",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $job->employer_id
+                ]
+            );
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job rejected successfully'
@@ -208,7 +310,7 @@ class AdminController extends Controller
         }
     }
 
-    //Mark Feature Job Posting
+    // Mark Feature Job Posting
     public function featureJob($id)
     {
         try {
@@ -226,6 +328,51 @@ class AdminController extends Controller
                 'admin_featured' => true
             ]);
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ⭐ Employer (MAIN)
+            $this->notification->send(
+                'job_admin_featured',
+                'employer',
+                $job->employer_id,
+                'Job Featured',
+                "Your job '{$job->title}' has been featured by admin",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ⭐ Recruiter (if exists)
+            if ($job->created_by) {
+                $this->notification->send(
+                    'job_admin_featured',
+                    'recruiter',
+                    $job->created_by,
+                    'Job Featured',
+                    "Your job '{$job->title}' has been featured by admin",
+                    [
+                        'job_id' => $job->id
+                    ]
+                );
+            }
+
+            // ⚙️ Admin (optional log)
+            $this->notification->send(
+                'job_admin_featured',
+                'admin',
+                null,
+                'Job Featured',
+                "Job '{$job->title}' marked as featured",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $job->employer_id
+                ]
+            );
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job marked as featured'
@@ -239,6 +386,7 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
 
     //Delete a Job Posting
     public function deleteJob($id)
@@ -288,24 +436,80 @@ class AdminController extends Controller
 
     public function adminRepublishJob($id)
     {
-        $job = Job::find($id);
+        try {
 
-        if (!$job) {
+            $job = Job::find($id);
+
+            if (!$job) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job not found'
+                ], 404);
+            }
+
+            $job->update([
+                'expires_at' => now()->addDays(30),
+                'is_active' => true,
+                'job_status' => 'open' // 🔥 recommended
+            ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // 🔄 Employer (MAIN)
+            $this->notification->send(
+                'job_republished',
+                'employer',
+                $job->employer_id,
+                'Job Republished',
+                "Your job '{$job->title}' has been republished by admin",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // 🔄 Recruiter (if exists)
+            if ($job->created_by) {
+                $this->notification->send(
+                    'job_republished',
+                    'recruiter',
+                    $job->created_by,
+                    'Job Republished',
+                    "Your job '{$job->title}' has been republished by admin",
+                    [
+                        'job_id' => $job->id
+                    ]
+                );
+            }
+
+            // ⚙️ Admin (optional log)
+            $this->notification->send(
+                'job_republished',
+                'admin',
+                null,
+                'Job Republished',
+                "Job '{$job->title}' republished successfully",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $job->employer_id
+                ]
+            );
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Job republished by admin successfully'
+            ]);
+        } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
-                'message' => 'Job not found'
-            ], 404);
+                'message' => 'Republish failed',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $job->update([
-            'expires_at' => now()->addDays(30),
-            'is_active' => true
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Job republished by admin successfully'
-        ]);
     }
 
     //======================================================================================
@@ -386,12 +590,59 @@ class AdminController extends Controller
                 ], 404);
             }
 
-            // 🔥 Update employer only
+            // 🔥 Update employer
             $employer->update([
                 'is_verified' => $request->status === 'approved'
             ]);
 
-            // 🔥 MAIL (QUEUE)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            if ($request->status === 'approved') {
+
+                // ✅ Employer approved
+                $this->notification->send(
+                    'employer_verified',
+                    'employer',
+                    $employer->id,
+                    'Account Verified',
+                    "Your company '{$employer->company_name}' has been verified successfully",
+                    []
+                );
+            } else {
+
+                // ❌ Employer rejected
+                $this->notification->send(
+                    'employer_rejected',
+                    'employer',
+                    $employer->id,
+                    'Verification Failed',
+                    "Your verification was rejected. Reason: " . ($request->admin_remark ?? 'Not specified'),
+                    []
+                );
+            }
+
+            // ⚙️ Admin log (optional)
+            $this->notification->send(
+                'employer_verification',
+                'admin',
+                null,
+                'Employer Verification Updated',
+                "Employer '{$employer->company_name}' marked as '{$request->status}'",
+                [
+                    'employer_id' => $employer->id
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $mailService = new MailService();
@@ -408,11 +659,6 @@ class AdminController extends Controller
                         'remark' => $request->admin_remark ?? 'Not specified'
                     ], $employer->email);
                 }
-
-                Log::info('Employer verification mail queued', [
-                    'employer_id' => $employer->id,
-                    'status' => $request->status
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Employer verification mail failed', [
@@ -442,6 +688,7 @@ class AdminController extends Controller
         }
     }
 
+
     //Feature Employer
 
     public function featureEmployer($id)
@@ -461,6 +708,34 @@ class AdminController extends Controller
                 'is_featured' => true
             ]);
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ⭐ Employer (MAIN)
+            $this->notification->send(
+                'employer_featured',
+                'employer',
+                $employer->id,
+                'Company Featured',
+                "Your company '{$employer->company_name}' has been featured by admin",
+                []
+            );
+
+            // ⚙️ Admin (optional log)
+            $this->notification->send(
+                'employer_featured',
+                'admin',
+                null,
+                'Employer Featured',
+                "Employer '{$employer->company_name}' marked as featured",
+                [
+                    'employer_id' => $employer->id
+                ]
+            );
+
             return response()->json([
                 'status' => true,
                 'message' => 'Employer marked as featured'
@@ -474,6 +749,7 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
 
     //Update Employer Details
     public function updateEmployer(Request $request, $id)
@@ -645,7 +921,53 @@ class AdminController extends Controller
                 'is_active' => 0
             ]);
 
-            // 🔥 MAIL (QUEUE)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // 🚫 Recruiter (MAIN)
+            $this->notification->send(
+                'recruiter_disabled',
+                'recruiter',
+                $recruiter->id,
+                'Account Disabled',
+                "Your recruiter account has been disabled by admin",
+                []
+            );
+
+            // 🏢 Employer
+            $this->notification->send(
+                'recruiter_disabled',
+                'employer',
+                $recruiter->employer_id,
+                'Recruiter Disabled',
+                "Recruiter '{$recruiter->name}' has been disabled",
+                [
+                    'recruiter_id' => $recruiter->id
+                ]
+            );
+
+            // ⚙️ Admin (optional log)
+            $this->notification->send(
+                'recruiter_disabled',
+                'admin',
+                null,
+                'Recruiter Disabled',
+                "Recruiter '{$recruiter->name}' disabled successfully",
+                [
+                    'recruiter_id' => $recruiter->id,
+                    'employer_id' => $recruiter->employer_id
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $mailService = new MailService();
@@ -662,10 +984,6 @@ class AdminController extends Controller
                     'email' => $recruiter->email,
                     'company_name' => $recruiter->employer->company_name
                 ], $recruiter->employer->email);
-
-                Log::info('Recruiter disable mails queued', [
-                    'recruiter_id' => $recruiter->id
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Recruiter disable mail failed', [
@@ -713,10 +1031,58 @@ class AdminController extends Controller
             $email = $recruiter->email;
             $companyName = $recruiter->employer->company_name;
             $employerEmail = $recruiter->employer->email;
+            $employerId = $recruiter->employer_id;
+            $recruiterId = $recruiter->id;
 
             $recruiter->delete();
 
-            // 🔥 MAIL (QUEUE)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ❌ Recruiter (MAIN)
+            $this->notification->send(
+                'recruiter_deleted',
+                'recruiter',
+                $recruiterId,
+                'Account Removed',
+                "Your recruiter account has been removed by admin",
+                []
+            );
+
+            // 🏢 Employer
+            $this->notification->send(
+                'recruiter_deleted',
+                'employer',
+                $employerId,
+                'Recruiter Removed',
+                "Recruiter '{$name}' has been removed from your company",
+                [
+                    'recruiter_id' => $recruiterId
+                ]
+            );
+
+            // ⚙️ Admin (optional log)
+            $this->notification->send(
+                'recruiter_deleted',
+                'admin',
+                null,
+                'Recruiter Deleted',
+                "Recruiter '{$name}' deleted successfully",
+                [
+                    'recruiter_id' => $recruiterId,
+                    'employer_id' => $employerId
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $mailService = new MailService();
@@ -733,10 +1099,6 @@ class AdminController extends Controller
                     'email' => $email,
                     'company_name' => $companyName
                 ], $employerEmail);
-
-                Log::info('Recruiter delete mails queued', [
-                    'recruiter_email' => $email
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Recruiter delete mail failed', [
@@ -762,6 +1124,7 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
     //======================================================================================
 
     //Job Seekers management for Admin

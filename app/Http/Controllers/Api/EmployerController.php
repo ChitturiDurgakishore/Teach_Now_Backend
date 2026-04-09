@@ -165,6 +165,40 @@ class EmployerController extends Controller
             $employer->company_featured = !$employer->company_featured;
             $employer->save();
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            $status = $employer->company_featured ? 'featured' : 'unfeatured';
+
+            // ✅ Employer (MAIN)
+            $this->notification->send(
+                'company_featured',
+                'employer',
+                $employer->id,
+                'Company Feature Update',
+                "Your company '{$employer->company_name}' has been {$status}",
+                [
+                    'employer_id' => $employer->id,
+                    'status' => $status
+                ]
+            );
+
+            // ✅ Admin (optional - activity tracking)
+            $this->notification->send(
+                'company_featured',
+                'admin',
+                null,
+                'Company Feature Updated',
+                "Company '{$employer->company_name}' has been {$status}",
+                [
+                    'employer_id' => $employer->id,
+                    'status' => $status
+                ]
+            );
+
             return response()->json([
                 'status' => true,
                 'message' => 'Employer feature status updated successfully',
@@ -464,29 +498,73 @@ class EmployerController extends Controller
                 'password' => Hash::make($request->password)
             ]);
 
-            // 🔥 MAILS (QUEUE + SAFE)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Recruiter (MAIN)
+            $this->notification->send(
+                'recruiter_created',
+                'recruiter',
+                $user->id,
+                'Welcome to Company 🎉',
+                "You have been added as a recruiter for '{$employer->company_name}'",
+                [
+                    'employer_id' => $employer->id,
+                    'recruiter_id' => $user->id
+                ]
+            );
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'recruiter_created',
+                'employer',
+                $employer->id,
+                'Recruiter Added',
+                "You added '{$user->name}' as recruiter",
+                [
+                    'recruiter_id' => $user->id
+                ]
+            );
+
+            // ✅ Admin (optional tracking)
+            $this->notification->send(
+                'recruiter_created',
+                'admin',
+                null,
+                'New Recruiter Created',
+                "Recruiter '{$user->name}' added to '{$employer->company_name}'",
+                [
+                    'employer_id' => $employer->id,
+                    'recruiter_id' => $user->id
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAILS (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $mailService = new MailService();
 
-                // ✅ 1. Mail to Recruiter
+                // Recruiter mail
                 $mailService->send('recruiter_added', [
                     'name' => $user->name,
                     'email' => $user->email,
                     'company_name' => $employer->company_name
                 ], $user->email);
 
-                // ✅ 2. Mail to Employer
+                // Employer mail
                 $mailService->send('recruiter_created_employer', [
                     'name' => $user->name,
                     'email' => $user->email,
                     'company_name' => $employer->company_name
                 ], $employer->email);
-
-                Log::info('Recruiter creation mails queued', [
-                    'recruiter_id' => $user->id,
-                    'employer_id' => $employer->id
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Recruiter mail failed', [
@@ -557,35 +635,78 @@ class EmployerController extends Controller
                 ], 404);
             }
 
-            // 🔥 Store details before delete (IMPORTANT)
+            // 🔥 Store details before delete
             $name = $user->name;
             $email = $user->email;
+            $recruiterId = $user->id;
 
             $user->delete();
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
 
-            // 🔥 MAILS (QUEUE + SAFE)
+            // ✅ Recruiter (MAIN)
+            $this->notification->send(
+                'recruiter_deleted',
+                'recruiter',
+                $recruiterId,
+                'Account Removed',
+                "You have been removed from '{$employer->company_name}'",
+                [
+                    'employer_id' => $employer->id
+                ]
+            );
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'recruiter_deleted',
+                'employer',
+                $employer->id,
+                'Recruiter Removed',
+                "You removed '{$name}' from your company",
+                [
+                    'recruiter_id' => $recruiterId
+                ]
+            );
+
+            // ✅ Admin (optional tracking)
+            $this->notification->send(
+                'recruiter_deleted',
+                'admin',
+                null,
+                'Recruiter Removed',
+                "Recruiter '{$name}' removed from '{$employer->company_name}'",
+                [
+                    'employer_id' => $employer->id,
+                    'recruiter_id' => $recruiterId
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAILS (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $mailService = new MailService();
 
-                // ✅ 1. Mail to Recruiter
+                // Recruiter mail
                 $mailService->send('recruiter_removed', [
                     'name' => $name,
                     'company_name' => $employer->company_name
                 ], $email);
 
-                // ✅ 2. Mail to Employer
+                // Employer mail
                 $mailService->send('recruiter_deleted_employer', [
                     'name' => $name,
                     'email' => $email,
                     'company_name' => $employer->company_name
                 ], $employer->email);
-
-                Log::info('Recruiter deletion mails queued', [
-                    'recruiter_email' => $email,
-                    'employer_id' => $employer->id
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Recruiter deletion mail failed', [
@@ -917,6 +1038,37 @@ class EmployerController extends Controller
 
             DB::commit();
 
+            /*
+|--------------------------------------------------------------------------
+| 🔔 NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'job_created',
+                'employer',
+                $employer->id,
+                'Job Created',
+                "Your job '{$job->title}' has been created successfully",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ✅ Admin (IMPORTANT)
+            $this->notification->send(
+                'job_created',
+                'admin',
+                null,
+                'New Job Posted',
+                "A new job '{$job->title}' has been posted by '{$employer->company_name}'",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $employer->id
+                ]
+            );
+
             return response()->json([
                 'status' => true,
                 'message' => 'Job created successfully',
@@ -1122,6 +1274,36 @@ class EmployerController extends Controller
             ]);
 
             DB::commit();
+            /*
+|--------------------------------------------------------------------------
+| 🔔 NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'job_republished',
+                'employer',
+                $employer->id,
+                'Job Republished',
+                "Your job '{$job->title}' has been republished successfully",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ✅ Admin (tracking / moderation)
+            $this->notification->send(
+                'job_republished',
+                'admin',
+                null,
+                'Job Republished',
+                "Job '{$job->title}' has been republished by '{$employer->company_name}'",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $employer->id
+                ]
+            );
 
             return response()->json([
                 'status' => true,
@@ -1170,10 +1352,10 @@ class EmployerController extends Controller
     {
         try {
 
-            $recruiter = Auth::guard('employer')->user();
+            $employer = Auth::guard('employer')->user();
 
             $job = Job::where('id', $id)
-                ->where('employer_id', $recruiter->id)
+                ->where('employer_id', $employer->id)
                 ->first();
 
             if (!$job) {
@@ -1186,6 +1368,51 @@ class EmployerController extends Controller
             $job->update([
                 'job_status' => 'filled'
             ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'job_filled',
+                'employer',
+                $employer->id,
+                'Job Filled',
+                "Your job '{$job->title}' has been marked as filled",
+                [
+                    'job_id' => $job->id
+                ]
+            );
+
+            // ✅ Admin (tracking)
+            $this->notification->send(
+                'job_filled',
+                'admin',
+                null,
+                'Job Filled',
+                "Job '{$job->title}' has been marked as filled by '{$employer->company_name}'",
+                [
+                    'job_id' => $job->id,
+                    'employer_id' => $employer->id
+                ]
+            );
+
+            // ✅ Recruiter (if exists)
+            if ($job->created_by) {
+                $this->notification->send(
+                    'job_filled',
+                    'recruiter',
+                    $job->created_by,
+                    'Job Filled',
+                    "Job '{$job->title}' has been marked as filled",
+                    [
+                        'job_id' => $job->id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -1220,10 +1447,60 @@ class EmployerController extends Controller
                 ], 404);
             }
 
+            // 🔥 Store job info BEFORE delete
+            $jobId = $job->id;
+            $jobTitle = $job->title;
+            $createdBy = $job->created_by;
+
             // Delete questions first
             JobQuestion::where('job_id', $job->id)->delete();
 
             $job->delete();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'job_deleted',
+                'employer',
+                $employer->id,
+                'Job Deleted',
+                "Your job '{$jobTitle}' has been deleted",
+                [
+                    'job_id' => $jobId
+                ]
+            );
+
+            // ✅ Admin (tracking)
+            $this->notification->send(
+                'job_deleted',
+                'admin',
+                null,
+                'Job Deleted',
+                "Job '{$jobTitle}' has been deleted by '{$employer->company_name}'",
+                [
+                    'job_id' => $jobId,
+                    'employer_id' => $employer->id
+                ]
+            );
+
+            // ✅ Recruiter (if exists)
+            if ($createdBy) {
+                $this->notification->send(
+                    'job_deleted',
+                    'recruiter',
+                    $createdBy,
+                    'Job Deleted',
+                    "Job '{$jobTitle}' has been deleted",
+                    [
+                        'job_id' => $jobId
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -1247,8 +1524,49 @@ class EmployerController extends Controller
 
             $job = Job::findOrFail($id);
 
-            $job->featured = !$job->featured;
+            // 🔥 Store before change
+            $isNowFeatured = !$job->featured;
+
+            $job->featured = $isNowFeatured;
             $job->save();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            $message = $isNowFeatured
+                ? "Your job '{$job->title}' is now featured"
+                : "Your job '{$job->title}' is no longer featured";
+
+            // ✅ Employer
+            $this->notification->send(
+                'job_featured',
+                'employer',
+                $job->employer_id,
+                $isNowFeatured ? 'Job Featured' : 'Job Unfeatured',
+                $message,
+                [
+                    'job_id' => $job->id,
+                    'featured' => $isNowFeatured
+                ]
+            );
+
+            // ✅ Recruiter (if exists)
+            if ($job->created_by) {
+                $this->notification->send(
+                    'job_featured',
+                    'recruiter',
+                    $job->created_by,
+                    $isNowFeatured ? 'Job Featured' : 'Job Unfeatured',
+                    $message,
+                    [
+                        'job_id' => $job->id,
+                        'featured' => $isNowFeatured
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -1570,7 +1888,7 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-    //Shortlist applicant
+    // Shortlist applicant
     public function shortlistCandidate($applicationId)
     {
         try {
@@ -1588,7 +1906,59 @@ class EmployerController extends Controller
                 'status' => 'shortlisted'
             ]);
 
-            // 🔥 MAIL (QUEUE)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Job Seeker (MAIN)
+            $this->notification->send(
+                'candidate_shortlisted',
+                'job_seeker',
+                $application->job_seeker_id,
+                'Application Shortlisted',
+                "You have been shortlisted for '{$application->job->title}'",
+                [
+                    'job_id' => $application->job_id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'candidate_shortlisted',
+                'employer',
+                $application->job->employer_id,
+                'Candidate Shortlisted',
+                "You shortlisted a candidate for '{$application->job->title}'",
+                [
+                    'job_id' => $application->job_id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            // ✅ Recruiter (if exists)
+            if ($application->job->created_by) {
+                $this->notification->send(
+                    'candidate_shortlisted',
+                    'recruiter',
+                    $application->job->created_by,
+                    'Candidate Shortlisted',
+                    "A candidate has been shortlisted for '{$application->job->title}'",
+                    [
+                        'job_id' => $application->job_id,
+                        'application_id' => $application->id
+                    ]
+                );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $user = $application->jobSeeker->user;
@@ -1599,10 +1969,6 @@ class EmployerController extends Controller
                     'name' => $user->name,
                     'job_title' => $application->job->title
                 ], $user->email);
-
-                Log::info('Candidate shortlisted mail queued', [
-                    'application_id' => $applicationId
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Shortlist mail failed', [
@@ -1648,7 +2014,59 @@ class EmployerController extends Controller
                 'status' => 'rejected'
             ]);
 
-            // 🔥 MAIL (QUEUE)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Job Seeker (MAIN)
+            $this->notification->send(
+                'candidate_rejected',
+                'job_seeker',
+                $application->job_seeker_id,
+                'Application Update',
+                "Your application for '{$application->job->title}' was rejected",
+                [
+                    'job_id' => $application->job_id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'candidate_rejected',
+                'employer',
+                $application->job->employer_id,
+                'Candidate Rejected',
+                "You rejected a candidate for '{$application->job->title}'",
+                [
+                    'job_id' => $application->job_id,
+                    'application_id' => $application->id
+                ]
+            );
+
+            // ✅ Recruiter (if exists)
+            if ($application->job->created_by) {
+                $this->notification->send(
+                    'candidate_rejected',
+                    'recruiter',
+                    $application->job->created_by,
+                    'Candidate Rejected',
+                    "A candidate was rejected for '{$application->job->title}'",
+                    [
+                        'job_id' => $application->job_id,
+                        'application_id' => $application->id
+                    ]
+                );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $user = $application->jobSeeker->user;
@@ -1659,10 +2077,6 @@ class EmployerController extends Controller
                     'name' => $user->name,
                     'job_title' => $application->job->title
                 ], $user->email);
-
-                Log::info('Candidate rejected mail queued', [
-                    'application_id' => $applicationId
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Reject mail failed', [
@@ -1758,7 +2172,43 @@ class EmployerController extends Controller
                 'status' => 'pending'
             ]);
 
-            // 🔥 MAIL (QUEUED + SAFE)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Employer (confirmation)
+            $this->notification->send(
+                'document_uploaded',
+                'employer',
+                $employer->id,
+                'Document Uploaded',
+                "Your document '{$file_type}' has been uploaded successfully",
+                [
+                    'document_id' => $doc->id
+                ]
+            );
+
+            // ✅ Admin (ACTION REQUIRED 🔥)
+            $this->notification->send(
+                'document_uploaded',
+                'admin',
+                null,
+                'New Document Uploaded',
+                "New '{$file_type}' document uploaded by '{$employer->company_name}'",
+                [
+                    'document_id' => $doc->id,
+                    'employer_id' => $employer->id
+                ]
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (UNCHANGED)
+        |--------------------------------------------------------------------------
+        */
+
             try {
 
                 $mailService = new MailService();
@@ -1767,11 +2217,6 @@ class EmployerController extends Controller
                     'name' => $employer->company_name,
                     'document_name' => $file_type
                 ], $employer->email);
-
-                Log::info('Document upload mail queued', [
-                    'employer_id' => $employer->id,
-                    'email' => $employer->email
-                ]);
             } catch (\Exception $mailException) {
 
                 Log::error('Document upload mail failed', [
@@ -1982,7 +2427,6 @@ class EmployerController extends Controller
 
 
     //Contact status update
-
     public function updateContactStatusByEmployer(Request $request, $id)
     {
         try {
@@ -2020,6 +2464,25 @@ class EmployerController extends Controller
             $application->update([
                 'contact_status' => $request->contact_status
             ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATION (ONLY JOB SEEKER)
+        |--------------------------------------------------------------------------
+        */
+
+            $this->notification->send(
+                'contact_status_updated',
+                'job_seeker',
+                $application->job_seeker_id,
+                'Contact Update',
+                "Your application for '{$application->job->title}' status updated to '{$request->contact_status}'",
+                [
+                    'job_id' => $application->job_id,
+                    'application_id' => $application->id,
+                    'contact_status' => $request->contact_status
+                ]
+            );
 
             return response()->json([
                 'status' => true,
