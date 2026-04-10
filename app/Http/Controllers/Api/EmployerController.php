@@ -832,7 +832,10 @@ class EmployerController extends Controller
                     'total_credits' => $subscription->job_posts_total,
                     'used_credits' => $subscription->job_posts_used,
                     'remaining_credits' => $subscription->job_posts_total - $subscription->job_posts_used,
-                    'expires_at' => $subscription->expires_at
+                    'expires_at' => $subscription->expires_at,
+                    'featured_jobs_total' => $subscription->featured_jobs_total ?? 0,
+                    'featured_jobs_used' => $subscription->featured_jobs_used ?? 0,
+                    'remaining_featured_jobs' => ($subscription->featured_jobs_total ?? 0) - ($subscription->featured_jobs_used ?? 0),
                 ];
             }
 
@@ -854,6 +857,11 @@ class EmployerController extends Controller
                         'status' => $sub->status
                     ];
                 });
+
+            $activeFeaturedJobs = Job::where('employer_id', $employer->id)
+                ->where('featured', true)
+                ->where('featured_until', '>', now())
+                ->count();
 
             // 🔥 OPTIONAL: TOTAL REMAINING CREDITS (ALL ACTIVE PLANS)
             $totalRemainingCredits = Subscription::where('employer_id', $employer->id)
@@ -880,6 +888,7 @@ class EmployerController extends Controller
                 ->get();
 
             $Company_verification = $employer->is_verified;
+            $expiringSoon = $subscription && $subscription->expires_at <= now()->addDays(3);
             return response()->json([
                 'status' => true,
                 'data' => [
@@ -892,10 +901,16 @@ class EmployerController extends Controller
                     'subscription' => $subscriptionData,
                     'subscription_history' => $subscriptionHistory,
                     'total_remaining_credits' => $totalRemainingCredits,
-
+                    'active_featured_jobs' => $activeFeaturedJobs,
+                    'subscription_expiring_soon' => $expiringSoon,
                     'latest_jobs' => $latestJobs,
                     'latest_applications' => $latestApplications,
-                    'company_verification' => $Company_verification
+                    'company_verification' => $Company_verification,
+                    'company_featured' => $employer->company_featured
+                        && $employer->featured_until
+                        && $employer->featured_until > now(),
+
+                    'company_featured_until' => $employer->featured_until,
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -2603,6 +2618,41 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Update failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getFeaturedJobs()
+    {
+        try {
+
+            $employer = Auth::guard('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $featuredJobs = Job::where('employer_id', $employer->id)
+                ->where('is_featured', true)
+                ->select('id', 'title', 'is_featured')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'employer_featured' => $employer->is_featured,
+                    'jobs' => $featuredJobs
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch featured status',
                 'error' => $e->getMessage()
             ], 500);
         }

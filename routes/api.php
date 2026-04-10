@@ -463,7 +463,7 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     // Featuring
     Route::post('/job/{id}/toggle-feature', [EmployerController::class, 'toggleJobFeatured']);
     Route::post('/{id}/toggle-feature', [EmployerController::class, 'toggleEmployerFeatured']);
-
+    Route::get('/featured', [EmployerController::class, 'getFeaturedJobs']); //Get featured status for employer and jobs
     // Testimonials management
     Route::get('testimonials', [RecruiterController::class, 'getTestimonials']);
     Route::post('testimonials', [RecruiterController::class, 'createTestimonial']);
