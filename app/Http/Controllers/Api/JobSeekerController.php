@@ -73,7 +73,7 @@ class JobSeekerController extends Controller
                 'dob' => 'nullable|date',
                 'portfolio_website' => 'nullable|string',
                 'bio' => 'nullable|string',
-                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048'
+                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480'
             ]);
 
             $user = Auth::user();
