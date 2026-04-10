@@ -102,8 +102,8 @@ class PublicAPIController extends Controller
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->where('status', 'approved')
-                ->where('job_status', 'open');
-
+                ->where('job_status', 'open')
+                ->where('application_deadline', '>', now());
             /*
         |--------------------------------------------------------------------------
         | 🔥 KEYWORD SEARCH (UNCHANGED)
@@ -300,6 +300,7 @@ class PublicAPIController extends Controller
                 ->where('category_id', $category->id)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
+                ->where('application_deadline', '>', now())
                 ->latest()
                 ->get();
 
@@ -500,14 +501,16 @@ class PublicAPIController extends Controller
             $companies = Employer::where('is_verified', 1)
                 ->where('is_featured', 1)
                 ->where('company_featured', 1)
-                ->select('id', 'company_name', 'company_logo', 'slug', 'city') // ✅ keep before
+                ->whereNotNull('featured_until') // 🔥 important
+                ->where('featured_until', '>', now()) // 🔥 expiry check
+                ->select('id', 'company_name', 'company_logo', 'slug', 'city')
                 ->withCount([
                     'jobs as jobs_count' => function ($query) {
                         $query->where('status', 'approved')
                             ->where('job_status', 'open');
                     }
-                ]) // ✅ after select
-                ->orderByDesc('jobs_count') // 🔥 optional (best UX)
+                ])
+                ->orderByDesc('jobs_count')
                 ->get();
 
             return response()->json([
@@ -531,7 +534,14 @@ class PublicAPIController extends Controller
         try {
 
             $jobs = Job::where('is_active', true)
-                ->where('expires_at', '>', now())->where('featured', 1)->where('admin_featured', 1)
+                ->where('expires_at', '>', now())
+
+                // 🔥 FEATURE CHECK
+                ->where('featured', 1)
+                ->whereNotNull('featured_until') // ✅ important
+                ->where('featured_until', '>', now()) // ✅ expiry check
+
+                ->where('admin_featured', 1) // (keep if required)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->with(['employer:id,company_name,company_logo'])
@@ -552,7 +562,6 @@ class PublicAPIController extends Controller
             ], 500);
         }
     }
-
 
 
 
