@@ -200,7 +200,20 @@ class CVController extends Controller
                 'isHtml5ParserEnabled' => true
             ]);
 
-            $fileName = time() . '_cv.pdf';
+            // 🔥 FORMAT NAME
+            $userName = $jobSeeker->user->name ?? 'User';
+
+            // Remove spaces & special chars
+            $cleanName = preg_replace('/[^A-Za-z0-9]/', '', $userName);
+
+            // Format date
+            $date = now()->format('d-m-Y');
+
+            // Optional: add timestamp to avoid duplicates
+            $timestamp = now()->timestamp;
+
+            // Final filename
+            $fileName = "{$cleanName}_{$date}.pdf";
             $path = "media/cv/{$fileName}";
 
             Storage::disk('public')->put($path, $pdf->output());
