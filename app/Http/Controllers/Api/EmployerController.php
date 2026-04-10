@@ -584,17 +584,21 @@ class EmployerController extends Controller
             );
 
             // ✅ Admin (optional tracking)
-            $this->notification->send(
-                'recruiter_created',
-                'admin',
-                null,
-                'New Recruiter Created',
-                "Recruiter '{$user->name}' added to '{$employer->company_name}'",
-                [
-                    'employer_id' => $employer->id,
-                    'recruiter_id' => $user->id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'recruiter_created',
+                    'admin',
+                    $admin->id,
+                    'New Recruiter Created',
+                    "Recruiter '{$user->name}' added to '{$employer->company_name}'",
+                    [
+                        'employer_id' => $employer->id,
+                        'recruiter_id' => $user->id
+                    ]
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -2315,17 +2319,23 @@ class EmployerController extends Controller
             );
 
             // ✅ Admin (ACTION REQUIRED 🔥)
-            $this->notification->send(
-                'document_uploaded',
-                'admin',
-                null,
-                'New Document Uploaded',
-                "New '{$file_type}' document uploaded by '{$employer->company_name}'",
-                [
-                    'document_id' => $doc->id,
-                    'employer_id' => $employer->id
-                ]
-            );
+            // ✅ GET ALL ADMINS
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            // ✅ LOOP
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'document_uploaded',
+                    'admin',
+                    $admin->id, // ✅ FIXED
+                    'New Document Uploaded',
+                    "New '{$file_type}' document uploaded by '{$employer->company_name}'",
+                    [
+                        'document_id' => $doc->id,
+                        'employer_id' => $employer->id
+                    ]
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------
