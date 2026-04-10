@@ -140,23 +140,27 @@ class SendEmails extends Command
     {
         $html = '';
 
-        $baseUrl = "http://teachnowbackend.jobsvedika.in:8080/";
+        // Pulling both from config to ensure the server handles it correctly
+        $mediaBaseUrl = config('app.media_url');
+        $apiBaseUrl = config('app.url'); // Usually your main domain
 
         foreach ($jobs as $job) {
 
-            $jobUrl = "http://teachnowbackend.jobsvedika.in:8080/api/open/jobs/" . $job->slug;
+            // 🛠 FIX: Make the Job URL dynamic too
+            $jobUrl = rtrim($apiBaseUrl, '/') . "/api/open/jobs/" . $job->slug;
 
             $companyName = $job->employer->company_name ?? 'Company';
 
+            // Handling the Logo Path
             $logoPath = $job->employer->company_logo ?? '';
-            $companyLogo = $logoPath ? $baseUrl . $logoPath : '';
+
+            // Ensure there's a slash between base and path if needed
+            $companyLogo = $logoPath ? rtrim($mediaBaseUrl, '/') . '/' . ltrim($logoPath, '/') : '';
 
             $html .= "
         <div style='margin-bottom:18px; padding:15px; border:1px solid #e2e8f0; border-radius:8px;'>
-
             <table width='100%' cellpadding='0' cellspacing='0'>
                 <tr>
-
                     <td width='60' valign='top'>
                         " . ($companyLogo ? "
                         <img src='{$companyLogo}'
@@ -164,36 +168,22 @@ class SendEmails extends Command
                              style='width:50px; height:50px; object-fit:contain; border-radius:6px;' />
                         " : "") . "
                     </td>
-
                     <td valign='top' style='padding-left:10px;'>
-
-                        <strong style='font-size:15px; color:#1e293b;'>
-                            {$job->title}
-                        </strong><br>
-
-                        <span style='font-size:12px; color:#475569;'>
-                            {$companyName}
-                        </span><br>
-
-                        <span style='font-size:12px; color:#64748b;'>
-                            {$job->location}
-                        </span><br>
-
+                        <strong style='font-size:15px; color:#1e293b;'>{$job->title}</strong><br>
+                        <span style='font-size:12px; color:#475569;'>{$companyName}</span><br>
+                        <span style='font-size:12px; color:#64748b;'>{$job->location}</span><br>
                         <span style='font-size:12px;'>
-                            Salary: {$job->salary_min} - {$job->salary_max}
+                            Salary: " . number_format($job->salary_min) . " - " . number_format($job->salary_max) . "
                         </span>
-
                     </td>
                 </tr>
             </table>
-
             <div style='margin-top:10px;'>
                 <a href='{$jobUrl}'
                    style='display:inline-block; padding:8px 14px; background:#4f46e5; color:#ffffff; text-decoration:none; font-size:12px; border-radius:5px;'>
                    View Details
                 </a>
             </div>
-
         </div>";
         }
 
