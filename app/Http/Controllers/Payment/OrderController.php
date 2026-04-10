@@ -263,7 +263,8 @@ class OrderController extends Controller
                 'purchase_date' => now(),
                 'starts_at' => $startDate,
                 'expires_at' => $expiresAt,
-
+                'featured_jobs_total' => $plan->featured_jobs_limit,
+                'featured_jobs_used' => 0,
                 'status' => 'active'
             ]);
 

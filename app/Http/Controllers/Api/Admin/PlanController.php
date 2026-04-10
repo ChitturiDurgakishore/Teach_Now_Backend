@@ -19,7 +19,9 @@ class PlanController extends Controller
                 'job_posts_limit' => 'required|integer|min:1',
                 'validity_days' => 'required|integer|min:1',
                 'job_live_days' => 'required|integer|min:1',
-                'features' => 'nullable|array'
+                'features' => 'nullable|array',
+                'featured_jobs_limit' => 'required|integer|min:0',
+                'company_featured' => 'required|boolean',
             ]);
 
             $plan = Plan::create([
@@ -30,7 +32,9 @@ class PlanController extends Controller
                 'validity_days' => $request->validity_days,
                 'job_live_days' => $request->job_live_days,
                 'features' => $request->features,
-                'is_active' => true
+                'is_active' => true,
+                'featured_jobs_limit' => $request->featured_jobs_limit,
+                'company_featured' => $request->company_featured,
             ]);
 
             return response()->json([
@@ -73,7 +77,9 @@ class PlanController extends Controller
                 'job_posts_limit' => 'nullable|integer|min:1',
                 'validity_days' => 'nullable|integer|min:1',
                 'job_live_days' => 'nullable|integer|min:1',
-                'features' => 'nullable|array'
+                'features' => 'nullable|array',
+                'featured_jobs_limit' => 'required|integer|min:0',
+                'company_featured' => 'required|boolean',
             ]);
 
             $plan->update($request->only([
@@ -83,7 +89,9 @@ class PlanController extends Controller
                 'job_posts_limit',
                 'validity_days',
                 'job_live_days',
-                'features'
+                'features',
+                'featured_jobs_limit',
+                'company_featured',
             ]));
 
             return response()->json([

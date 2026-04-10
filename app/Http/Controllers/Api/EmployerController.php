@@ -160,10 +160,60 @@ class EmployerController extends Controller
     {
         try {
 
+            $authEmployer = Auth::guard('employer')->user();
+
+            if (!$authEmployer || $authEmployer->id != $id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
             $employer = Employer::findOrFail($id);
 
-            $employer->company_featured = !$employer->company_featured;
-            $employer->save();
+            // 🔥 GET ACTIVE SUBSCRIPTION
+            $subscription = Subscription::where('employer_id', $employer->id)
+                ->where('expires_at', '>', now())
+                ->latest()
+                ->first();
+
+            if (!$subscription) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No active subscription'
+                ], 403);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🚨 PLAN CHECK (IMPORTANT)
+        |--------------------------------------------------------------------------
+        */
+            if (!$subscription->plan->company_featured) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your plan does not allow company featuring'
+                ], 403);
+            }
+
+            // 🔥 Toggle logic
+            $isNowFeatured = !$employer->company_featured;
+
+            if ($isNowFeatured) {
+
+                // ✅ Enable with expiry
+                $employer->update([
+                    'company_featured' => true,
+                    'featured_until' => $subscription->expires_at
+                ]);
+            } else {
+
+                // ✅ Disable
+                $employer->update([
+                    'company_featured' => false,
+                    'featured_until' => null
+                ]);
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -171,9 +221,9 @@ class EmployerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $status = $employer->company_featured ? 'featured' : 'unfeatured';
+            $status = $isNowFeatured ? 'featured' : 'unfeatured';
 
-            // ✅ Employer (MAIN)
+            // ✅ Employer
             $this->notification->send(
                 'company_featured',
                 'employer',
@@ -186,23 +236,27 @@ class EmployerController extends Controller
                 ]
             );
 
-            // ✅ Admin (optional - activity tracking)
-            $this->notification->send(
-                'company_featured',
-                'admin',
-                null,
-                'Company Feature Updated',
-                "Company '{$employer->company_name}' has been {$status}",
-                [
-                    'employer_id' => $employer->id,
-                    'status' => $status
-                ]
-            );
+            // ✅ Admins (FIXED - no null ❌)
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'company_featured',
+                    'admin',
+                    $admin->id,
+                    'Company Feature Updated',
+                    "Company '{$employer->company_name}' has been {$status}",
+                    [
+                        'employer_id' => $employer->id,
+                        'status' => $status
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'Employer feature status updated successfully',
-                'data' => $employer
+                'data' => $employer->fresh()
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 
@@ -1524,11 +1578,66 @@ class EmployerController extends Controller
 
             $job = Job::findOrFail($id);
 
-            // 🔥 Store before change
+            $employer = Auth::guard('employer')->user();
+
+            if (!$employer || $job->employer_id !== $employer->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            // 🔥 GET ACTIVE SUBSCRIPTION
+            $subscription = Subscription::where('employer_id', $employer->id)
+                ->where('expires_at', '>', now())
+                ->latest()
+                ->first();
+
+            if (!$subscription) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No active subscription'
+                ], 403);
+            }
+
+            // 🔥 Determine action
             $isNowFeatured = !$job->featured;
 
-            $job->featured = $isNowFeatured;
-            $job->save();
+            /*
+        |--------------------------------------------------------------------------
+        | 🚨 FEATURE LIMIT CHECK (ONLY WHEN ENABLING)
+        |--------------------------------------------------------------------------
+        */
+            if ($isNowFeatured) {
+
+                if ($subscription->featured_jobs_used >= $subscription->featured_jobs_total) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Featured job limit reached'
+                    ], 403);
+                }
+
+                // ✅ Enable feature with expiry
+                $job->update([
+                    'featured' => true,
+                    'featured_until' => $subscription->expires_at
+                ]);
+
+                // ✅ Increment usage
+                $subscription->increment('featured_jobs_used');
+            } else {
+
+                // ✅ Disable feature
+                $job->update([
+                    'featured' => false,
+                    'featured_until' => null
+                ]);
+
+                // ✅ Decrement usage safely
+                if ($subscription->featured_jobs_used > 0) {
+                    $subscription->decrement('featured_jobs_used');
+                }
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -1553,7 +1662,7 @@ class EmployerController extends Controller
                 ]
             );
 
-            // ✅ Recruiter (if exists)
+            // ✅ Recruiter
             if ($job->created_by) {
                 $this->notification->send(
                     'job_featured',
@@ -1571,7 +1680,7 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Job feature status updated successfully',
-                'data' => $job
+                'data' => $job->fresh()
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 

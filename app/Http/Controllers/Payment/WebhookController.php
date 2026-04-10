@@ -126,7 +126,9 @@ class WebhookController extends Controller
                             'purchase_date' => now(),
                             'starts_at' => $startDate,
                             'expires_at' => $expiresAt,
-                            'status' => 'active'
+                            'status' => 'active',
+                            'featured_jobs_total' => $plan->featured_jobs_limit,
+                            'featured_jobs_used' => 0,
                         ]);
 
                         $employer = \App\Models\Employer::find($order->employer_id);

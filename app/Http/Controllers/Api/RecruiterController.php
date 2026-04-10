@@ -643,9 +643,65 @@ class RecruiterController extends Controller
                 ], 401);
             }
 
-            // Toggle
-            $job->featured = !$job->featured;
-            $job->save();
+            // 🔥 Ensure recruiter belongs to same employer
+            if ($job->employer_id != $recruiter->employer_id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            // 🔥 GET EMPLOYER SUBSCRIPTION
+            $subscription = Subscription::where('employer_id', $recruiter->employer_id)
+                ->where('expires_at', '>', now())
+                ->latest()
+                ->first();
+
+            if (!$subscription) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No active subscription'
+                ], 403);
+            }
+
+            // 🔥 Determine action
+            $isNowFeatured = !$job->featured;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🚨 FEATURE LIMIT CHECK
+        |--------------------------------------------------------------------------
+        */
+            if ($isNowFeatured) {
+
+                if ($subscription->featured_jobs_used >= $subscription->featured_jobs_total) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Featured job limit reached'
+                    ], 403);
+                }
+
+                // ✅ Enable feature with expiry
+                $job->update([
+                    'featured' => true,
+                    'featured_until' => $subscription->expires_at
+                ]);
+
+                // ✅ Increment usage
+                $subscription->increment('featured_jobs_used');
+            } else {
+
+                // ✅ Disable feature
+                $job->update([
+                    'featured' => false,
+                    'featured_until' => null
+                ]);
+
+                // ✅ Decrement safely
+                if ($subscription->featured_jobs_used > 0) {
+                    $subscription->decrement('featured_jobs_used');
+                }
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -653,7 +709,7 @@ class RecruiterController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $statusText = $job->featured ? 'featured' : 'unfeatured';
+            $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
 
             // ✅ Recruiter
             $this->notification->send(
@@ -664,7 +720,7 @@ class RecruiterController extends Controller
                 "Your job '{$job->title}' is now {$statusText}",
                 [
                     'job_id' => $job->id,
-                    'featured' => $job->featured
+                    'featured' => $isNowFeatured
                 ]
             );
 
@@ -677,28 +733,32 @@ class RecruiterController extends Controller
                 "{$recruiter->name} marked job '{$job->title}' as {$statusText}",
                 [
                     'job_id' => $job->id,
-                    'featured' => $job->featured
+                    'featured' => $isNowFeatured
                 ]
             );
 
-            // ✅ Admin
-            $this->notification->send(
-                'job_featured',
-                'admin',
-                null,
-                'Job Feature Updated',
-                "Job '{$job->title}' is now {$statusText}",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $job->employer_id,
-                    'featured' => $job->featured
-                ]
-            );
+            // ✅ Admins (FIXED - no null ❌)
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_featured',
+                    'admin',
+                    $admin->id,
+                    'Job Feature Updated',
+                    "Job '{$job->title}' is now {$statusText}",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $job->employer_id,
+                        'featured' => $isNowFeatured
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'Job feature status updated successfully',
-                'data' => $job
+                'data' => $job->fresh()
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 
