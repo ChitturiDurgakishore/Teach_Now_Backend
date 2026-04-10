@@ -555,10 +555,35 @@ class JobBrowseController extends Controller
 
             $user = Auth::user();
 
-            $jobSeeker = JobSeeker::withTrashed()->where('user_id', $user->id)->first();
+            $jobSeeker = JobSeeker::withTrashed()
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$jobSeeker) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job seeker not found'
+                ], 404);
+            }
 
             $bookmarks = BookmarkedJob::where('job_seeker_id', $jobSeeker->id)
-                ->with('job')
+                ->with([
+                    'job' => function ($q) {
+                        $q->select(
+                            'id',
+                            'title',
+                            'slug',
+                            'employer_id',
+                            'job_type',
+                            'location',
+                            'salary_min',
+                            'salary_max'
+                        )
+                            ->with([
+                                'employer:id,company_name,company_logo'
+                            ]);
+                    }
+                ])
                 ->latest()
                 ->get();
 
