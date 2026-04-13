@@ -50,7 +50,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $hero = HomepageHeroSection::withTrashed()->first();
+            $hero = HomepageHeroSection::first();
 
             return response()->json([
                 'status' => true,
@@ -145,7 +145,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $stats = HomepageStat::withTrashed()->first();
+            $stats = HomepageStat::first();
 
             return response()->json([
                 'status' => true,
@@ -174,7 +174,7 @@ class AdminCMSController extends Controller
                 'total_recruiters' => 'nullable|integer'
             ]);
 
-            $stats = HomepageStat::withTrashed()->first();
+            $stats = HomepageStat::first();
 
             if (!$stats) {
 
@@ -217,7 +217,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $testimonials = HomepageTestimonial::withTrashed()->orderBy('display_order')->get();
+            $testimonials = HomepageTestimonial::orderBy('display_order')->get();
 
             return response()->json([
                 'status' => true,
@@ -285,7 +285,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $testimonial = HomepageTestimonial::withTrashed()->find($id);
+            $testimonial = HomepageTestimonial::find($id);
 
             if (!$testimonial) {
                 return response()->json([
@@ -322,7 +322,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $testimonial = HomepageTestimonial::withTrashed()->find($id);
+            $testimonial = HomepageTestimonial::find($id);
 
             if (!$testimonial) {
                 return response()->json([
@@ -351,7 +351,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $testimonial = HomepageTestimonial::withTrashed()->find($id);
+            $testimonial = HomepageTestimonial::find($id);
 
             if (!$testimonial) {
                 return response()->json([
@@ -386,7 +386,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $ctas = HomepageCtaSection::withTrashed()->where('is_active', true)
+            $ctas = HomepageCtaSection::where('is_active', true)
                 ->orderBy('id', 'desc')
                 ->get();
 
@@ -455,7 +455,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $cta = HomepageCtaSection::withTrashed()->findOrFail($id);
+            $cta = HomepageCtaSection::findOrFail($id);
 
             $request->validate([
                 'title' => 'required|string|max:255',
@@ -507,7 +507,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $cta = HomepageCtaSection::withTrashed()->findOrFail($id);
+            $cta = HomepageCtaSection::findOrFail($id);
 
             // 🔥 delete image
             if ($cta->background_image) {
@@ -534,7 +534,7 @@ class AdminCMSController extends Controller
 
     public function toggleCTA($id)
     {
-        $cta = HomepageCtaSection::withTrashed()->findOrFail($id);
+        $cta = HomepageCtaSection::findOrFail($id);
 
         $cta->is_active = !$cta->is_active;
         $cta->save();
@@ -552,7 +552,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $links = NavigationLink::withTrashed()->whereNull('parent_id')
+            $links = NavigationLink::whereNull('parent_id')
                 ->with('childrenRecursive')
                 ->orderBy('display_order')
                 ->get();
@@ -609,7 +609,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = NavigationLink::withTrashed()->findOrFail($id);
+            $link = NavigationLink::findOrFail($id);
 
             $link->update([
                 'title' => $request->title ?? $link->title,
@@ -636,7 +636,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = NavigationLink::withTrashed()->findOrFail($id);
+            $link = NavigationLink::findOrFail($id);
 
             // delete children
             NavigationLink::where('parent_id', $id)->delete();
@@ -660,7 +660,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = NavigationLink::withTrashed()->findOrFail($id);
+            $link = NavigationLink::findOrFail($id);
 
             $link->update([
                 'is_active' => !$link->is_active
@@ -687,7 +687,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $sections = FooterSection::withTrashed()->with(['links' => function ($query) {
+            $sections = FooterSection::with(['links' => function ($query) {
                 $query->orderBy('display_order');
             }])
                 ->orderBy('display_order')
@@ -742,7 +742,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $section = FooterSection::withTrashed()->find($id);
+            $section = FooterSection::find($id);
 
             if (!$section) {
                 return response()->json([
@@ -775,7 +775,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $section = FooterSection::withTrashed()->find($id);
+            $section = FooterSection::find($id);
 
             if (!$section) {
                 return response()->json([
@@ -804,7 +804,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $section = FooterSection::withTrashed()->find($id);
+            $section = FooterSection::find($id);
 
             if (!$section) {
                 return response()->json([
@@ -840,7 +840,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $links = FooterLink::withTrashed()->with('section')
+            $links = FooterLink::with('section')
                 ->orderBy('display_order')
                 ->get();
 
@@ -911,7 +911,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = FooterLink::withTrashed()->find($id);
+            $link = FooterLink::find($id);
 
             if (!$link) {
                 return response()->json([
@@ -947,7 +947,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = FooterLink::withTrashed()->find($id);
+            $link = FooterLink::find($id);
 
             if (!$link) {
                 return response()->json([
@@ -976,7 +976,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = FooterLink::withTrashed()->find($id);
+            $link = FooterLink::find($id);
 
             if (!$link) {
                 return response()->json([
@@ -1011,7 +1011,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $logos = HomepageCompanyLogo::withTrashed()->orderBy('display_order')->get();
+            $logos = HomepageCompanyLogo::orderBy('display_order')->get();
 
             return response()->json([
                 'status' => true,
@@ -1055,7 +1055,7 @@ class AdminCMSController extends Controller
                 'company_logos'
             );
 
-            $logo = HomepageCompanyLogo::withTrashed()->create([
+            $logo = HomepageCompanyLogo::create([
                 'company_name' => $request->company_name,
                 'company_logo' => $logoPath, // ✅ consistent path
                 'slug' => $request->slug,
@@ -1108,7 +1108,7 @@ class AdminCMSController extends Controller
             if ($id) {
 
                 // 🔍 Find existing
-                $logo = HomepageCompanyLogo::withTrashed()->find($id);
+                $logo = HomepageCompanyLogo::find($id);
 
                 if (!$logo) {
                     return response()->json([
@@ -1195,7 +1195,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $logo = HomepageCompanyLogo::withTrashed()->find($id);
+            $logo = HomepageCompanyLogo::find($id);
 
             if (!$logo) {
                 return response()->json([
@@ -1259,7 +1259,7 @@ class AdminCMSController extends Controller
     // Getting FAQs
     public function getFAQs()
     {
-        $faqs = FAQ::withTrashed()->orderBy('display_order')->get();
+        $faqs = FAQ::orderBy('display_order')->get();
 
         return response()->json([
             'status' => true,
@@ -1271,7 +1271,7 @@ class AdminCMSController extends Controller
     // Updating FAQS
     public function updateFAQ(Request $request, $id)
     {
-        $faq = FAQ::withTrashed()->find($id);
+        $faq = FAQ::find($id);
 
         if (!$faq) {
             return response()->json([
@@ -1292,7 +1292,7 @@ class AdminCMSController extends Controller
     // Deleting FAQs
     public function deleteFAQ($id)
     {
-        $faq = FAQ::withTrashed()->find($id);
+        $faq = FAQ::find($id);
 
         if (!$faq) {
             return response()->json([
@@ -1319,7 +1319,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $blogs = Blog::withTrashed()->latest()->paginate(10);
+            $blogs = Blog::latest()->paginate(10);
 
             return response()->json([
                 'status' => true,
@@ -1395,7 +1395,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $blog = Blog::withTrashed()->find($id);
+            $blog = Blog::find($id);
 
             if (!$blog) {
                 return response()->json([
@@ -1460,7 +1460,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $blog = Blog::withTrashed()->find($id);
+            $blog = Blog::find($id);
 
             if (!$blog) {
                 return response()->json([
@@ -1491,7 +1491,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $blog = Blog::withTrashed()->find($id);
+            $blog = Blog::find($id);
 
             if (!$blog) {
                 return response()->json([
@@ -1535,7 +1535,7 @@ class AdminCMSController extends Controller
                 'is_active' => 'nullable|boolean'
             ]);
 
-            $link = NavigationLink::withTrashed()->create([
+            $link = NavigationLink::create([
                 'title' => $request->title,
                 'url' => $request->url,
                 'parent_id' => $request->parent_id,
@@ -1562,7 +1562,7 @@ class AdminCMSController extends Controller
     // Get All Links
     public function index()
     {
-        $links = NavigationLink::withTrashed()->with('children')
+        $links = NavigationLink::with('children')
             ->orderBy('display_order')
             ->get();
 
@@ -1577,7 +1577,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = NavigationLink::withTrashed()->findOrFail($id);
+            $link = NavigationLink::findOrFail($id);
 
             $request->validate([
                 'title' => 'required|string|max:255',
@@ -1617,7 +1617,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $link = NavigationLink::withTrashed()->findOrFail($id);
+            $link = NavigationLink::findOrFail($id);
 
             // delete children first
             NavigationLink::where('parent_id', $id)->delete();
@@ -1641,7 +1641,7 @@ class AdminCMSController extends Controller
 
     public function toggleActive($id)
     {
-        $link = NavigationLink::withTrashed()->findOrFail($id);
+        $link = NavigationLink::findOrFail($id);
 
         $link->is_active = !$link->is_active;
         $link->save();
@@ -1657,7 +1657,7 @@ class AdminCMSController extends Controller
 
     public function toggleShowInNav($id)
     {
-        $link = NavigationLink::withTrashed()->findOrFail($id);
+        $link = NavigationLink::findOrFail($id);
 
         $link->show_in_nav = !$link->show_in_nav;
         $link->save();
@@ -1675,7 +1675,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $skills = Skill::withTrashed()->orderBy('name')->get();
+            $skills = Skill::orderBy('name')->get();
 
             return response()->json([
                 'status' => true,
@@ -1702,7 +1702,7 @@ class AdminCMSController extends Controller
                 'name' => 'required|string|max:100|unique:skills,name'
             ]);
 
-            $skill = Skill::withTrashed()->create([
+            $skill = Skill::create([
                 'name' => strtolower(trim($request->name)),
                 'is_custom' => false
             ]);
@@ -1728,7 +1728,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $skill = Skill::withTrashed()->find($id);
+            $skill = Skill::find($id);
 
             if (!$skill) {
                 return response()->json([
@@ -1766,7 +1766,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $skill = Skill::withTrashed()->find($id);
+            $skill = Skill::find($id);
 
             if (!$skill) {
                 return response()->json([
@@ -1797,7 +1797,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $skill = Skill::withTrashed()->find($id);
+            $skill = Skill::find($id);
 
             if (!$skill) {
                 return response()->json([
@@ -1832,7 +1832,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $templates = EmailTemplate::withTrashed()->orderBy('id', 'desc')->get();
+            $templates = EmailTemplate::orderBy('id', 'desc')->get();
 
             return response()->json([
                 'status' => true,
@@ -1862,7 +1862,7 @@ class AdminCMSController extends Controller
                 'body' => 'required|string'
             ]);
 
-            $template = EmailTemplate::withTrashed()->create([
+            $template = EmailTemplate::create([
                 'name' => $request->name,
                 'slug' => $request->slug,
                 'subject' => $request->subject,
@@ -1890,7 +1890,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $template = EmailTemplate::withTrashed()->find($id);
+            $template = EmailTemplate::find($id);
 
             if (!$template) {
                 return response()->json([
@@ -2411,7 +2411,4 @@ class AdminCMSController extends Controller
             'data' => $template
         ]);
     }
-
-
 }
-
