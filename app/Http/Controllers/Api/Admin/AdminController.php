@@ -131,7 +131,7 @@ class AdminController extends Controller
             $job = Job::withTrashed()->with([
                 'employer:id,company_name',
                 'category:id,name',
-                'jobQuestions'
+                'questions'
             ])
                 ->find($id);
 
