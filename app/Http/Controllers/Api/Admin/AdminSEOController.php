@@ -27,7 +27,7 @@ class AdminSEOController extends Controller
                 'meta_keywords' => 'nullable|string'
             ]);
 
-            $job = Job::withTrashed()->find($id);
+            $job = Job::find($id);
 
             if (!$job) {
                 return response()->json([
@@ -64,7 +64,7 @@ class AdminSEOController extends Controller
     {
         try {
 
-            $category = Category::withTrashed()->find($id);
+            $category = Category::find($id);
 
             if (!$category) {
                 return response()->json([
@@ -101,7 +101,7 @@ class AdminSEOController extends Controller
     {
         try {
 
-            $location = Location::withTrashed()->find($id);
+            $location = Location::find($id);
 
             if (!$location) {
                 return response()->json([
@@ -138,7 +138,7 @@ class AdminSEOController extends Controller
     {
         try {
 
-            $employer = Employer::withTrashed()->find($id);
+            $employer = Employer::find($id);
 
             if (!$employer) {
                 return response()->json([
@@ -175,7 +175,7 @@ class AdminSEOController extends Controller
     {
         try {
 
-            $section = HomepageSection::withTrashed()->find($id);
+            $section = HomepageSection::find($id);
 
             if (!$section) {
                 return response()->json([
@@ -212,7 +212,7 @@ class AdminSEOController extends Controller
     {
         try {
 
-            $link = NavigationLink::withTrashed()->find($id);
+            $link = NavigationLink::find($id);
 
             if (!$link) {
                 return response()->json([
@@ -249,7 +249,7 @@ class AdminSEOController extends Controller
     {
         try {
 
-            $section = FooterSection::withTrashed()->find($id);
+            $section = FooterSection::find($id);
 
             if (!$section) {
                 return response()->json([
@@ -286,7 +286,7 @@ class AdminSEOController extends Controller
     {
         try {
 
-            $link = FooterLink::withTrashed()->find($id);
+            $link = FooterLink::find($id);
 
             if (!$link) {
                 return response()->json([
