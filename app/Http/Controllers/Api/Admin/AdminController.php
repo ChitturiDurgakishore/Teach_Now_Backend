@@ -594,6 +594,13 @@ class AdminController extends Controller
             $employer->update([
                 'is_verified' => $request->status === 'approved'
             ]);
+            $employerdocuments=DocumentVerification::where('employer_id',$id)->get();
+            foreach($employerdocuments as $document){
+                $document->update([
+                    'status' => $request->status === 'approved' ? 'approved' : 'rejected',
+                    'admin_remark' => $request->admin_remark ?? null
+                ]);
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -1384,6 +1391,29 @@ class AdminController extends Controller
 
 
     // ==============================================================================
+    //Admin Newly uploaded documents
 
+    public function getNewDocuments()
+    {
+        try {
 
+            $documents = DocumentVerification::with('employer:id,company_name')
+                ->where('status', 'pending')
+                ->latest()
+                ->paginate(10);
+
+            return response()->json([
+                'status' => true,
+                'total_documents' => $documents->total(),
+                'data' => $documents
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch documents',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
