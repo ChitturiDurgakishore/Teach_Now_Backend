@@ -178,6 +178,9 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::patch('/employers/{id}/verify', [AdminController::class, 'verifyEmployer']);
     Route::patch('/employers/{id}/feature', [AdminController::class, 'featureEmployer']);
 
+    //Document
+    Route::get('/documents/pending', [AdminController::class, 'getNewDocuments']);
+
     //Recruiters Management for Admin
     Route::get('/recruiters', [AdminController::class, 'getRecruiters']);
     Route::get('/recruiters/{id}', [AdminController::class, 'getRecruiterDetails']);
