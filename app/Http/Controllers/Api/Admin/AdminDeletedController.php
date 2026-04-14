@@ -15,27 +15,65 @@ use App\Models\Resume;
 class AdminDeletedController extends Controller
 {
     //List APIs
-    public function users()
+    public function users(Request $request)
     {
+        $perPage = $request->get('per_page', 10);
+
+        $data = User::onlyTrashed()
+            ->latest()
+            ->paginate($perPage);
+
         return response()->json([
             'status' => true,
-            'data' => User::onlyTrashed()->latest()->get()
+            'total' => $data->total(),
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'data' => $data->items()
         ]);
     }
 
-    public function jobSeekers()
+    public function jobSeekers(Request $request)
     {
+        $perPage = $request->get('per_page', 10);
+
+        $data = JobSeeker::onlyTrashed()
+            ->with([
+                'user:id,name,email',
+                'educations',
+                'experiences',
+                'skills'
+            ])
+            ->latest()
+            ->paginate($perPage);
+
         return response()->json([
             'status' => true,
-            'data' => JobSeeker::onlyTrashed()->latest()->get()
+            'total' => $data->total(),
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'data' => $data->items()
         ]);
     }
 
-    public function jobs()
+    public function jobs(Request $request)
     {
+        $perPage = $request->get('per_page', 10);
+
+        $data = Job::onlyTrashed()
+            ->with([
+                'employer:id,company_name,company_logo',
+                'questions',
+                'jobApplications:id,job_id,status'
+            ])
+            ->latest()
+            ->paginate($perPage);
+
         return response()->json([
             'status' => true,
-            'data' => Job::onlyTrashed()->latest()->get()
+            'total' => $data->total(),
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'data' => $data->items()
         ]);
     }
 
@@ -47,27 +85,63 @@ class AdminDeletedController extends Controller
         ]);
     }
 
-    public function cvs()
+    public function cvs(Request $request)
     {
+        $perPage = $request->get('per_page', 10);
+
+        $data = JobSeekerCV::onlyTrashed()
+            ->with([
+                'jobSeeker:id,user_id',
+                'jobSeeker.user:id,name,email'
+            ])
+            ->latest()
+            ->paginate($perPage);
+
         return response()->json([
             'status' => true,
-            'data' => JobSeekerCV::onlyTrashed()->latest()->get()
+            'total' => $data->total(),
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'data' => $data->items()
         ]);
     }
 
-    public function testimonials()
+    public function testimonials(Request $request)
     {
+        $perPage = $request->get('per_page', 10);
+
+        $data = HomepageTestimonial::onlyTrashed()
+            ->with('user:id,name,email')
+            ->latest()
+            ->paginate($perPage);
+
         return response()->json([
             'status' => true,
-            'data' => HomepageTestimonial::onlyTrashed()->latest()->get()
+            'total' => $data->total(),
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'data' => $data->items()
         ]);
     }
 
-    public function resumes()
+    public function resumes(Request $request)
     {
+        $perPage = $request->get('per_page', 10);
+
+        $data = Resume::onlyTrashed()
+            ->with([
+                'jobSeeker:id,user_id',
+                'jobSeeker.user:id,name,email'
+            ])
+            ->latest()
+            ->paginate($perPage);
+
         return response()->json([
             'status' => true,
-            'data' => Resume::onlyTrashed()->latest()->get()
+            'total' => $data->total(),
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'data' => $data->items()
         ]);
     }
 
