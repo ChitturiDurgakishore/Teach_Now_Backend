@@ -151,7 +151,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
 
     //Notifications
-    Route::get('/notifications', [NotificationController::class, 'getNotifications']);
+    Route::get('/notifications', [NotificationController::class, 'getAdminNotifications']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 

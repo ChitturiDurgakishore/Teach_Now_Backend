@@ -74,6 +74,42 @@ class NotificationController extends Controller
         }
     }
 
+
+    //Admin notification
+    public function getAdminNotifications(Request $request)
+    {
+        try {
+
+            // detect user
+            if (Auth::guard('admin')->check()) {
+                $type = 'admin';
+                $id = Auth::guard('admin')->id();
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            $notifications = Notification::where('notifiable_type', $type)
+                ->latest()
+                ->paginate(10);
+
+            return response()->json([
+                'status' => true,
+                'data' => $notifications
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch notifications',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
     //Mark all notifications as read
     public function markAllAsRead(Request $request)
     {
