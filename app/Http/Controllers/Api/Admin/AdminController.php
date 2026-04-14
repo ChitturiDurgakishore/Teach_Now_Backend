@@ -594,8 +594,8 @@ class AdminController extends Controller
             $employer->update([
                 'is_verified' => $request->status === 'approved'
             ]);
-            $employerdocuments=DocumentVerification::where('employer_id',$id)->get();
-            foreach($employerdocuments as $document){
+            $employerdocuments = DocumentVerification::where('employer_id', $id)->get();
+            foreach ($employerdocuments as $document) {
                 $document->update([
                     'status' => $request->status === 'approved' ? 'approved' : 'rejected',
                     'admin_remark' => $request->admin_remark ?? null
@@ -632,17 +632,20 @@ class AdminController extends Controller
                 );
             }
 
-            // ⚙️ Admin log (optional)
-            $this->notification->send(
-                'employer_verification',
-                'admin',
-                null,
-                'Employer Verification Updated',
-                "Employer '{$employer->company_name}' marked as '{$request->status}'",
-                [
-                    'employer_id' => $employer->id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'employer_verification',
+                    'admin',
+                    $admin->id,
+                    'Employer Verification Updated',
+                    "Employer '{$employer->company_name}' marked as '{$request->status}'",
+                    [
+                        'employer_id' => $employer->id
+                    ]
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------
