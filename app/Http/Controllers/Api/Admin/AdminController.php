@@ -317,7 +317,6 @@ class AdminController extends Controller
         }
     }
 
-    // Mark Feature Job Posting
     public function featureJob($id)
     {
         try {
@@ -331,9 +330,15 @@ class AdminController extends Controller
                 ], 404);
             }
 
+            // 🔥 TOGGLE BOOLEAN (0 ↔ 1)
+            $isNowFeatured = $job->admin_featured ? 0 : 1;
+
             $job->update([
-                'admin_featured' => true
+                'admin_featured' => $isNowFeatured
             ]);
+
+            $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
+            $titleText = $isNowFeatured ? 'Job Featured' : 'Job Unfeatured';
 
             /*
         |--------------------------------------------------------------------------
@@ -341,33 +346,35 @@ class AdminController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            // ⭐ Employer (MAIN)
+            // ✅ Employer
             $this->notification->send(
                 'job_admin_featured',
                 'employer',
                 $job->employer_id,
-                'Job Featured',
-                "Your job '{$job->title}' has been featured by admin",
+                $titleText,
+                "Your job '{$job->title}' has been {$statusText} by admin",
                 [
-                    'job_id' => $job->id
+                    'job_id' => $job->id,
+                    'featured' => $isNowFeatured
                 ]
             );
 
-            // ⭐ Recruiter (if exists)
+            // ✅ Recruiter (if exists)
             if ($job->created_by) {
                 $this->notification->send(
                     'job_admin_featured',
                     'recruiter',
                     $job->created_by,
-                    'Job Featured',
-                    "Your job '{$job->title}' has been featured by admin",
+                    $titleText,
+                    "Your job '{$job->title}' has been {$statusText} by admin",
                     [
-                        'job_id' => $job->id
+                        'job_id' => $job->id,
+                        'featured' => $isNowFeatured
                     ]
                 );
             }
 
-            // ⚙️ Admin (optional log)
+            // ✅ Admins (LOG)
             $admins = \App\Models\User::where('role', 'admin')->get();
 
             foreach ($admins as $admin) {
@@ -375,18 +382,23 @@ class AdminController extends Controller
                     'job_admin_featured',
                     'admin',
                     $admin->id,
-                    'Job Featured',
-                    "Job '{$job->title}' marked as featured",
+                    $titleText,
+                    "Job '{$job->title}' has been {$statusText}",
                     [
                         'job_id' => $job->id,
-                        'employer_id' => $job->employer_id
+                        'employer_id' => $job->employer_id,
+                        'featured' => $isNowFeatured
                     ]
                 );
             }
 
             return response()->json([
                 'status' => true,
-                'message' => 'Job marked as featured'
+                'message' => "Job {$statusText} successfully",
+                'data' => [
+                    'job_id' => $job->id,
+                    'admin_featured' => $isNowFeatured
+                ]
             ], 200);
         } catch (\Exception $e) {
 
