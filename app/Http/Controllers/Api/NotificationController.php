@@ -81,16 +81,7 @@ class NotificationController extends Controller
         try {
 
             // detect user
-            if (Auth::guard('admin')->check()) {
                 $type = 'admin';
-                $id = Auth::guard('admin')->id();
-            } else {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthorized'
-                ], 401);
-            }
-
             $notifications = Notification::where('notifiable_type', $type)
                 ->latest()
                 ->paginate(10);
