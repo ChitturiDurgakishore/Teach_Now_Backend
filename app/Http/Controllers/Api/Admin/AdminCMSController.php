@@ -1313,18 +1313,27 @@ class AdminCMSController extends Controller
 
     // Blogs management
 
-    // Get Blogs
-
-    public function getBlogs()
+    public function getBlogs(Request $request)
     {
         try {
 
-            $blogs = Blog::latest()->paginate(10);
+            // 🔥 PER PAGE (default 10)
+            $perPage = $request->get('per_page', 10);
+
+            $blogs = Blog::latest()->paginate($perPage);
 
             return response()->json([
                 'status' => true,
+
+                // 🔥 PAGINATION META
                 'total' => $blogs->total(),
-                'data' => $blogs
+                'current_page' => $blogs->currentPage(),
+                'last_page' => $blogs->lastPage(),
+                'per_page' => $blogs->perPage(),
+
+                // 🔥 DATA
+                'data' => $blogs->items()
+
             ], 200);
         } catch (\Exception $e) {
 
@@ -1828,16 +1837,27 @@ class AdminCMSController extends Controller
 
     // Email Template Management
     //    Get email templates
-    public function getEmailTemplates()
+    public function getEmailTemplates(Request $request)
     {
         try {
 
-            $templates = EmailTemplate::orderBy('id', 'desc')->get();
+            // 🔥 PER PAGE (default 10)
+            $perPage = $request->get('per_page', 10);
+
+            $templates = EmailTemplate::orderBy('id', 'desc')
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
-                'total' => $templates->count(),
-                'data' => $templates
+
+                // 🔥 PAGINATION META
+                'total' => $templates->total(),
+                'current_page' => $templates->currentPage(),
+                'last_page' => $templates->lastPage(),
+                'per_page' => $templates->perPage(),
+
+                // 🔥 DATA
+                'data' => $templates->items()
             ]);
         } catch (\Exception $e) {
 
@@ -2067,15 +2087,27 @@ class AdminCMSController extends Controller
         }
     }
 
-    public function getResources()
+    public function getResources(Request $request)
     {
         try {
 
-            $resources = TeachingResource::all();
+            // 🔥 PER PAGE (default 10)
+            $perPage = $request->get('per_page', 10);
+
+            $resources = TeachingResource::latest()->paginate($perPage);
 
             return response()->json([
                 'status' => true,
-                'data' => $resources
+
+                // 🔥 PAGINATION META
+                'total' => $resources->total(),
+                'current_page' => $resources->currentPage(),
+                'last_page' => $resources->lastPage(),
+                'per_page' => $resources->perPage(),
+
+                // 🔥 DATA
+                'data' => $resources->items()
+
             ]);
         } catch (\Exception $e) {
 
