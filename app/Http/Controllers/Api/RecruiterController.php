@@ -355,18 +355,21 @@ class RecruiterController extends Controller
                     'recruiter_id' => $recruiter->id
                 ]
             );
-            // ✅ Admin (GLOBAL)
-            $this->notification->send(
-                'job_created',
-                'admin',
-                null, // 🔥 important (means all admins or system-wide)
-                'Job Created',
-                "Job '{$job->title}' has been created",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $job->employer_id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_created',
+                    'admin',
+                    $admin->id,
+                    'Job Created',
+                    "Job '{$job->title}' has been created",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $job->employer_id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -597,18 +600,21 @@ class RecruiterController extends Controller
                 ]
             );
 
-            // ✅ Admin (GLOBAL)
-            $this->notification->send(
-                'job_republished',
-                'admin',
-                null, // 🔥 important (means all admins or system-wide)
-                'Job Republished',
-                "Job '{$job->title}' has been republished",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $job->employer_id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_republished',
+                    'admin',
+                    $admin->id,
+                    'Job Republished',
+                    "Job '{$job->title}' has been republished",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $job->employer_id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -836,17 +842,21 @@ class RecruiterController extends Controller
             );
 
             // ✅ Admin
-            $this->notification->send(
-                'job_filled',
-                'admin',
-                null,
-                'Job Filled',
-                "Job '{$job->title}' has been marked as filled",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $job->employer_id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_filled',
+                    'admin',
+                    $admin->id,
+                    'Job Filled',
+                    "Job '{$job->title}' has been marked as filled",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $job->employer_id
+                    ]
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------

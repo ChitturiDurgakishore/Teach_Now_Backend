@@ -206,18 +206,21 @@ class AdminController extends Controller
                 );
             }
 
-            // ✅ Admin (optional log notification)
-            $this->notification->send(
-                'job_approved',
-                'admin',
-                null,
-                'Job Approved',
-                "Job '{$job->title}' approved successfully",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $job->employer_id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_approved',
+                    'admin',
+                    $admin->id,
+                    'Job Approved',
+                    "Job '{$job->title}' approved successfully",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $job->employer_id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -284,17 +287,21 @@ class AdminController extends Controller
             }
 
             // ⚙️ Admin (optional log)
-            $this->notification->send(
-                'job_rejected',
-                'admin',
-                null,
-                'Job Rejected',
-                "Job '{$job->title}' has been rejected",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $job->employer_id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_rejected',
+                    'admin',
+                    $admin->id,
+                    'Job Rejected',
+                    "Job '{$job->title}' has been rejected",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $job->employer_id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -361,17 +368,21 @@ class AdminController extends Controller
             }
 
             // ⚙️ Admin (optional log)
-            $this->notification->send(
-                'job_admin_featured',
-                'admin',
-                null,
-                'Job Featured',
-                "Job '{$job->title}' marked as featured",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $job->employer_id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_admin_featured',
+                    'admin',
+                    $admin->id,
+                    'Job Featured',
+                    "Job '{$job->title}' marked as featured",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $job->employer_id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -485,18 +496,21 @@ class AdminController extends Controller
                 );
             }
 
-            // ⚙️ Admin (optional log)
-            $this->notification->send(
-                'job_republished',
-                'admin',
-                null,
-                'Job Republished',
-                "Job '{$job->title}' republished successfully",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $job->employer_id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_republished',
+                    'admin',
+                    $admin->id,
+                    'Job Republished',
+                    "Job '{$job->title}' republished successfully",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $job->employer_id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -735,16 +749,20 @@ class AdminController extends Controller
             );
 
             // ⚙️ Admin (optional log)
-            $this->notification->send(
-                'employer_featured',
-                'admin',
-                null,
-                'Employer Featured',
-                "Employer '{$employer->company_name}' marked as featured",
-                [
-                    'employer_id' => $employer->id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'employer_featured',
+                    'admin',
+                    $admin->id,
+                    'Employer Featured',
+                    "Employer '{$employer->company_name}' marked as featured",
+                    [
+                        'employer_id' => $employer->id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -1075,17 +1093,25 @@ class AdminController extends Controller
             );
 
             // ⚙️ Admin (optional log)
-            $this->notification->send(
-                'recruiter_deleted',
-                'admin',
-                null,
-                'Recruiter Deleted',
-                "Recruiter '{$name}' deleted successfully",
-                [
-                    'recruiter_id' => $recruiterId,
-                    'employer_id' => $employerId
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'recruiter_deleted',
+                    'admin',
+                    $admin->id,
+                    'Recruiter Deleted',
+                    "Recruiter '{$name}' deleted successfully",
+                    [
+                        'recruiter_id' => $recruiterId,
+                        'employer_id' => $employerId
+                    ]
+                );
+            }
+
+
+
+
 
             /*
         |--------------------------------------------------------------------------

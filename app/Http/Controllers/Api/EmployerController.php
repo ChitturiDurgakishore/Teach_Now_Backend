@@ -101,17 +101,21 @@ class EmployerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $this->notification->send(
-                'company_created',
-                'admin',
-                null, // 🔥 all admins
-                'New Company Registered',
-                "A new company '{$employer->company_name}' has registered",
-                [
-                    'employer_id' => $employer->id,
-                    'company_name' => $employer->company_name
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'company_created',
+                    'admin',
+                    $admin->id,
+                    'New Company Registered',
+                    "A new company '{$employer->company_name}' has registered",
+                    [
+                        'employer_id' => $employer->id,
+                        'company_name' => $employer->company_name
+                    ]
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -730,18 +734,21 @@ class EmployerController extends Controller
                 ]
             );
 
-            // ✅ Admin (optional tracking)
-            $this->notification->send(
-                'recruiter_deleted',
-                'admin',
-                null,
-                'Recruiter Removed',
-                "Recruiter '{$name}' removed from '{$employer->company_name}'",
-                [
-                    'employer_id' => $employer->id,
-                    'recruiter_id' => $recruiterId
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'recruiter_deleted',
+                    'admin',
+                    $admin->id,
+                    'Recruiter Removed',
+                    "Recruiter '{$name}' removed from '{$employer->company_name}'",
+                    [
+                        'employer_id' => $employer->id,
+                        'recruiter_id' => $recruiterId
+                    ]
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -1130,17 +1137,21 @@ class EmployerController extends Controller
             );
 
             // ✅ Admin (IMPORTANT)
-            $this->notification->send(
-                'job_created',
-                'admin',
-                null,
-                'New Job Posted',
-                "A new job '{$job->title}' has been posted by '{$employer->company_name}'",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $employer->id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_created',
+                    'admin',
+                    $admin->id,
+                    'New Job Posted',
+                    "A new job '{$job->title}' has been posted by '{$employer->company_name}'",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $employer->id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -1365,18 +1376,21 @@ class EmployerController extends Controller
                 ]
             );
 
-            // ✅ Admin (tracking / moderation)
-            $this->notification->send(
-                'job_republished',
-                'admin',
-                null,
-                'Job Republished',
-                "Job '{$job->title}' has been republished by '{$employer->company_name}'",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $employer->id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_republished',
+                    'admin',
+                    $admin->id,
+                    'Job Republished',
+                    "Job '{$job->title}' has been republished by '{$employer->company_name}'",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $employer->id
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => true,
@@ -1460,18 +1474,21 @@ class EmployerController extends Controller
                 ]
             );
 
-            // ✅ Admin (tracking)
-            $this->notification->send(
-                'job_filled',
-                'admin',
-                null,
-                'Job Filled',
-                "Job '{$job->title}' has been marked as filled by '{$employer->company_name}'",
-                [
-                    'job_id' => $job->id,
-                    'employer_id' => $employer->id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_filled',
+                    'admin',
+                    $admin->id,
+                    'Job Filled',
+                    "Job '{$job->title}' has been marked as filled by '{$employer->company_name}'",
+                    [
+                        'job_id' => $job->id,
+                        'employer_id' => $employer->id
+                    ]
+                );
+            }
 
             // ✅ Recruiter (if exists)
             if ($job->created_by) {
@@ -1548,18 +1565,21 @@ class EmployerController extends Controller
                 ]
             );
 
-            // ✅ Admin (tracking)
-            $this->notification->send(
-                'job_deleted',
-                'admin',
-                null,
-                'Job Deleted',
-                "Job '{$jobTitle}' has been deleted by '{$employer->company_name}'",
-                [
-                    'job_id' => $jobId,
-                    'employer_id' => $employer->id
-                ]
-            );
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'job_deleted',
+                    'admin',
+                    $admin->id,
+                    'Job Deleted',
+                    "Job '{$jobTitle}' has been deleted by '{$employer->company_name}'",
+                    [
+                        'job_id' => $jobId,
+                        'employer_id' => $employer->id
+                    ]
+                );
+            }
 
             // ✅ Recruiter (if exists)
             if ($createdBy) {
