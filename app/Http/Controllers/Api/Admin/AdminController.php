@@ -64,7 +64,8 @@ class AdminController extends Controller
             // Recent Applications
             $recentApplications = JobApplication::with([
                 'job:id,title',
-                'jobSeeker:id,user_id'
+
+                'jobSeeker.user:id,name,email,profile_photo'
             ])
                 ->latest()
                 ->limit(5)
