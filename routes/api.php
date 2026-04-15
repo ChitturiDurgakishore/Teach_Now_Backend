@@ -187,7 +187,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     //Recruiters Management for Admin
     Route::get('/recruiters', [AdminController::class, 'getRecruiters']);
     Route::get('/recruiters/{id}', [AdminController::class, 'getRecruiterDetails']);
-    Route::patch('/recruiters/{id}/disable', [AdminController::class, 'disableRecruiter']);
+    Route::patch('/recruiters/{id}/disable', [AdminController::class, 'toggleRecruiterStatus']);
     Route::delete('/recruiters/{id}', [AdminController::class, 'deleteRecruiter']);
 
     //Job Seekers Management for Admin

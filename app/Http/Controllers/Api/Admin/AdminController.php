@@ -944,7 +944,7 @@ class AdminController extends Controller
 
 
 
-    public function disableRecruiter($id)
+    public function toggleRecruiterStatus($id)
     {
         try {
 
@@ -957,9 +957,15 @@ class AdminController extends Controller
                 ], 404);
             }
 
+            // 🔥 TOGGLE (0 ↔ 1)
+            $isNowActive = $recruiter->is_active ? 0 : 1;
+
             $recruiter->update([
-                'is_active' => 0
+                'is_active' => $isNowActive
             ]);
+
+            $statusText = $isNowActive ? 'enabled' : 'disabled';
+            $titleText = $isNowActive ? 'Account Enabled' : 'Account Disabled';
 
             /*
         |--------------------------------------------------------------------------
@@ -967,44 +973,52 @@ class AdminController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            // 🚫 Recruiter (MAIN)
+            // ✅ Recruiter
             $this->notification->send(
-                'recruiter_disabled',
+                'recruiter_status',
                 'recruiter',
                 $recruiter->id,
-                'Account Disabled',
-                "Your recruiter account has been disabled by admin",
-                []
+                $titleText,
+                "Your recruiter account has been {$statusText} by admin",
+                [
+                    'status' => $isNowActive
+                ]
             );
 
-            // 🏢 Employer
+            // ✅ Employer
             $this->notification->send(
-                'recruiter_disabled',
+                'recruiter_status',
                 'employer',
                 $recruiter->employer_id,
-                'Recruiter Disabled',
-                "Recruiter '{$recruiter->name}' has been disabled",
+                $isNowActive ? 'Recruiter Enabled' : 'Recruiter Disabled',
+                "Recruiter '{$recruiter->name}' has been {$statusText}",
                 [
-                    'recruiter_id' => $recruiter->id
+                    'recruiter_id' => $recruiter->id,
+                    'status' => $isNowActive
                 ]
             );
 
-            // ⚙️ Admin (optional log)
-            $this->notification->send(
-                'recruiter_disabled',
-                'admin',
-                null,
-                'Recruiter Disabled',
-                "Recruiter '{$recruiter->name}' disabled successfully",
-                [
-                    'recruiter_id' => $recruiter->id,
-                    'employer_id' => $recruiter->employer_id
-                ]
-            );
+            // ✅ Admins (loop)
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'recruiter_status',
+                    'admin',
+                    $admin->id,
+                    $isNowActive ? 'Recruiter Enabled' : 'Recruiter Disabled',
+                    "Recruiter '{$recruiter->name}' {$statusText} successfully",
+                    [
+                        'recruiter_id' => $recruiter->id,
+                        'employer_id' => $recruiter->employer_id,
+                        'status' => $isNowActive
+                    ]
+                );
+            }
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 MAIL (UNCHANGED)
+        | 🔥 MAIL
         |--------------------------------------------------------------------------
         */
 
@@ -1012,21 +1026,22 @@ class AdminController extends Controller
 
                 $mailService = new MailService();
 
-                // ✅ Recruiter mail
-                $mailService->send('recruiter_disabled', [
-                    'name' => $recruiter->name,
-                    'company_name' => $recruiter->employer->company_name
-                ], $recruiter->email);
-
-                // ✅ Employer mail
-                $mailService->send('recruiter_disabled_employer', [
-                    'name' => $recruiter->name,
-                    'email' => $recruiter->email,
-                    'company_name' => $recruiter->employer->company_name
-                ], $recruiter->employer->email);
+                if ($isNowActive) {
+                    // ✅ ENABLE MAILS
+                    $mailService->send('recruiter_enabled', [
+                        'name' => $recruiter->name,
+                        'company_name' => $recruiter->employer->company_name
+                    ], $recruiter->email);
+                } else {
+                    // ✅ DISABLE MAILS
+                    $mailService->send('recruiter_disabled', [
+                        'name' => $recruiter->name,
+                        'company_name' => $recruiter->employer->company_name
+                    ], $recruiter->email);
+                }
             } catch (\Exception $mailException) {
 
-                Log::error('Recruiter disable mail failed', [
+                Log::error('Recruiter status mail failed', [
                     'recruiter_id' => $recruiter->id,
                     'error' => $mailException->getMessage()
                 ]);
@@ -1034,11 +1049,15 @@ class AdminController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Recruiter disabled successfully'
+                'message' => "Recruiter {$statusText} successfully",
+                'data' => [
+                    'recruiter_id' => $recruiter->id,
+                    'is_active' => $isNowActive
+                ]
             ], 200);
         } catch (\Exception $e) {
 
-            Log::error('Disable recruiter failed', [
+            Log::error('Toggle recruiter failed', [
                 'error' => $e->getMessage()
             ]);
 
