@@ -120,6 +120,9 @@ Route::prefix('open')->group(function () {
     Route::get('/about-us', [PublicAPIController::class, 'aboutUs']);
     Route::get('/privacy-policy', [PublicAPIController::class, 'privacyPolicy']);
     Route::get('/terms-conditions', [PublicAPIController::class, 'termsConditions']);
+
+    //Skills
+    Route::get('/skills', [PublicAPIController::class, 'getskills']);
 });
 
 //resource download

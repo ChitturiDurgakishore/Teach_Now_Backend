@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Models\AboutUsSection;
 use App\Models\PrivacyPolicySections;
-
+use App\Models\Skill;
 use App\Models\TermsConditionsSections;
 
 class PublicAPIController extends Controller
@@ -1102,5 +1102,17 @@ class PublicAPIController extends Controller
             'status' => true,
             'data' => $data
         ]);
+    }
+
+    public function getskills(){
+        $skills = Skill::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'status' => true,
+            'total' => $skills->count(),
+            'data' => $skills
+        ], 200);
     }
 }
