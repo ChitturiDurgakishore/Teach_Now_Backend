@@ -55,7 +55,7 @@ class AdminController extends Controller
 
             // Recent Jobs
             $recentJobs = Job::with([
-                'employer:id,company_name'
+                'employer:id,company_name,company_logo',
             ])
                 ->latest()
                 ->limit(5)
