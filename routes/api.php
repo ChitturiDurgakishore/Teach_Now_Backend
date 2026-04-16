@@ -367,6 +367,13 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
     Route::post('/privacy-policy', [ContentPagesController::class, 'PrivacyPolicyStore']);
     Route::put('/privacy-policy/{id}', [ContentPagesController::class, 'PrivacyPolicyUpdate']);
     Route::delete('/privacy-policy/{id}', [ContentPagesController::class, 'PrivacyPolicyDestroy']);
+
+    //Popular Searches
+    Route::get('/popular-searches', [AdminCMSController::class, 'PopularSearchIndex']);
+    Route::post('/popular-searches', [AdminCMSController::class, 'PopularSearchStore']);
+    Route::put('/popular-searches/{id}', [AdminCMSController::class, 'PopularSearchUpdate']);
+    Route::delete('/popular-searches/{id}', [AdminCMSController::class, 'PopularSearchDestroy']);
+    Route::patch('/popular-searches/{id}/toggle', [AdminCMSController::class, 'PopularSearchToggleFeature']);
 });
 
 // =================================================================================

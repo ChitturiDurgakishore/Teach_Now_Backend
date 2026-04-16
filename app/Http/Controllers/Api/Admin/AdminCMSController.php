@@ -2522,4 +2522,24 @@ class AdminCMSController extends Controller
             'data' => $data->items()
         ]);
     }
+
+    public function PopularSearchDestroy($id)
+    {
+        $search = PopularSearch::find($id);
+
+        if (!$search) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Not found'
+            ], 404);
+        }
+
+        $search->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Deleted successfully'
+        ]);
+    }
+
 }
