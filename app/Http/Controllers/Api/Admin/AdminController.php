@@ -729,68 +729,82 @@ class AdminController extends Controller
 
     //Feature Employer
 
-    public function featureEmployer($id)
-    {
-        try {
+   public function featureEmployer($id)
+{
+    try {
 
-            $employer = Employer::withTrashed()->find($id);
+        $employer = Employer::withTrashed()->find($id);
 
-            if (!$employer) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Employer not found'
-                ], 404);
-            }
+        if (!$employer) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Employer not found'
+            ], 404);
+        }
 
-            $employer->update([
-                'is_featured' => true
-            ]);
+        // 🔥 TOGGLE (0 ↔ 1)
+        $isNowFeatured = $employer->is_featured ? 0 : 1;
 
-            /*
+        $employer->update([
+            'is_featured' => $isNowFeatured
+        ]);
+
+        $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
+        $titleText = $isNowFeatured ? 'Company Featured' : 'Company Unfeatured';
+
+        /*
         |--------------------------------------------------------------------------
         | 🔔 NOTIFICATIONS
         |--------------------------------------------------------------------------
         */
 
-            // ⭐ Employer (MAIN)
+        // ✅ Employer
+        $this->notification->send(
+            'employer_featured',
+            'employer',
+            $employer->id,
+            $titleText,
+            "Your company '{$employer->company_name}' has been {$statusText} by admin",
+            [
+                'featured' => $isNowFeatured
+            ]
+        );
+
+        // ✅ Admins (loop)
+        $admins = \App\Models\User::where('role', 'admin')->get();
+
+        foreach ($admins as $admin) {
             $this->notification->send(
                 'employer_featured',
-                'employer',
-                $employer->id,
-                'Company Featured',
-                "Your company '{$employer->company_name}' has been featured by admin",
-                []
+                'admin',
+                $admin->id,
+                $titleText,
+                "Employer '{$employer->company_name}' {$statusText}",
+                [
+                    'employer_id' => $employer->id,
+                    'featured' => $isNowFeatured
+                ]
             );
-
-            // ⚙️ Admin (optional log)
-            $admins = \App\Models\User::where('role', 'admin')->get();
-
-            foreach ($admins as $admin) {
-                $this->notification->send(
-                    'employer_featured',
-                    'admin',
-                    $admin->id,
-                    'Employer Featured',
-                    "Employer '{$employer->company_name}' marked as featured",
-                    [
-                        'employer_id' => $employer->id
-                    ]
-                );
-            }
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Employer marked as featured'
-            ], 200);
-        } catch (\Exception $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Operation failed',
-                'error' => $e->getMessage()
-            ], 500);
         }
+
+        return response()->json([
+            'status' => true,
+            'message' => "Employer {$statusText} successfully",
+            'data' => [
+                'employer_id' => $employer->id,
+                'is_featured' => $isNowFeatured
+            ]
+        ], 200);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Operation failed',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
 
     //Update Employer Details
