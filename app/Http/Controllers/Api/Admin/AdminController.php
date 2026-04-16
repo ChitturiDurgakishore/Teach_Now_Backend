@@ -1229,7 +1229,7 @@ class AdminController extends Controller
         try {
 
             $jobSeeker = JobSeeker::withTrashed()->with([
-                'user:id,name,email',
+                'user:id,name,email,is_active',
                 'resumes',
                 'jobApplications.job:id,title'
             ])->find($id);
