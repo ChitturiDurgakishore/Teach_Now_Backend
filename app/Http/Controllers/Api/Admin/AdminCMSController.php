@@ -28,6 +28,7 @@ use App\Models\TeachingResource;
 use App\Models\CVTemplate;
 use App\Models\PrivacyPolicySections;
 use App\Models\TermsConditionsSections;
+use App\Models\PopularSearch;
 
 class AdminCMSController extends Controller
 {
@@ -2441,6 +2442,84 @@ class AdminCMSController extends Controller
             'status' => true,
             'message' => 'Status updated',
             'data' => $template
+        ]);
+    }
+
+    // Popular Searches Management
+    public function PopularSearchStore(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'meta_title' => 'nullable|string',
+            'meta_description' => 'nullable|string',
+            'meta_keywords' => 'nullable|string',
+            'is_featured' => 'boolean'
+        ]);
+
+        $search = PopularSearch::create($request->all());
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Popular search created',
+            'data' => $search
+        ]);
+    }
+
+    public function PopularSearchUpdate(Request $request, $id)
+    {
+        $search = PopularSearch::find($id);
+
+        if (!$search) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Not found'
+            ], 404);
+        }
+
+        $search->update($request->all());
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Updated successfully',
+            'data' => $search
+        ]);
+    }
+
+    public function PopularSearchToggleFeature($id)
+    {
+        $search = PopularSearch::find($id);
+
+        if (!$search) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Not found'
+            ], 404);
+        }
+
+        $search->update([
+            'is_featured' => $search->is_featured ? 0 : 1,
+            'order'=>$search->order
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Feature status updated',
+            'data' => $search
+        ]);
+    }
+
+    public function PopularSearchIndex(Request $request)
+    {
+        $perPage = $request->get('per_page', 10);
+
+        $data = PopularSearch::latest()->paginate($perPage);
+
+        return response()->json([
+            'status' => true,
+            'total' => $data->total(),
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'data' => $data->items()
         ]);
     }
 }

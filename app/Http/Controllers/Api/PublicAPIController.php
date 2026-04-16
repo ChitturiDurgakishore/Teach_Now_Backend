@@ -29,6 +29,7 @@ use App\Models\AboutUsSection;
 use App\Models\PrivacyPolicySections;
 use App\Models\Skill;
 use App\Models\TermsConditionsSections;
+use App\Models\PopularSearch;
 
 class PublicAPIController extends Controller
 {
@@ -347,12 +348,16 @@ class PublicAPIController extends Controller
 
             // 🔹 CTA Section
             $cta = HomepageCtaSection::where('is_active', true)->get();
+            $popular_searches = PopularSearch::where('is_featured', 1)
+                ->orderBy('order')
+                ->get();
 
             return response()->json([
                 'status' => true,
                 'data' => [
                     'hero' => $hero,
-                    'cta' => $cta
+                    'cta' => $cta,
+                    'popular_searches' => $popular_searches
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -1104,7 +1109,8 @@ class PublicAPIController extends Controller
         ]);
     }
 
-    public function getskills(){
+    public function getskills()
+    {
         $skills = Skill::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
