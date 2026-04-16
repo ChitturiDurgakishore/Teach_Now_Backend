@@ -1257,40 +1257,121 @@ class AdminController extends Controller
 
     //Disable a Job Seeker Account
 
-    public function disableJobSeeker($id)
-    {
-        try {
+    public function toggleJobSeekerStatus($id)
+{
+    try {
 
-            $jobSeeker = JobSeeker::withTrashed()->find($id);
+        $jobSeeker = JobSeeker::withTrashed()->find($id);
 
-            if (!$jobSeeker) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Job seeker not found'
-                ], 404);
-            }
-
-            $user = User::find($jobSeeker->user_id);
-
-            if ($user) {
-                $user->update([
-                    'is_active' => 0
-                ]);
-            }
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Job seeker disabled successfully'
-            ], 200);
-        } catch (\Exception $e) {
-
+        if (!$jobSeeker) {
             return response()->json([
                 'status' => false,
-                'message' => 'Operation failed',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Job seeker not found'
+            ], 404);
         }
+
+        $user = User::find($jobSeeker->user_id);
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        // 🔥 TOGGLE (0 ↔ 1)
+        $isNowActive = $user->is_active ? 0 : 1;
+
+        $user->update([
+            'is_active' => $isNowActive
+        ]);
+
+        $statusText = $isNowActive ? 'enabled' : 'disabled';
+        $titleText = $isNowActive ? 'Account Enabled' : 'Account Disabled';
+
+        /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+        // ✅ Job Seeker
+        $this->notification->send(
+            'jobseeker_status',
+            'jobseeker',
+            $user->id,
+            $titleText,
+            "Your account has been {$statusText} by admin",
+            [
+                'status' => $isNowActive
+            ]
+        );
+
+        // ✅ Admins (loop)
+        $admins = \App\Models\User::where('role', 'admin')->get();
+
+        foreach ($admins as $admin) {
+            $this->notification->send(
+                'jobseeker_status',
+                'admin',
+                $admin->id,
+                $isNowActive ? 'Job Seeker Enabled' : 'Job Seeker Disabled',
+                "Job seeker '{$user->name}' {$statusText} successfully",
+                [
+                    'job_seeker_id' => $jobSeeker->id,
+                    'user_id' => $user->id,
+                    'status' => $isNowActive
+                ]
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAIL (OPTIONAL)
+        |--------------------------------------------------------------------------
+        */
+
+        try {
+
+            $mailService = new MailService();
+
+            if ($isNowActive) {
+                $mailService->send('jobseeker_enabled', [
+                    'name' => $user->name
+                ], $user->email);
+            } else {
+                $mailService->send('jobseeker_disabled', [
+                    'name' => $user->name
+                ], $user->email);
+            }
+
+        } catch (\Exception $mailException) {
+
+            Log::error('Job seeker status mail failed', [
+                'user_id' => $user->id,
+                'error' => $mailException->getMessage()
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => "Job seeker {$statusText} successfully",
+            'data' => [
+                'job_seeker_id' => $jobSeeker->id,
+                'user_id' => $user->id,
+                'is_active' => $isNowActive
+            ]
+        ], 200);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Operation failed',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     //Delete a Job Seeker Account
 
