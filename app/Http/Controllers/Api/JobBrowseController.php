@@ -577,7 +577,8 @@ class JobBrowseController extends Controller
                             'job_type',
                             'location',
                             'salary_min',
-                            'salary_max'
+                            'salary_max',
+                            'expires_at'
                         )
                             ->with([
                                 'employer:id,company_name,company_logo'
