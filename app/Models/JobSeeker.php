@@ -61,7 +61,9 @@ class JobSeeker extends Model
         'portfolio_website',
         'bio',
         'profile_photo',
-        'slug'
+        'slug',
+        'gender',
+        'notice_period'
     ];
 
     public function skills()
