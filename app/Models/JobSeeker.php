@@ -47,7 +47,7 @@ class JobSeeker extends Model
 
     public function certifications()
     {
-        return $this->hasMany(JobSeekerCertifications::class);
+        return $this->hasMany(JobSeekerCertifications::class, 'user_id', 'user_id');
     }
 
     protected $fillable = [

@@ -14,8 +14,9 @@ class JobSeekerCertifications extends Model
         'expires_at'
     ];
 
+
     public function jobSeeker()
     {
-        return $this->belongsTo(JobSeeker::class);
+        return $this->belongsTo(JobSeeker::class, 'user_id', 'user_id');
     }
 }
