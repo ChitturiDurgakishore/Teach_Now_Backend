@@ -96,6 +96,22 @@ class JobSeekerController extends Controller
                     'profile_images'
                 );
             }
+            // 🔥 Certifications (replace all)
+            if ($request->has('certifications')) {
+
+                // delete old
+                $existingProfile->certifications()->delete();
+
+                // insert new
+                foreach ($request->certifications as $cert) {
+                    $existingProfile->certifications()->create([
+                        'name' => $cert['name'],
+                        'issuer' => $cert['issuer'] ?? null,
+                        'issued_at' => $cert['issued_at'] ?? null,
+                        'expires_at' => $cert['expires_at'] ?? null,
+                    ]);
+                }
+            }
 
             $profile = JobSeeker::create([
                 'user_id' => $user->id,
@@ -107,7 +123,9 @@ class JobSeekerController extends Controller
                 'dob' => $request->dob,
                 'portfolio_website' => $request->portfolio_website,
                 'bio' => $request->bio,
-                'profile_photo' => $profilePhotoPath
+                'profile_photo' => $profilePhotoPath,
+                'gender' => $request->gender,
+                'notice_period' => $request->notice_period
             ]);
 
             return response()->json([
@@ -136,7 +154,8 @@ class JobSeekerController extends Controller
                 'educations',
                 'user',
                 'skills', // 🔥 added
-                'experiences'
+                'experiences',
+                'certifications'
             ])->where('user_id', $user->id)->first();
             $Company_logo = HomepageCompanyLogo::where('is_active', true)->get();
             $skills = Skill::all();

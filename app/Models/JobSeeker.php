@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\JobSeekerCertifications;
 
 class JobSeeker extends Model
 {
@@ -33,13 +34,20 @@ class JobSeeker extends Model
     {
         return $this->hasMany(GeneratedCv::class);
     }
+
     public function jobApplications()
     {
         return $this->hasMany(JobApplication::class, 'job_seeker_id');
     }
+
     public function educations()
     {
         return $this->hasMany(JobSeekerEducation::class);
+    }
+
+    public function certifications()
+    {
+        return $this->hasMany(JobSeekerCertifications::class);
     }
 
     protected $fillable = [
