@@ -745,35 +745,53 @@ class PublicAPIController extends Controller
 
     // Company details API
 
-    public function getCompanyPublicProfile($slug)
+    public function getCompanyPublicProfile(Request $request, $slug)
     {
         try {
-            $companyDetails = Employer::where('slug', $slug)->first();
-            // 1. Fetch the employer (company) details
-            // We only fetch active/approved jobs for this public view
-            $company = Employer::with(['jobs' => function ($query) {
-                $query->where('job_status', 'open')
-                    ->where('status', 'approved')
-                    ->latest();
-            }])->find($companyDetails->id);
 
-            if (!$companyDetails) {
+            $perPage = $request->get('per_page', 10);
+
+            // ✅ Get company
+            $company = Employer::where('slug', $slug)->first();
+
+            if (!$company) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Company not found'
                 ], 404);
             }
 
+            // ✅ Jobs query (separate for pagination 🔥)
+            $jobsQuery = Job::where('employer_id', $company->id)
+                ->where('job_status', 'open')
+                ->where('status', 'approved')
+                ->where('is_active', true)
+                ->where('expires_at', '>', now());
+
+            $jobs = $jobsQuery->latest()->paginate($perPage);
+
             return response()->json([
                 'status' => true,
                 'message' => 'Company profile and active jobs fetched',
+
                 'data' => [
-                    'company' => $companyDetails,
-                    'total_active_jobs' => $company->jobs->count(),
-                    'jobs' => $company->jobs
+                    'company' => $company,
+
+                    // 🔥 count (no need to load all jobs)
+                    'total_active_jobs' => $jobs->total(),
+
+                    // 🔥 pagination meta
+                    'current_page' => $jobs->currentPage(),
+                    'last_page' => $jobs->lastPage(),
+                    'per_page' => $jobs->perPage(),
+
+                    // 🔥 jobs
+                    'jobs' => $jobs->items()
                 ]
+
             ], 200);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch company details',
@@ -783,11 +801,13 @@ class PublicAPIController extends Controller
     }
 
     // Location based job search API
-    public function getJobsByLocation($slug)
+    public function getJobsByLocation(Request $request, $slug)
     {
         try {
 
-            // 🔥 Step 1: get location from slug
+            $perPage = $request->get('per_page', 10);
+
+            // ✅ Get location
             $location = Location::where('slug', $slug)->first();
 
             if (!$location) {
@@ -797,18 +817,28 @@ class PublicAPIController extends Controller
                 ], 404);
             }
 
-            // 🔥 Step 2: filter jobs (using location name)
+            // ✅ Jobs query
             $jobs = Job::where('is_active', true)
-                ->where('expires_at', '>', now())->where('location', 'LIKE', '%' . $location->name . '%')
+                ->where('expires_at', '>', now())
+                ->where('location', 'LIKE', '%' . $location->name . '%')
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->latest()
-                ->get();
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
                 'location' => $location->name,
-                'data' => $jobs
+
+                // 🔥 pagination meta
+                'total' => $jobs->total(),
+                'current_page' => $jobs->currentPage(),
+                'last_page' => $jobs->lastPage(),
+                'per_page' => $jobs->perPage(),
+
+                // 🔥 data
+                'data' => $jobs->items()
+
             ], 200);
         } catch (\Exception $e) {
 

@@ -34,7 +34,18 @@ class LocationController extends Controller
     // Get all locations (Public)
     public function index()
     {
-        $locations = Location::where('is_featured', true)->get();
+        $locations = Location::where('is_featured', true)
+            ->select('locations.*')
+            ->selectSub(function ($query) {
+                $query->from('jobs')
+                    ->selectRaw('COUNT(*)')
+                    ->whereRaw('LOWER(jobs.location) LIKE CONCAT("%", LOWER(locations.name), "%")')
+                    ->where('jobs.status', 'approved')
+                    ->where('jobs.job_status', 'open')
+                    ->where('jobs.is_active', true)
+                    ->where('jobs.expires_at', '>', now());
+            }, 'active_jobs_count')
+            ->get();
 
         return response()->json([
             'status' => 200,

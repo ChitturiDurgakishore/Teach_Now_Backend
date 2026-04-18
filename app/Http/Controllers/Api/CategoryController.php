@@ -19,12 +19,19 @@ class CategoryController extends Controller
         $categories = Category::where('is_visible', true)
             ->whereHas('jobs', function ($query) {
                 $query->where('status', 'approved')
-                    ->where('job_status', 'open');
+                    ->where('job_status', 'open')
+                    ->where('is_active', true)
+                    ->where('expires_at', '>', now());
             })
-            ->withCount(['jobs' => function ($query) {
-                $query->where('status', 'approved')
-                    ->where('job_status', 'open');
-            }])
+            ->withCount([
+                'jobs as active_jobs_count' => function ($query) {
+                    $query->where('status', 'approved')
+                        ->where('job_status', 'open')
+                        ->where('is_active', true)
+                        ->where('expires_at', '>', now());
+                }
+            ])
+            ->orderByDesc('active_jobs_count') // 🔥 best UX (top categories first)
             ->get();
 
         return response()->json([
