@@ -67,12 +67,15 @@ class JobBrowseController extends Controller
     {
         try {
 
-            // 🔥 1. Get job directly by slug
+            // 🔥 1. Get job
             $job = Job::with([
                 'employer:id,company_name,company_logo,slug,city'
-            ])->where('slug', $slug)
+            ])
+                ->where('slug', $slug)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
                 ->first();
 
             if (!$job) {
@@ -82,36 +85,39 @@ class JobBrowseController extends Controller
                 ], 404);
             }
 
-            // 🔥 2. Questions
+            // 🔥 2. Get Location Image (MATCH)
+            $locationImage = Location::whereRaw(
+                'LOWER(name) LIKE ?',
+                ['%' . strtolower($job->location) . '%']
+            )->value('image');
+
+            // 🔥 3. Questions
             $questions = JobQuestion::where('job_id', $job->id)->get();
 
-            // 🔥 Prepare keywords for matching
+            // 🔥 Prepare keywords
             $title = strtolower($job->title);
             $slugFormatted = strtolower($job->slug);
             $titleWords = array_filter(explode(' ', $title));
 
-            // 🔥 3. Similar Jobs (SMART MATCH)
+            // 🔥 4. Similar Jobs
             $similarJobs = Job::with([
                 'employer:id,company_name,company_logo,slug,city'
-            ])->where('id', '!=', $job->id)
+            ])
+                ->where('id', '!=', $job->id)
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
                 ->where(function ($query) use ($title, $slugFormatted, $titleWords) {
 
-                    // ✅ Full title match
                     $query->where('title', 'LIKE', "%$title%")
-
-                        // ✅ Slug match
                         ->orWhere('slug', 'LIKE', "%$slugFormatted%")
-
-                        // ✅ Remove space match (hinditeacher type)
                         ->orWhereRaw("REPLACE(LOWER(title), ' ', '') LIKE ?", [
                             str_replace(' ', '', $title)
                         ]);
 
-                    // ✅ Word-based matching (at least 1 strong word)
                     foreach ($titleWords as $word) {
-                        if (strlen($word) > 3) { // avoid small words like "a", "to"
+                        if (strlen($word) > 3) {
                             $query->orWhere('title', 'LIKE', "%$word%")
                                 ->orWhere('keywords', 'LIKE', "%$word%");
                         }
@@ -129,6 +135,9 @@ class JobBrowseController extends Controller
                 ])
                 ->limit(5)
                 ->get();
+
+            // 🔥 5. Attach location image to job
+            $job->location_image = $locationImage;
 
             return response()->json([
                 'status' => true,
