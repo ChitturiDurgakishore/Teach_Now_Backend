@@ -240,6 +240,22 @@ class JobSeekerController extends Controller
                     'profile_images'
                 );
             }
+            // 🔥 Certifications (replace all)
+            if ($request->has('certifications')) {
+
+                // delete old
+                $profile->certifications()->delete();
+
+                // insert new
+                foreach ($request->certifications as $cert) {
+                    $profile->certifications()->create([
+                        'name' => $cert['name'],
+                        'issuer' => $cert['issuer'] ?? null,
+                        'issued_at' => $cert['issued_at'] ?? null,
+                        'expires_at' => $cert['expires_at'] ?? null,
+                    ]);
+                }
+            }
 
             // ✅ UPDATE PROFILE TABLE
             $profile->update($request->only([
@@ -250,7 +266,9 @@ class JobSeekerController extends Controller
                 'availability',
                 'dob',
                 'portfolio_website',
-                'bio'
+                'bio',
+                'gender',
+                'notice_period'
             ]));
 
             // ✅ HANDLE SKILLS
