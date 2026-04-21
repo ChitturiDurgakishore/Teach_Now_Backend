@@ -223,7 +223,7 @@ class CVController extends Controller
             // ✅ SAVE
             $cv = JobSeekerCV::create([
                 'job_seeker_id' => $jobSeeker->id,
-                'title' => $jobDescription ? 'Job Specific CV' : 'Base CV',
+                'title' => $fileName ? 'Job Specific CV' : 'Base CV',
                 'content' => $aiContent,
                 'pdf_path' => $pdfPath
             ]);
