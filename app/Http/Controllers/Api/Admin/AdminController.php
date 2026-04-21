@@ -104,7 +104,7 @@ class AdminController extends Controller
         try {
 
             $jobs = Job::with([
-                'employer:id,company_name',
+                'employer:id,company_name,company_logo',
                 'category:id,name'
             ])
                 ->latest()
@@ -131,7 +131,7 @@ class AdminController extends Controller
         try {
 
             $job = Job::withTrashed()->with([
-                'employer:id,company_name',
+                'employer:id,company_name,company_logo',
                 'category:id,name',
                 'questions'
             ])
@@ -729,82 +729,81 @@ class AdminController extends Controller
 
     //Feature Employer
 
-   public function featureEmployer($id)
-{
-    try {
+    public function featureEmployer($id)
+    {
+        try {
 
-        $employer = Employer::withTrashed()->find($id);
+            $employer = Employer::withTrashed()->find($id);
 
-        if (!$employer) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Employer not found'
-            ], 404);
-        }
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Employer not found'
+                ], 404);
+            }
 
-        // 🔥 TOGGLE (0 ↔ 1)
-        $isNowFeatured = $employer->is_featured ? 0 : 1;
+            // 🔥 TOGGLE (0 ↔ 1)
+            $isNowFeatured = $employer->is_featured ? 0 : 1;
 
-        $employer->update([
-            'is_featured' => $isNowFeatured
-        ]);
+            $employer->update([
+                'is_featured' => $isNowFeatured
+            ]);
 
-        $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
-        $titleText = $isNowFeatured ? 'Company Featured' : 'Company Unfeatured';
+            $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
+            $titleText = $isNowFeatured ? 'Company Featured' : 'Company Unfeatured';
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | 🔔 NOTIFICATIONS
         |--------------------------------------------------------------------------
         */
 
-        // ✅ Employer
-        $this->notification->send(
-            'employer_featured',
-            'employer',
-            $employer->id,
-            $titleText,
-            "Your company '{$employer->company_name}' has been {$statusText} by admin",
-            [
-                'featured' => $isNowFeatured
-            ]
-        );
-
-        // ✅ Admins (loop)
-        $admins = \App\Models\User::where('role', 'admin')->get();
-
-        foreach ($admins as $admin) {
+            // ✅ Employer
             $this->notification->send(
                 'employer_featured',
-                'admin',
-                $admin->id,
+                'employer',
+                $employer->id,
                 $titleText,
-                "Employer '{$employer->company_name}' {$statusText}",
+                "Your company '{$employer->company_name}' has been {$statusText} by admin",
                 [
-                    'employer_id' => $employer->id,
                     'featured' => $isNowFeatured
                 ]
             );
+
+            // ✅ Admins (loop)
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'employer_featured',
+                    'admin',
+                    $admin->id,
+                    $titleText,
+                    "Employer '{$employer->company_name}' {$statusText}",
+                    [
+                        'employer_id' => $employer->id,
+                        'featured' => $isNowFeatured
+                    ]
+                );
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => "Employer {$statusText} successfully",
+                'data' => [
+                    'employer_id' => $employer->id,
+                    'is_featured' => $isNowFeatured
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'status' => true,
-            'message' => "Employer {$statusText} successfully",
-            'data' => [
-                'employer_id' => $employer->id,
-                'is_featured' => $isNowFeatured
-            ]
-        ], 200);
-
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'status' => false,
-            'message' => 'Operation failed',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
 
     //Update Employer Details
@@ -1245,7 +1244,15 @@ class AdminController extends Controller
             $jobSeeker = JobSeeker::withTrashed()->with([
                 'user:id,name,email,is_active',
                 'resumes',
-                'jobApplications.job:id,title'
+
+                // 🔥 UPDATED
+                'jobApplications.job' => function ($query) {
+                    $query->select('id', 'title', 'employer_id')
+                        ->with([
+                            'employer:id,company_name,company_logo'
+                        ]);
+                }
+
             ])->find($id);
 
             if (!$jobSeeker) {
@@ -1268,124 +1275,121 @@ class AdminController extends Controller
             ], 500);
         }
     }
-
     //Disable a Job Seeker Account
 
     public function toggleJobSeekerStatus($id)
-{
-    try {
+    {
+        try {
 
-        $jobSeeker = JobSeeker::withTrashed()->find($id);
+            $jobSeeker = JobSeeker::withTrashed()->find($id);
 
-        if (!$jobSeeker) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Job seeker not found'
-            ], 404);
-        }
+            if (!$jobSeeker) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job seeker not found'
+                ], 404);
+            }
 
-        $user = User::find($jobSeeker->user_id);
+            $user = User::find($jobSeeker->user_id);
 
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => 'User not found'
-            ], 404);
-        }
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'User not found'
+                ], 404);
+            }
 
-        // 🔥 TOGGLE (0 ↔ 1)
-        $isNowActive = $user->is_active ? 0 : 1;
+            // 🔥 TOGGLE (0 ↔ 1)
+            $isNowActive = $user->is_active ? 0 : 1;
 
-        $user->update([
-            'is_active' => $isNowActive
-        ]);
+            $user->update([
+                'is_active' => $isNowActive
+            ]);
 
-        $statusText = $isNowActive ? 'enabled' : 'disabled';
-        $titleText = $isNowActive ? 'Account Enabled' : 'Account Disabled';
+            $statusText = $isNowActive ? 'enabled' : 'disabled';
+            $titleText = $isNowActive ? 'Account Enabled' : 'Account Disabled';
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | 🔔 NOTIFICATIONS
         |--------------------------------------------------------------------------
         */
 
-        // ✅ Job Seeker
-        $this->notification->send(
-            'jobseeker_status',
-            'jobseeker',
-            $user->id,
-            $titleText,
-            "Your account has been {$statusText} by admin",
-            [
-                'status' => $isNowActive
-            ]
-        );
-
-        // ✅ Admins (loop)
-        $admins = \App\Models\User::where('role', 'admin')->get();
-
-        foreach ($admins as $admin) {
+            // ✅ Job Seeker
             $this->notification->send(
                 'jobseeker_status',
-                'admin',
-                $admin->id,
-                $isNowActive ? 'Job Seeker Enabled' : 'Job Seeker Disabled',
-                "Job seeker '{$user->name}' {$statusText} successfully",
+                'jobseeker',
+                $user->id,
+                $titleText,
+                "Your account has been {$statusText} by admin",
                 [
-                    'job_seeker_id' => $jobSeeker->id,
-                    'user_id' => $user->id,
                     'status' => $isNowActive
                 ]
             );
-        }
 
-        /*
+            // ✅ Admins (loop)
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'jobseeker_status',
+                    'admin',
+                    $admin->id,
+                    $isNowActive ? 'Job Seeker Enabled' : 'Job Seeker Disabled',
+                    "Job seeker '{$user->name}' {$statusText} successfully",
+                    [
+                        'job_seeker_id' => $jobSeeker->id,
+                        'user_id' => $user->id,
+                        'status' => $isNowActive
+                    ]
+                );
+            }
+
+            /*
         |--------------------------------------------------------------------------
         | 🔥 MAIL (OPTIONAL)
         |--------------------------------------------------------------------------
         */
 
-        try {
+            try {
 
-            $mailService = new MailService();
+                $mailService = new MailService();
 
-            if ($isNowActive) {
-                $mailService->send('jobseeker_enabled', [
-                    'name' => $user->name
-                ], $user->email);
-            } else {
-                $mailService->send('jobseeker_disabled', [
-                    'name' => $user->name
-                ], $user->email);
+                if ($isNowActive) {
+                    $mailService->send('jobseeker_enabled', [
+                        'name' => $user->name
+                    ], $user->email);
+                } else {
+                    $mailService->send('jobseeker_disabled', [
+                        'name' => $user->name
+                    ], $user->email);
+                }
+            } catch (\Exception $mailException) {
+
+                Log::error('Job seeker status mail failed', [
+                    'user_id' => $user->id,
+                    'error' => $mailException->getMessage()
+                ]);
             }
 
-        } catch (\Exception $mailException) {
+            return response()->json([
+                'status' => true,
+                'message' => "Job seeker {$statusText} successfully",
+                'data' => [
+                    'job_seeker_id' => $jobSeeker->id,
+                    'user_id' => $user->id,
+                    'is_active' => $isNowActive
+                ]
+            ], 200);
+        } catch (\Exception $e) {
 
-            Log::error('Job seeker status mail failed', [
-                'user_id' => $user->id,
-                'error' => $mailException->getMessage()
-            ]);
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'status' => true,
-            'message' => "Job seeker {$statusText} successfully",
-            'data' => [
-                'job_seeker_id' => $jobSeeker->id,
-                'user_id' => $user->id,
-                'is_active' => $isNowActive
-            ]
-        ], 200);
-
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'status' => false,
-            'message' => 'Operation failed',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     //Delete a Job Seeker Account
 
@@ -1554,7 +1558,7 @@ class AdminController extends Controller
     {
         try {
 
-            $documents = DocumentVerification::with('employer:id,company_name')
+            $documents = DocumentVerification::with('employer:id,company_name,company_logo')
                 ->where('status', 'pending')
                 ->latest()
                 ->paginate(10);
