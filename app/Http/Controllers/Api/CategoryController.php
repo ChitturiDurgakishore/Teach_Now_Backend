@@ -28,7 +28,7 @@ class CategoryController extends Controller
                     $query->where('status', 'approved')
                         ->where('job_status', 'open')
                         ->where('is_active', true)
-                        ->where('expires_at', '>', now());
+                        ->where('expires_at', '>', now())->where('application_deadline', '>', now());
                 }
             ])
             ->orderByDesc('active_jobs_count') // 🔥 best UX (top categories first)
