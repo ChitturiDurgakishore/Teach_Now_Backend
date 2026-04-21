@@ -449,9 +449,7 @@ class JobBrowseController extends Controller
                             'title' => $resume->file_name
                                 ?? $resume->name
                                 ?? 'Resume',
-                            'url' => $resume->file_url
-                                ? asset($resume->file_url)
-                                : ($resume->path ? asset($resume->path) : null),
+                            'url' => $resume->file_url,
                         ];
                     }
                 } elseif ($item->resume_type === 'cv' && $item->resume_id) {
