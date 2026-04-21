@@ -398,27 +398,30 @@ class JobBrowseController extends Controller
 
             $applications = JobApplication::where('job_seeker_id', $jobSeeker->id)
                 ->with([
-                    // ✅ Job + Employer
                     'job' => function ($query) {
                         $query->with('employer:id,company_name,company_logo,slug,city');
                     },
-
-                    // ✅ Answers + Questions (your custom relation)
-                    'applicationAnswersForViewApplication.question',
-
-                    // ✅ Resume + CV
                     'resume',
                     'cv'
                 ])
                 ->latest()
                 ->paginate($perPage);
 
-            // 🔥 TRANSFORM DATA (IMPORTANT)
-            $data = collect($applications->items())->map(function ($item) {
+            // 🔥 Collect job_ids
+            $jobIds = collect($applications->items())->pluck('job_id')->unique();
 
-                // ✅ Normalize answers (optional rename)
-                $item->answers = $item->applicationAnswersForViewApplication;
-                unset($item->applicationAnswersForViewApplication);
+            // 🔥 Fetch answers manually
+            $answers = JobAnswer::with('question')
+                ->where('job_seeker_id', $jobSeeker->id)
+                ->whereIn('job_id', $jobIds)
+                ->get()
+                ->groupBy('job_id');
+
+            // 🔥 TRANSFORM
+            $data = collect($applications->items())->map(function ($item) use ($answers) {
+
+                // ✅ Attach answers
+                $item->answers = $answers[$item->job_id] ?? [];
 
                 // ✅ Resume / CV handling
                 if ($item->resume_type === 'resume' && $item->resume) {
@@ -437,7 +440,6 @@ class JobBrowseController extends Controller
                     $item->resume_details = null;
                 }
 
-                // optional cleanup
                 unset($item->resume);
                 unset($item->cv);
 
@@ -446,16 +448,11 @@ class JobBrowseController extends Controller
 
             return response()->json([
                 'status' => true,
-
-                // 🔥 pagination meta
                 'total' => $applications->total(),
                 'current_page' => $applications->currentPage(),
                 'last_page' => $applications->lastPage(),
                 'per_page' => $applications->perPage(),
-
-                // 🔥 final data
                 'data' => $data
-
             ], 200);
         } catch (\Exception $e) {
 
