@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+
 class JobApplication extends Model
 {
     use SoftDeletes;
@@ -20,6 +21,11 @@ class JobApplication extends Model
     public function resume()
     {
         return $this->belongsTo(Resume::class);
+    }
+
+    public function cv()
+    {
+        return $this->belongsTo(JobSeekerCV::class, 'resume_id', 'id');
     }
 
     public $fillable = [
@@ -45,11 +51,14 @@ class JobApplication extends Model
         return $this->hasMany(JobAnswer::class, 'application_id');
     }
 
-public function applicationAnswers()
-{
+    public function applicationAnswers()
+    {
 
-    return $this->hasMany(JobAnswer::class, 'job_id', 'job_id');
-}
+        return $this->hasMany(JobAnswer::class, 'job_id', 'job_id');
+    }
 
-
+    public function applicationAnswersForViewApplication()
+    {
+        return $this->hasMany(JobAnswer::class, 'application_id', 'id');
+    }
 }

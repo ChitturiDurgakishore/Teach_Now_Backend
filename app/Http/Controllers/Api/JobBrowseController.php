@@ -403,14 +403,46 @@ class JobBrowseController extends Controller
                         $query->with('employer:id,company_name,company_logo,slug,city');
                     },
 
-                    // ✅ Answers (with questions)
-                    'answers.question',
+                    // ✅ Answers + Questions (your custom relation)
+                    'applicationAnswersForViewApplication.question',
 
-                    // ✅ Resume (if relation exists)
-                    'resume'
+                    // ✅ Resume + CV
+                    'resume',
+                    'cv'
                 ])
                 ->latest()
                 ->paginate($perPage);
+
+            // 🔥 TRANSFORM DATA (IMPORTANT)
+            $data = collect($applications->items())->map(function ($item) {
+
+                // ✅ Normalize answers (optional rename)
+                $item->answers = $item->applicationAnswersForViewApplication;
+                unset($item->applicationAnswersForViewApplication);
+
+                // ✅ Resume / CV handling
+                if ($item->resume_type === 'resume' && $item->resume) {
+                    $item->resume_details = [
+                        'type' => 'resume',
+                        'title' => $item->resume->file_name ?? null,
+                        'url' => $item->resume->file_url ?? null,
+                    ];
+                } elseif ($item->resume_type === 'cv' && $item->cv) {
+                    $item->resume_details = [
+                        'type' => 'cv',
+                        'title' => $item->cv->title ?? null,
+                        'url' => $item->cv->pdf_path ?? null,
+                    ];
+                } else {
+                    $item->resume_details = null;
+                }
+
+                // optional cleanup
+                unset($item->resume);
+                unset($item->cv);
+
+                return $item;
+            });
 
             return response()->json([
                 'status' => true,
@@ -421,8 +453,8 @@ class JobBrowseController extends Controller
                 'last_page' => $applications->lastPage(),
                 'per_page' => $applications->perPage(),
 
-                // 🔥 data
-                'data' => $applications->items()
+                // 🔥 final data
+                'data' => $data
 
             ], 200);
         } catch (\Exception $e) {
