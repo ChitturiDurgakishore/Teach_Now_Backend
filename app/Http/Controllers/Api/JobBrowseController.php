@@ -456,7 +456,7 @@ class JobBrowseController extends Controller
                     }
                 } elseif ($item->resume_type === 'cv' && $item->resume_id) {
 
-                    $cv = \App\Models\JobSeekerCV::find($item->resume_id);
+                    $cv = \App\Models\JobSeekerCV::where('id', $item->resume_id)->first();
 
                     if ($cv) {
                         $resumeDetails = [
