@@ -401,9 +401,7 @@ class JobBrowseController extends Controller
                 ->with([
                     'job' => function ($query) {
                         $query->with('employer:id,company_name,company_logo,slug,city');
-                    },
-                    'resume',
-                    'cv'
+                    }
                 ])
                 ->latest()
                 ->paginate($perPage);
@@ -411,7 +409,7 @@ class JobBrowseController extends Controller
             // ✅ Collect job_ids
             $jobIds = collect($applications->items())->pluck('job_id')->unique();
 
-            // ✅ Fetch answers separately (IMPORTANT)
+            // ✅ Fetch answers
             $answers = JobAnswer::with('question')
                 ->where('job_seeker_id', $jobSeeker->id)
                 ->whereIn('job_id', $jobIds)
@@ -423,7 +421,7 @@ class JobBrowseController extends Controller
 
                 /*
             |--------------------------------------------------------------------------
-            | ✅ CLEAN ANSWERS FORMAT (Frontend Friendly)
+            | ✅ CLEAN ANSWERS
             |--------------------------------------------------------------------------
             */
                 $item->answers = collect($answers[$item->job_id] ?? [])
@@ -436,34 +434,40 @@ class JobBrowseController extends Controller
 
                 /*
             |--------------------------------------------------------------------------
-            | ✅ RESUME / CV HANDLING
+            | ✅ RESUME / CV (DIRECT FETCH)
             |--------------------------------------------------------------------------
             */
-                if ($item->resume_type === 'resume' && $item->resume) {
+                $resumeDetails = null;
 
-                    $item->resume_details = [
-                        'type' => 'resume',
-                        'title' => $item->resume->file_name
-                            ?? $item->resume->name
-                            ?? null,
-                        'url' => $item->resume->file_url
-                            ?? $item->resume->path
-                            ?? null,
-                    ];
-                } elseif ($item->resume_type === 'cv' && $item->cv) {
+                if ($item->resume_type === 'resume' && $item->resume_id) {
 
-                    $item->resume_details = [
-                        'type' => 'cv',
-                        'title' => $item->cv->title ?? null,
-                        'url' => $item->cv->pdf_path ?? null,
-                    ];
-                } else {
-                    $item->resume_details = null;
+                    $resume = \App\Models\Resume::find($item->resume_id);
+
+                    if ($resume) {
+                        $resumeDetails = [
+                            'type' => 'resume',
+                            'title' => $resume->file_name
+                                ?? $resume->name
+                                ?? 'Resume',
+                            'url' => $resume->file_url
+                                ? asset($resume->file_url)
+                                : ($resume->path ? asset($resume->path) : null),
+                        ];
+                    }
+                } elseif ($item->resume_type === 'cv' && $item->resume_id) {
+
+                    $cv = \App\Models\JobSeekerCV::find($item->resume_id);
+
+                    if ($cv) {
+                        $resumeDetails = [
+                            'type' => 'cv',
+                            'title' => $cv->title ?? 'CV',
+                            'url' => $cv->pdf_path ? asset($cv->pdf_path) : null,
+                        ];
+                    }
                 }
 
-                // cleanup
-                unset($item->resume);
-                unset($item->cv);
+                $item->resume_details = $resumeDetails;
 
                 return $item;
             });
