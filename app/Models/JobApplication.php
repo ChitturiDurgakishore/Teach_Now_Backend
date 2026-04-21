@@ -59,6 +59,7 @@ class JobApplication extends Model
 
     public function applicationAnswersForViewApplication()
     {
-        return $this->hasMany(JobAnswer::class, 'application_id', 'id');
+        return $this->hasMany(JobAnswer::class, 'job_id', 'job_id')
+            ->whereColumn('job_answers.job_seeker_id', 'job_applications.job_seeker_id');
     }
 }
