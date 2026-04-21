@@ -441,7 +441,7 @@ class JobBrowseController extends Controller
 
                 if ($item->resume_type === 'resume' && $item->resume_id) {
 
-                    $resume = \App\Models\Resume::find($item->resume_id);
+                    $resume = \App\Models\Resume::where('id', $item->resume_id)->first();
 
                     if ($resume) {
                         $resumeDetails = [

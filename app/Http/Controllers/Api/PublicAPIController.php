@@ -336,6 +336,19 @@ class PublicAPIController extends Controller
         }
     }
 
+    public function AllCategoryindex()
+    {
+        // Retrieve only the visible categories
+        $categories = Category::where('is_visible', true)
+            ->orderBy('name', 'asc') // Alphabetical sorting is standard for simple lists
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $categories
+        ], 200);
+    }
+
 
 
     //HeroSection API

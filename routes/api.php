@@ -61,6 +61,7 @@ Route::prefix('open')->group(function () {
     //Dashboard APIs Combination for optimization
 
     Route::get('/categories', [CategoryController::class, 'index']);  //Categories
+    Route::get('/all-categories', [PublicAPIController::class, 'AllCategoryindex']);
     //Categories jobs
     Route::get('/category/{slug}', [PublicAPIController::class, 'getJobsByCategory']);
     Route::get('/locations', [LocationController::class, 'index']);  //Locations
