@@ -213,7 +213,7 @@ class CVController extends Controller
             $timestamp = now()->timestamp;
 
             // Final filename
-            $fileName = "{$cleanName}_{$date}.pdf";
+            $fileName = "{$cleanName}_{$date}_{$timestamp}.pdf";
             $path = "media/cv/{$fileName}";
 
             Storage::disk('public')->put($path, $pdf->output());
@@ -223,7 +223,7 @@ class CVController extends Controller
             // ✅ SAVE
             $cv = JobSeekerCV::create([
                 'job_seeker_id' => $jobSeeker->id,
-                'title' => $fileName ? 'Job Specific CV' : 'Base CV',
+                'title' => "{$userName}-{$date}",
                 'content' => $aiContent,
                 'pdf_path' => $pdfPath
             ]);
