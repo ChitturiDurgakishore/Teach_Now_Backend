@@ -905,7 +905,7 @@ class AdminController extends Controller
     {
         try {
 
-            $recruiters = EmployerUser::with('employer:id,company_name')
+            $recruiters = EmployerUser::with('employer:id,company_name,company_logo')
                 ->latest()
                 ->paginate(10);
 
@@ -930,7 +930,7 @@ class AdminController extends Controller
         try {
 
             $recruiter = EmployerUser::withTrashed()->with([
-                'employer:id,company_name',
+                'employer:id,company_name,company_logo',
                 'jobs'
             ])->find($id);
 
