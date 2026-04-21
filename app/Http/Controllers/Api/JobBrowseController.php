@@ -377,25 +377,53 @@ class JobBrowseController extends Controller
     }
     //Get applied Jobs
 
-    public function getAppliedJobs()
+    public function getAppliedJobs(Request $request)
     {
         try {
 
+            $perPage = $request->get('per_page', 10);
+
             $user = Auth::user();
 
-            $jobSeeker = JobSeeker::withTrashed()->where('user_id', $user->id)->first();
+            $jobSeeker = JobSeeker::withTrashed()
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$jobSeeker) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Job seeker not found'
+                ], 404);
+            }
 
             $applications = JobApplication::where('job_seeker_id', $jobSeeker->id)
-                ->with('job', function ($query) {
-                    $query->with('employer:id,company_name,company_logo,slug,city');
-                })
+                ->with([
+                    // ✅ Job + Employer
+                    'job' => function ($query) {
+                        $query->with('employer:id,company_name,company_logo,slug,city');
+                    },
+
+                    // ✅ Answers (with questions)
+                    'answers.question',
+
+                    // ✅ Resume (if relation exists)
+                    'resume'
+                ])
                 ->latest()
-                ->get();
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
-                'total' => $applications->count(),
-                'data' => $applications
+
+                // 🔥 pagination meta
+                'total' => $applications->total(),
+                'current_page' => $applications->currentPage(),
+                'last_page' => $applications->lastPage(),
+                'per_page' => $applications->perPage(),
+
+                // 🔥 data
+                'data' => $applications->items()
+
             ], 200);
         } catch (\Exception $e) {
 
