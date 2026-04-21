@@ -396,6 +396,7 @@ class JobBrowseController extends Controller
                 ], 404);
             }
 
+            // ✅ Fetch applications
             $applications = JobApplication::where('job_seeker_id', $jobSeeker->id)
                 ->with([
                     'job' => function ($query) {
@@ -407,30 +408,50 @@ class JobBrowseController extends Controller
                 ->latest()
                 ->paginate($perPage);
 
-            // 🔥 Collect job_ids
+            // ✅ Collect job_ids
             $jobIds = collect($applications->items())->pluck('job_id')->unique();
 
-            // 🔥 Fetch answers manually
+            // ✅ Fetch answers separately (IMPORTANT)
             $answers = JobAnswer::with('question')
                 ->where('job_seeker_id', $jobSeeker->id)
                 ->whereIn('job_id', $jobIds)
                 ->get()
                 ->groupBy('job_id');
 
-            // 🔥 TRANSFORM
+            // ✅ Transform data
             $data = collect($applications->items())->map(function ($item) use ($answers) {
 
-                // ✅ Attach answers
-                $item->answers = $answers[$item->job_id] ?? [];
+                /*
+            |--------------------------------------------------------------------------
+            | ✅ CLEAN ANSWERS FORMAT (Frontend Friendly)
+            |--------------------------------------------------------------------------
+            */
+                $item->answers = collect($answers[$item->job_id] ?? [])
+                    ->map(function ($ans) {
+                        return [
+                            'question' => $ans->question->question ?? null,
+                            'answer' => $ans->candidate_answer ?? null,
+                        ];
+                    })->values();
 
-                // ✅ Resume / CV handling
+                /*
+            |--------------------------------------------------------------------------
+            | ✅ RESUME / CV HANDLING
+            |--------------------------------------------------------------------------
+            */
                 if ($item->resume_type === 'resume' && $item->resume) {
+
                     $item->resume_details = [
                         'type' => 'resume',
-                        'title' => $item->resume->file_name ?? null,
-                        'url' => $item->resume->file_url ?? null,
+                        'title' => $item->resume->file_name
+                            ?? $item->resume->name
+                            ?? null,
+                        'url' => $item->resume->file_url
+                            ?? $item->resume->path
+                            ?? null,
                     ];
                 } elseif ($item->resume_type === 'cv' && $item->cv) {
+
                     $item->resume_details = [
                         'type' => 'cv',
                         'title' => $item->cv->title ?? null,
@@ -440,6 +461,7 @@ class JobBrowseController extends Controller
                     $item->resume_details = null;
                 }
 
+                // cleanup
                 unset($item->resume);
                 unset($item->cv);
 
