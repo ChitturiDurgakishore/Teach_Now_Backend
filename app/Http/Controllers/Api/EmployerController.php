@@ -2529,9 +2529,11 @@ class EmployerController extends Controller
 
     //payments history
 
-    public function getPaymentHistory()
+    public function getPaymentHistory(Request $request)
     {
         try {
+
+            $perPage = $request->get('per_page', 10);
 
             $employer = Auth::guard('employer')->user();
 
@@ -2547,7 +2549,6 @@ class EmployerController extends Controller
         | 🔥 CURRENT ACTIVE SUBSCRIPTION
         |--------------------------------------------------------------------------
         */
-
             $currentSubscription = Subscription::where('employer_id', $employer->id)
                 ->where('status', 'active')
                 ->where('expires_at', '>', now())
@@ -2561,7 +2562,6 @@ class EmployerController extends Controller
         | 🔥 ALL PLANS (WITH CURRENT FLAG)
         |--------------------------------------------------------------------------
         */
-
             $plans = Plan::select(
                 'id',
                 'name',
@@ -2571,7 +2571,7 @@ class EmployerController extends Controller
                 'validity_days',
                 'job_live_days'
             )
-                ->get() // 🔥 removed is_active filter
+                ->get()
                 ->map(function ($plan) use ($currentPlanId) {
                     return [
                         'id' => $plan->id,
@@ -2587,45 +2587,88 @@ class EmployerController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 PAYMENT HISTORY
+        | 🔥 SUBSCRIPTIONS (PAGINATED + PLAN MAPPED)
         |--------------------------------------------------------------------------
         */
-
-            $payments = Payment::where('employer_id', $employer->id)
-                ->with(['subscription.plan:id,name'])
+            $subscriptions = Subscription::where('employer_id', $employer->id)
+                ->with('plan:id,name,job_posts_limit,validity_days')
                 ->latest()
-                ->get()
-                ->map(function ($payment) {
-                    return [
-                        'id' => $payment->id,
-                        'amount' => $payment->amount,
-                        'payment_method' => $payment->payment_method,
-                        'payment_status' => $payment->payment_status,
-                        'transaction_id' => $payment->transaction_id,
-                        'created_at' => $payment->created_at,
+                ->paginate($perPage);
 
-                        // 🔥 attach plan name
-                        'plan_name' => $payment->subscription->plan->name ?? null
-                    ];
-                });
+            $subscriptionData = collect($subscriptions->items())->map(function ($sub) {
+                return [
+                    'id' => $sub->id,
+                    'plan_id' => $sub->plan_id,
+                    'plan_name' => $sub->plan->name ?? null,
+                    'job_posts_total' => $sub->job_posts_total,
+                    'job_posts_used' => $sub->job_posts_used,
+                    'featured_jobs_total' => $sub->featured_jobs_total,
+                    'featured_jobs_used' => $sub->featured_jobs_used,
+                    'starts_at' => $sub->starts_at,
+                    'expires_at' => $sub->expires_at,
+                    'status' => $sub->status,
+                    'is_active' => now()->lt($sub->expires_at)
+                ];
+            });
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 INVOICE HISTORY
+        | 🔥 PAYMENT HISTORY (PAGINATED)
         |--------------------------------------------------------------------------
         */
+            $payments = Payment::where('employer_id', $employer->id)
+                ->with(['subscription.plan:id,name'])
+                ->latest()
+                ->paginate($perPage);
 
+            $paymentData = collect($payments->items())->map(function ($payment) {
+                return [
+                    'id' => $payment->id,
+                    'amount' => $payment->amount,
+                    'payment_method' => $payment->payment_method,
+                    'payment_status' => $payment->payment_status,
+                    'transaction_id' => $payment->transaction_id,
+                    'created_at' => $payment->created_at,
+                    'plan_name' => $payment->subscription->plan->name ?? null
+                ];
+            });
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 INVOICES (OPTIONAL PAGINATION)
+        |--------------------------------------------------------------------------
+        */
             $invoices = Invoice::where('employer_id', $employer->id)
                 ->latest()
-                ->get();
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
                 'data' => [
                     'plans' => $plans,
                     'current_subscription' => $currentSubscription,
-                    'payments' => $payments,
-                    'invoices' => $invoices
+
+                    // 🔥 NEW
+                    'subscriptions' => [
+                        'data' => $subscriptionData,
+                        'total' => $subscriptions->total(),
+                        'current_page' => $subscriptions->currentPage(),
+                        'last_page' => $subscriptions->lastPage(),
+                    ],
+
+                    'payments' => [
+                        'data' => $paymentData,
+                        'total' => $payments->total(),
+                        'current_page' => $payments->currentPage(),
+                        'last_page' => $payments->lastPage(),
+                    ],
+
+                    'invoices' => [
+                        'data' => $invoices->items(),
+                        'total' => $invoices->total(),
+                        'current_page' => $invoices->currentPage(),
+                        'last_page' => $invoices->lastPage(),
+                    ]
                 ]
             ]);
         } catch (\Exception $e) {
