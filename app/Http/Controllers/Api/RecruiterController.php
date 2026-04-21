@@ -633,7 +633,6 @@ class RecruiterController extends Controller
     }
 
 
-    //Feature job
     public function toggleJobFeatured($id)
     {
         try {
@@ -649,7 +648,7 @@ class RecruiterController extends Controller
                 ], 401);
             }
 
-            // 🔥 Ensure recruiter belongs to same employer
+            // ✅ Ensure recruiter belongs to same employer
             if ($job->employer_id != $recruiter->employer_id) {
                 return response()->json([
                     'status' => false,
@@ -657,37 +656,34 @@ class RecruiterController extends Controller
                 ], 403);
             }
 
-            // 🔥 GET EMPLOYER SUBSCRIPTION
-            $subscription = Subscription::where('employer_id', $recruiter->employer_id)
-                ->where('expires_at', '>', now())
-                ->latest()
-                ->first();
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GET VALID FEATURE SUBSCRIPTION (FIXED)
+        |--------------------------------------------------------------------------
+        */
+            $subscriptionService = new \App\Services\SubscriptionService();
 
-            if (!$subscription) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'No active subscription'
-                ], 403);
-            }
+            $subscription = $subscriptionService
+                ->getAvailableFeatureSubscription($recruiter->employer_id);
 
             // 🔥 Determine action
             $isNowFeatured = !$job->featured;
 
             /*
         |--------------------------------------------------------------------------
-        | 🚨 FEATURE LIMIT CHECK
+        | 🚨 FEATURE ENABLE CHECK
         |--------------------------------------------------------------------------
         */
             if ($isNowFeatured) {
 
-                if ($subscription->featured_jobs_used >= $subscription->featured_jobs_total) {
+                if (!$subscription) {
                     return response()->json([
                         'status' => false,
-                        'message' => 'Featured job limit reached'
+                        'message' => 'No featured credits available'
                     ], 403);
                 }
 
-                // ✅ Enable feature with expiry
+                // ✅ Enable feature
                 $job->update([
                     'featured' => true,
                     'featured_until' => $subscription->expires_at
@@ -703,8 +699,8 @@ class RecruiterController extends Controller
                     'featured_until' => null
                 ]);
 
-                // ✅ Decrement safely
-                if ($subscription->featured_jobs_used > 0) {
+                // ✅ Safe decrement (optional)
+                if ($subscription && $subscription->featured_jobs_used > 0) {
                     $subscription->decrement('featured_jobs_used');
                 }
             }
@@ -743,7 +739,7 @@ class RecruiterController extends Controller
                 ]
             );
 
-            // ✅ Admins (FIXED - no null ❌)
+            // ✅ Admins
             $admins = \App\Models\User::where('role', 'admin')->get();
 
             foreach ($admins as $admin) {

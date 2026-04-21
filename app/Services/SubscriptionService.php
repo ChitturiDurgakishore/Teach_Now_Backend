@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Services;
+
 use App\Models\Subscription;
 use Illuminate\Support\Facades\DB;
+
 class SubscriptionService
 {
     private function getAvailableSubscription($employerId)
@@ -32,5 +35,16 @@ class SubscriptionService
             'status' => true,
             'subscription' => $subscription
         ];
+    }
+
+    public function getAvailableFeatureSubscription($employerId)
+    {
+        return Subscription::where('employer_id', $employerId)
+            ->where('status', 'active')
+            ->where('expires_at', '>', now())
+            ->whereColumn('featured_jobs_used', '<', 'featured_jobs_total')
+            ->orderBy('starts_at', 'asc') // oldest first
+            ->lockForUpdate()
+            ->first();
     }
 }

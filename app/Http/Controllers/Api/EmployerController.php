@@ -282,107 +282,106 @@ class EmployerController extends Controller
     // Employer Login
 
     public function login(Request $request)
-{
-    try {
+    {
+        try {
 
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required'
-        ]);
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required'
+            ]);
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | 🔥 TRY EMPLOYER LOGIN
         |--------------------------------------------------------------------------
         */
-        $employer = Employer::where('email', $request->email)->first();
+            $employer = Employer::where('email', $request->email)->first();
 
-        if ($employer && Hash::check($request->password, $employer->password)) {
+            if ($employer && Hash::check($request->password, $employer->password)) {
 
-            Auth::guard('employer')->login($employer);
-            $request->session()->regenerate();
+                Auth::guard('employer')->login($employer);
+                $request->session()->regenerate();
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Employer login successful',
-                'role' => 'employer',
-                'user' => $employer
-            ], 200);
-        }
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Employer login successful',
+                    'role' => 'employer',
+                    'user' => $employer
+                ], 200);
+            }
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | 🔥 TRY RECRUITER LOGIN
         |--------------------------------------------------------------------------
         */
-        $user = EmployerUser::where('email', $request->email)->first();
+            $user = EmployerUser::where('email', $request->email)->first();
 
-        if ($user && Hash::check($request->password, $user->password)) {
+            if ($user && Hash::check($request->password, $user->password)) {
 
-            if ($user->is_active != 1) {
+                if ($user->is_active != 1) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Account disabled'
+                    ], 403);
+                }
+
+                Auth::guard('employer_user')->login($user);
+                $request->session()->regenerate();
+
+                // 🔥 Employer
+                $employer = \App\Models\Employer::find($user->employer_id);
+
+                // 🔥 Platform
+                $platformCompany = HomepageCompanyLogo::select(
+                    'company_name',
+                    'company_logo',
+                    'company_url'
+                )->first();
+
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Account disabled'
-                ], 403);
+                    'status' => true,
+                    'message' => 'Recruiter login successful',
+                    'role' => 'recruiter',
+
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'employer_id' => $user->employer_id
+                    ],
+
+                    'employer' => [
+                        'company_logo' => $employer->company_logo ?? null
+                    ],
+
+                    'platform' => [
+                        'company_name' => $platformCompany->company_name ?? null,
+                        'company_logo' => $platformCompany->company_logo ?? null,
+                        'company_link' => $platformCompany->company_url ?? null
+                    ]
+
+                ], 200);
             }
 
-            Auth::guard('employer_user')->login($user);
-            $request->session()->regenerate();
-
-            // 🔥 Employer
-            $employer = \App\Models\Employer::find($user->employer_id);
-
-            // 🔥 Platform
-            $platformCompany = HomepageCompanyLogo::select(
-                'company_name',
-                'company_logo',
-                'company_url'
-            )->first();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Recruiter login successful',
-                'role' => 'recruiter',
-
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'employer_id' => $user->employer_id
-                ],
-
-                'employer' => [
-                    'company_logo' => $employer->company_logo ?? null
-                ],
-
-                'platform' => [
-                    'company_name' => $platformCompany->company_name ?? null,
-                    'company_logo' => $platformCompany->company_logo ?? null,
-                    'company_link' => $platformCompany->company_url ?? null
-                ]
-
-            ], 200);
-        }
-
-        /*
+            /*
         |--------------------------------------------------------------------------
         | ❌ INVALID
         |--------------------------------------------------------------------------
         */
-        return response()->json([
-            'status' => false,
-            'message' => 'Invalid credentials'
-        ], 401);
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid credentials'
+            ], 401);
+        } catch (\Exception $e) {
 
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'status' => false,
-            'message' => 'Login failed',
-            'error' => $e->getMessage()
-        ], 500);
+            return response()->json([
+                'status' => false,
+                'message' => 'Login failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-}
 
     // Employer Logout
 
@@ -1692,10 +1691,9 @@ class EmployerController extends Controller
             }
 
             // 🔥 GET ACTIVE SUBSCRIPTION
-            $subscription = Subscription::where('employer_id', $employer->id)
-                ->where('expires_at', '>', now())
-                ->latest()
-                ->first();
+            $subscriptionService = new \App\Services\SubscriptionService();
+
+            $subscription = $subscriptionService->getAvailableFeatureSubscription($employer->id);
 
             if (!$subscription) {
                 return response()->json([
@@ -1714,31 +1712,27 @@ class EmployerController extends Controller
         */
             if ($isNowFeatured) {
 
-                if ($subscription->featured_jobs_used >= $subscription->featured_jobs_total) {
+                if (!$subscription) {
                     return response()->json([
                         'status' => false,
-                        'message' => 'Featured job limit reached'
+                        'message' => 'No featured credits available'
                     ], 403);
                 }
 
-                // ✅ Enable feature with expiry
                 $job->update([
                     'featured' => true,
                     'featured_until' => $subscription->expires_at
                 ]);
 
-                // ✅ Increment usage
                 $subscription->increment('featured_jobs_used');
             } else {
 
-                // ✅ Disable feature
                 $job->update([
                     'featured' => false,
                     'featured_until' => null
                 ]);
 
-                // ✅ Decrement usage safely
-                if ($subscription->featured_jobs_used > 0) {
+                if ($subscription && $subscription->featured_jobs_used > 0) {
                     $subscription->decrement('featured_jobs_used');
                 }
             }
