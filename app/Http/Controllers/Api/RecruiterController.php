@@ -37,89 +37,89 @@ class RecruiterController extends Controller
     }
 
 
-    // Recruiter login
-    public function login(Request $request)
-    {
-        try {
+    // Recruiter login  - Combined employer n recruiter login api into one . Use Employer login API in EmployerController
+    // public function login(Request $request)
+    // {
+    //     try {
 
-            $request->validate([
-                'email' => 'required|email',
-                'password' => 'required'
-            ]);
+    //         $request->validate([
+    //             'email' => 'required|email',
+    //             'password' => 'required'
+    //         ]);
 
-            $user = EmployerUser::where('email', $request->email)->first();
+    //         $user = EmployerUser::where('email', $request->email)->first();
 
-            if (!$user || !Hash::check($request->password, $user->password)) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Invalid credentials'
-                ], 401);
-            }
+    //         if (!$user || !Hash::check($request->password, $user->password)) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Invalid credentials'
+    //             ], 401);
+    //         }
 
-            if ($user->is_active != 1) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Account disabled'
-                ], 403);
-            }
+    //         if ($user->is_active != 1) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'Account disabled'
+    //             ], 403);
+    //         }
 
-            Auth::guard('employer_user')->login($user);
-            $request->session()->regenerate();
+    //         Auth::guard('employer_user')->login($user);
+    //         $request->session()->regenerate();
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 GET EMPLOYER DETAILS
-        |--------------------------------------------------------------------------
-        */
+    //         /*
+    //     |--------------------------------------------------------------------------
+    //     | 🔥 GET EMPLOYER DETAILS
+    //     |--------------------------------------------------------------------------
+    //     */
 
-            $employer = \App\Models\Employer::find($user->employer_id);
+    //         $employer = \App\Models\Employer::find($user->employer_id);
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 GET PLATFORM COMPANY DETAILS
-        |--------------------------------------------------------------------------
-        */
+    //         /*
+    //     |--------------------------------------------------------------------------
+    //     | 🔥 GET PLATFORM COMPANY DETAILS
+    //     |--------------------------------------------------------------------------
+    //     */
 
-            $platformCompany = HomepageCompanyLogo::select(
-                'company_name',
-                'company_logo',
-                'company_url'
-            )->first();
+    //         $platformCompany = HomepageCompanyLogo::select(
+    //             'company_name',
+    //             'company_logo',
+    //             'company_url'
+    //         )->first();
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Recruiter login successful',
-                'role' => 'recruiter',
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Recruiter login successful',
+    //             'role' => 'recruiter',
 
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'employer_id' => $user->employer_id
-                ],
+    //             'user' => [
+    //                 'id' => $user->id,
+    //                 'name' => $user->name,
+    //                 'email' => $user->email,
+    //                 'employer_id' => $user->employer_id
+    //             ],
 
-                // 🔥 Employer company logo
-                'employer' => [
-                    'company_logo' => $employer->company_logo ?? null
-                ],
+    //             // 🔥 Employer company logo
+    //             'employer' => [
+    //                 'company_logo' => $employer->company_logo ?? null
+    //             ],
 
-                // 🔥 Platform company details
-                'platform' => [
-                    'company_name' => $platformCompany->company_name ?? null,
-                    'company_logo' => $platformCompany->company_logo ?? null,
-                    'company_link' => $platformCompany->company_url ?? null
-                ]
+    //             // 🔥 Platform company details
+    //             'platform' => [
+    //                 'company_name' => $platformCompany->company_name ?? null,
+    //                 'company_logo' => $platformCompany->company_logo ?? null,
+    //                 'company_link' => $platformCompany->company_url ?? null
+    //             ]
 
-            ], 200);
-        } catch (\Exception $e) {
+    //         ], 200);
+    //     } catch (\Exception $e) {
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Login failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Login failed',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
     //  Logout recruiter
     public function logout(Request $request)

@@ -35,12 +35,11 @@ Route::prefix('auth')->group(function () {
 
     // Employer
     Route::post('/create-employer', [EmployerController::class, 'createCompany']);
-    Route::post('/employer-login', [EmployerController::class, 'login']);
+    Route::post('/employer-login', [EmployerController::class, 'login']); //Same API for employer n Recruiter
 });
 
 
 Route::prefix('auth')->group(function () {
-
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
@@ -507,7 +506,7 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
 
 Route::prefix('recruiter')->group(function () {
 
-    Route::post('/login', [RecruiterController::class, 'login']);
+    // Route::post('/login', [RecruiterController::class, 'login']); Combined both recruiter n employer login api into one . Use Employer login API in EmployerController
     Route::middleware('auth:employer_user')->group(function () {
 
 

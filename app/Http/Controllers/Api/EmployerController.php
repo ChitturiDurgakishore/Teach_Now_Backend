@@ -290,27 +290,89 @@ class EmployerController extends Controller
                 'password' => 'required'
             ]);
 
-            $user = Employer::where('email', $request->email)->first();
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 TRY EMPLOYER LOGIN
+        |--------------------------------------------------------------------------
+        */
+            $employer = Employer::where('email', $request->email)->first();
 
-            if (!$user || !Hash::check($request->password, $user->password)) {
+            if ($employer && Hash::check($request->password, $employer->password)) {
+
+                Auth::guard('employer')->login($employer);
+                $request->session()->regenerate();
 
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Invalid credentials'
-                ], 401);
+                    'status' => true,
+                    'message' => 'Employer login successful',
+                    'role' => 'employer',
+                    'user' => $employer
+                ], 200);
             }
 
-            // login user with session
-            Auth::guard('employer')->login($user);
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 TRY RECRUITER LOGIN
+        |--------------------------------------------------------------------------
+        */
+            $user = EmployerUser::where('email', $request->email)->first();
 
-            $request->session()->regenerate();
+            if ($user && Hash::check($request->password, $user->password)) {
 
+                if ($user->is_active != 1) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Account disabled'
+                    ], 403);
+                }
+
+                Auth::guard('employer_user')->login($user);
+                $request->session()->regenerate();
+
+                // 🔥 Employer
+                $employer = \App\Models\Employer::find($user->employer_id);
+
+                // 🔥 Platform
+                $platformCompany = HomepageCompanyLogo::select(
+                    'company_name',
+                    'company_logo',
+                    'company_url'
+                )->first();
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Recruiter login successful',
+                    'role' => 'recruiter',
+
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'employer_id' => $user->employer_id
+                    ],
+
+                    'employer' => [
+                        'company_logo' => $employer->company_logo ?? null
+                    ],
+
+                    'platform' => [
+                        'company_name' => $platformCompany->company_name ?? null,
+                        'company_logo' => $platformCompany->company_logo ?? null,
+                        'company_link' => $platformCompany->company_url ?? null
+                    ]
+
+                ], 200);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | ❌ INVALID
+        |--------------------------------------------------------------------------
+        */
             return response()->json([
-                'status' => true,
-                'message' => 'Employer login successful',
-                'role' => 'employer',
-                'user' => $user
-            ], 200);
+                'status' => false,
+                'message' => 'Invalid credentials'
+            ], 401);
         } catch (\Exception $e) {
 
             return response()->json([
