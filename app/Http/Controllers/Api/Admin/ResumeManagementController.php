@@ -14,8 +14,12 @@ class ResumeManagementController extends Controller
     {
         try {
 
+            // 🔥 Separate pagination controls
             $resumePerPage = $request->get('resume_per_page', 10);
             $cvPerPage = $request->get('cv_per_page', 10);
+
+            $resumePage = $request->get('resume_page', 1);
+            $cvPage = $request->get('cv_page', 1);
 
             /*
         |--------------------------------------------------------------------------
@@ -26,7 +30,7 @@ class ResumeManagementController extends Controller
                 'jobSeeker.user:id,name,email'
             ])
                 ->latest()
-                ->paginate($resumePerPage);
+                ->paginate($resumePerPage, ['*'], 'resume_page', $resumePage);
 
             $resumesData = collect($resumes->items())->map(function ($item) {
                 return [
@@ -52,7 +56,7 @@ class ResumeManagementController extends Controller
                 'jobSeeker.user:id,name,email'
             ])
                 ->latest()
-                ->paginate($cvPerPage);
+                ->paginate($cvPerPage, ['*'], 'cv_page', $cvPage);
 
             $generatedData = collect($generated->items())->map(function ($item) {
                 return [
@@ -71,7 +75,7 @@ class ResumeManagementController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ FINAL RESPONSE (SEPARATE)
+        | ✅ FINAL RESPONSE
         |--------------------------------------------------------------------------
         */
 
@@ -84,11 +88,9 @@ class ResumeManagementController extends Controller
                     'last_page' => $resumes->lastPage(),
                     'per_page' => $resumes->perPage(),
 
-                    // 🔥 IMPORTANT
+                    // 🔥 pagination controls
                     'next_page_url' => $resumes->nextPageUrl(),
                     'prev_page_url' => $resumes->previousPageUrl(),
-
-                    // optional (very useful)
                     'has_more_pages' => $resumes->hasMorePages(),
 
                     'data' => $resumesData
@@ -100,10 +102,9 @@ class ResumeManagementController extends Controller
                     'last_page' => $generated->lastPage(),
                     'per_page' => $generated->perPage(),
 
-                    // 🔥 IMPORTANT
+                    // 🔥 pagination controls
                     'next_page_url' => $generated->nextPageUrl(),
                     'prev_page_url' => $generated->previousPageUrl(),
-
                     'has_more_pages' => $generated->hasMorePages(),
 
                     'data' => $generatedData
