@@ -35,6 +35,8 @@ class PlanController extends Controller
                 'is_active' => true,
                 'featured_jobs_limit' => $request->featured_jobs_limit,
                 'company_featured' => $request->company_featured,
+                'display_order' => Plan::max('display_order') + 1,
+                'is_highlighted'=>$request->is_highlighted ?? false,
             ]);
 
             return response()->json([
@@ -92,6 +94,8 @@ class PlanController extends Controller
                 'features',
                 'featured_jobs_limit',
                 'company_featured',
+                'is_highlighted',
+                'display_order'
             ]));
 
             return response()->json([
