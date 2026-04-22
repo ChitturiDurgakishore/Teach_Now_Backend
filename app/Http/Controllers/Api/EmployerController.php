@@ -39,6 +39,8 @@ class EmployerController extends Controller
         $this->notification = $notification;
     }
 
+
+
     //Helper function for Media Uploads
 
 
@@ -175,37 +177,44 @@ class EmployerController extends Controller
 
             $employer = Employer::findOrFail($id);
 
-            // 🔥 GET ACTIVE SUBSCRIPTION
-            $subscription = Subscription::where('employer_id', $employer->id)
-                ->where('expires_at', '>', now())
-                ->latest()
-                ->first();
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 USE SERVICE (CLEAN 🔥)
+        |--------------------------------------------------------------------------
+        */
 
-            if (!$subscription) {
+            $result = $this->subscriptionService
+                ->getAvailableFeatureSubscription($employer->id);
+
+            if (!$result['status']) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'No active subscription'
+                    'message' => $result['message'] // ✅ exact reason
                 ], 403);
             }
+
+            $subscription = $result['subscription'];
 
             /*
         |--------------------------------------------------------------------------
-        | 🚨 PLAN CHECK (IMPORTANT)
+        | 🔥 REAL FEATURE STATE (IMPORTANT FIX)
         |--------------------------------------------------------------------------
         */
-            if (!$subscription->plan->company_featured) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Your plan does not allow company featuring'
-                ], 403);
-            }
 
-            // 🔥 Toggle logic
-            $isNowFeatured = !$employer->company_featured;
+            $isCurrentlyFeatured = $employer->featured_until
+                && $employer->featured_until > now();
+
+            $isNowFeatured = !$isCurrentlyFeatured;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 TOGGLE
+        |--------------------------------------------------------------------------
+        */
 
             if ($isNowFeatured) {
 
-                // ✅ Enable with expiry
+                // ✅ Enable
                 $employer->update([
                     'company_featured' => true,
                     'featured_until' => $subscription->expires_at
@@ -225,7 +234,7 @@ class EmployerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $status = $isNowFeatured ? 'featured' : 'unfeatured';
+            $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
 
             // ✅ Employer
             $this->notification->send(
@@ -233,14 +242,14 @@ class EmployerController extends Controller
                 'employer',
                 $employer->id,
                 'Company Feature Update',
-                "Your company '{$employer->company_name}' has been {$status}",
+                "Your company '{$employer->company_name}' has been {$statusText}",
                 [
                     'employer_id' => $employer->id,
-                    'status' => $status
+                    'status' => $statusText
                 ]
             );
 
-            // ✅ Admins (FIXED - no null ❌)
+            // ✅ Admins
             $admins = \App\Models\User::where('role', 'admin')->get();
 
             foreach ($admins as $admin) {
@@ -249,17 +258,25 @@ class EmployerController extends Controller
                     'admin',
                     $admin->id,
                     'Company Feature Updated',
-                    "Company '{$employer->company_name}' has been {$status}",
+                    "Company '{$employer->company_name}' has been {$statusText}",
                     [
                         'employer_id' => $employer->id,
-                        'status' => $status
+                        'status' => $statusText
                     ]
                 );
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ RESPONSE (DYNAMIC MESSAGE 🔥)
+        |--------------------------------------------------------------------------
+        */
+
             return response()->json([
                 'status' => true,
-                'message' => 'Employer feature status updated successfully',
+                'message' => $isNowFeatured
+                    ? 'Company featured successfully'
+                    : 'Company unfeatured successfully',
                 'data' => $employer->fresh()
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -2094,7 +2111,6 @@ class EmployerController extends Controller
             ], 500);
         }
     }
-
     // Shortlist applicant
     public function shortlistCandidate($applicationId)
     {
