@@ -61,7 +61,9 @@ class Employer extends Authenticatable
         'company_verified',
         'latitude',   // ✅ add
         'longitude',
-        'institution_type'
+        'institution_type',
+        'company_featured',
+        'featured_until'
     ];
 
     // 🔥 UNIQUE SLUG GENERATOR
