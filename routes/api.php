@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\Admin\PlanController;
 use App\Http\Controllers\Payment\OrderController;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\Admin\ResumeManagementController;
 
 Route::prefix('auth')->group(function () {
 
@@ -374,6 +375,12 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
     Route::put('/popular-searches/{id}', [AdminCMSController::class, 'PopularSearchUpdate']);
     Route::delete('/popular-searches/{id}', [AdminCMSController::class, 'PopularSearchDestroy']);
     Route::patch('/popular-searches/{id}/toggle', [AdminCMSController::class, 'PopularSearchToggleFeature']);
+
+
+    //Resume Management for Admin
+    Route::delete('/resumes/{id}', [ResumeManagementController::class, 'deleteResume']);
+    Route::get('/resumes', [ResumeManagementController::class, 'getAllResumes']);
+
 });
 
 // =================================================================================
