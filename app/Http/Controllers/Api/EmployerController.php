@@ -31,15 +31,20 @@ class EmployerController extends Controller
 {
 
 
-    //Notification service
+    //Notification Service Injection
+    //Subscription Service Injection
+    // Properties
     protected $notification;
+    protected $subscriptionService;
 
-    public function __construct(Notification $notification)
-    {
+    // ✅ SINGLE constructor
+    public function __construct(
+        Notification $notification,
+        SubscriptionService $subscriptionService
+    ) {
         $this->notification = $notification;
+        $this->subscriptionService = $subscriptionService;
     }
-
-
 
     //Helper function for Media Uploads
 
