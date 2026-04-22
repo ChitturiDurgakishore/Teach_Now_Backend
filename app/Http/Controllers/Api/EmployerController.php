@@ -182,19 +182,14 @@ class EmployerController extends Controller
 
             $employer = Employer::findOrFail($id);
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 USE SERVICE (CLEAN 🔥)
-        |--------------------------------------------------------------------------
-        */
-
+            // 🔥 Get feature subscription
             $result = $this->subscriptionService
                 ->getAvailableFeatureSubscription($employer->id);
 
             if (!$result['status']) {
                 return response()->json([
                     'status' => false,
-                    'message' => $result['message'] // ✅ exact reason
+                    'message' => $result['message']
                 ], 403);
             }
 
@@ -202,14 +197,30 @@ class EmployerController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 REAL FEATURE STATE (IMPORTANT FIX)
+        | 🔥 REAL FEATURE STATE
         |--------------------------------------------------------------------------
         */
 
-            $isCurrentlyFeatured = $employer->featured_until
-                && $employer->featured_until > now();
+            $isCurrentlyFeatured =
+                $employer->is_featured &&
+                $employer->company_featured &&
+                $employer->featured_until &&
+                $employer->featured_until > now();
 
             $isNowFeatured = !$isCurrentlyFeatured;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🚨 ADMIN APPROVAL CHECK
+        |--------------------------------------------------------------------------
+        */
+
+            if ($isNowFeatured && !$employer->is_featured) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your company is not approved for featuring by admin'
+                ], 403);
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -219,14 +230,14 @@ class EmployerController extends Controller
 
             if ($isNowFeatured) {
 
-                // ✅ Enable
+                // ✅ ENABLE
                 $employer->update([
                     'company_featured' => true,
                     'featured_until' => $subscription->expires_at
                 ]);
             } else {
 
-                // ✅ Disable
+                // ✅ DISABLE
                 $employer->update([
                     'company_featured' => false,
                     'featured_until' => null
@@ -241,7 +252,6 @@ class EmployerController extends Controller
 
             $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
 
-            // ✅ Employer
             $this->notification->send(
                 'company_featured',
                 'employer',
@@ -254,26 +264,9 @@ class EmployerController extends Controller
                 ]
             );
 
-            // ✅ Admins
-            $admins = \App\Models\User::where('role', 'admin')->get();
-
-            foreach ($admins as $admin) {
-                $this->notification->send(
-                    'company_featured',
-                    'admin',
-                    $admin->id,
-                    'Company Feature Updated',
-                    "Company '{$employer->company_name}' has been {$statusText}",
-                    [
-                        'employer_id' => $employer->id,
-                        'status' => $statusText
-                    ]
-                );
-            }
-
             /*
         |--------------------------------------------------------------------------
-        | ✅ RESPONSE (DYNAMIC MESSAGE 🔥)
+        | ✅ RESPONSE
         |--------------------------------------------------------------------------
         */
 
@@ -284,12 +277,6 @@ class EmployerController extends Controller
                     : 'Company unfeatured successfully',
                 'data' => $employer->fresh()
             ], 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Employer not found'
-            ], 404);
         } catch (\Exception $e) {
 
             return response()->json([
