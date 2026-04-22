@@ -14,81 +14,86 @@ class ResumeManagementController extends Controller
     {
         try {
 
-            $perPage = $request->get('per_page', 10);
+            $resumePerPage = $request->get('resume_per_page', 10);
+            $cvPerPage = $request->get('cv_per_page', 10);
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 RESUMES (UPLOADED FILES)
+        | 🔥 RESUMES (UPLOADS)
         |--------------------------------------------------------------------------
         */
             $resumes = Resume::with([
                 'jobSeeker.user:id,name,email'
             ])
-                ->select('id', 'job_seeker_id', 'file_name', 'file_url', 'created_at')
                 ->latest()
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'type' => 'resume',
-                        'title' => $item->file_name ?? 'Resume',
-                        'file_url' => $item->file_url,
-                        'created_at' => $item->created_at,
-                        'job_seeker' => [
-                            'id' => $item->jobSeeker->id ?? null,
-                            'name' => $item->jobSeeker->user->name ?? null,
-                            'email' => $item->jobSeeker->user->email ?? null,
-                        ]
-                    ];
-                });
+                ->paginate($resumePerPage);
+
+            $resumesData = collect($resumes->items())->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'type' => 'resume',
+                    'title' => $item->file_name ?? 'Resume',
+                    'file_url' => $item->file_url,
+                    'created_at' => $item->created_at,
+                    'job_seeker' => [
+                        'id' => $item->jobSeeker->id ?? null,
+                        'name' => $item->jobSeeker->user->name ?? null,
+                        'email' => $item->jobSeeker->user->email ?? null,
+                    ]
+                ];
+            });
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 GENERATED RESUMES (CVs)
+        | 🔥 GENERATED RESUMES (CV)
         |--------------------------------------------------------------------------
         */
-            $generatedResumes = JobSeekerCV::with([
+            $generated = JobSeekerCV::with([
                 'jobSeeker.user:id,name,email'
             ])
-                ->select('id', 'job_seeker_id', 'title', 'pdf_path', 'created_at')
                 ->latest()
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'type' => 'generated_resume', // 🔥 renamed
-                        'title' => $item->title ?? 'Generated Resume',
-                        'file_url' => $item->pdf_path ? asset($item->pdf_path) : null,
-                        'created_at' => $item->created_at,
-                        'job_seeker' => [
-                            'id' => $item->jobSeeker->id ?? null,
-                            'name' => $item->jobSeeker->user->name ?? null,
-                            'email' => $item->jobSeeker->user->email ?? null,
-                        ]
-                    ];
-                });
+                ->paginate($cvPerPage);
+
+            $generatedData = collect($generated->items())->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'type' => 'generated_resume',
+                    'title' => $item->title ?? 'Generated Resume',
+                    'file_url' => $item->pdf_path ? asset($item->pdf_path) : null,
+                    'created_at' => $item->created_at,
+                    'job_seeker' => [
+                        'id' => $item->jobSeeker->id ?? null,
+                        'name' => $item->jobSeeker->user->name ?? null,
+                        'email' => $item->jobSeeker->user->email ?? null,
+                    ]
+                ];
+            });
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 MERGE + SORT + PAGINATE (MANUAL)
+        | ✅ FINAL RESPONSE (SEPARATE)
         |--------------------------------------------------------------------------
         */
-            $merged = $resumes
-                ->concat($generatedResumes)
-                ->sortByDesc('created_at')
-                ->values();
-
-            // Manual pagination
-            $page = $request->get('page', 1);
-            $pagedData = $merged->slice(($page - 1) * $perPage, $perPage)->values();
 
             return response()->json([
                 'status' => true,
-                'total' => $merged->count(),
-                'current_page' => (int)$page,
-                'per_page' => (int)$perPage,
-                'last_page' => ceil($merged->count() / $perPage),
-                'data' => $pagedData
+
+                'resumes' => [
+                    'total' => $resumes->total(),
+                    'current_page' => $resumes->currentPage(),
+                    'last_page' => $resumes->lastPage(),
+                    'per_page' => $resumes->perPage(),
+                    'data' => $resumesData
+                ],
+
+                'generated_resumes' => [
+                    'total' => $generated->total(),
+                    'current_page' => $generated->currentPage(),
+                    'last_page' => $generated->lastPage(),
+                    'per_page' => $generated->perPage(),
+                    'data' => $generatedData
+                ]
+
             ], 200);
         } catch (\Exception $e) {
 
@@ -174,5 +179,4 @@ class ResumeManagementController extends Controller
             ], 500);
         }
     }
-
 }
