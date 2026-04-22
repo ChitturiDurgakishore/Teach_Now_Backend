@@ -182,14 +182,19 @@ class EmployerController extends Controller
 
             $employer = Employer::findOrFail($id);
 
-            // 🔥 Get feature subscription
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CHECK SUBSCRIPTION (ONLY THIS)
+        |--------------------------------------------------------------------------
+        */
+
             $result = $this->subscriptionService
                 ->getAvailableFeatureSubscription($employer->id);
 
             if (!$result['status']) {
                 return response()->json([
                     'status' => false,
-                    'message' => $result['message']
+                    'message' => $result['message'] // correct reason
                 ], 403);
             }
 
@@ -197,30 +202,16 @@ class EmployerController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 REAL FEATURE STATE
+        | 🔥 CURRENT STATE (NO ADMIN CHECK HERE)
         |--------------------------------------------------------------------------
         */
 
             $isCurrentlyFeatured =
-                $employer->is_featured &&
                 $employer->company_featured &&
                 $employer->featured_until &&
                 $employer->featured_until > now();
 
             $isNowFeatured = !$isCurrentlyFeatured;
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🚨 ADMIN APPROVAL CHECK
-        |--------------------------------------------------------------------------
-        */
-
-            if ($isNowFeatured && !$employer->is_featured) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Your company is not approved for featuring by admin'
-                ], 403);
-            }
 
             /*
         |--------------------------------------------------------------------------
@@ -230,14 +221,14 @@ class EmployerController extends Controller
 
             if ($isNowFeatured) {
 
-                // ✅ ENABLE
+                // ✅ Employer requests feature
                 $employer->update([
                     'company_featured' => true,
                     'featured_until' => $subscription->expires_at
                 ]);
             } else {
 
-                // ✅ DISABLE
+                // ✅ Employer removes feature
                 $employer->update([
                     'company_featured' => false,
                     'featured_until' => null
@@ -250,7 +241,7 @@ class EmployerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
+            $statusText = $isNowFeatured ? 'requested for featuring' : 'removed from featuring';
 
             $this->notification->send(
                 'company_featured',
@@ -273,7 +264,7 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => $isNowFeatured
-                    ? 'Company featured successfully'
+                    ? 'Feature request submitted successfully (waiting for admin approval)'
                     : 'Company unfeatured successfully',
                 'data' => $employer->fresh()
             ], 200);
