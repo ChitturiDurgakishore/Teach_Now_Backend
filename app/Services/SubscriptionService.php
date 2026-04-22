@@ -39,19 +39,19 @@ class SubscriptionService
 
     public function getAvailableFeatureSubscription($employerId)
     {
-        // 1. Check any subscription exists
-        $subscription = Subscription::where('employer_id', $employerId)
+        $subscription = Subscription::with('plan')
+            ->where('employer_id', $employerId)
             ->latest()
             ->first();
 
         if (!$subscription) {
             return [
                 'status' => false,
-                'message' => 'No subscription found'
+                'message' => 'No active subscription found'
             ];
         }
 
-        // 2. Check active
+        // ❌ Not active
         if ($subscription->status !== 'active') {
             return [
                 'status' => false,
@@ -59,30 +59,31 @@ class SubscriptionService
             ];
         }
 
-        // 3. Check expiry
+        // ❌ Expired
         if ($subscription->expires_at <= now()) {
             return [
                 'status' => false,
-                'message' => 'Subscription has expired'
+                'message' => 'Your subscription has expired'
             ];
         }
 
-        // 4. Check plan feature
+        // ❌ PLAN DOES NOT SUPPORT FEATURE
         if (!$subscription->plan || !$subscription->plan->company_featured) {
             return [
                 'status' => false,
-                'message' => 'Your plan does not include company featuring'
+                'message' => 'Your plan does not include company featuring. Please upgrade your plan.'
             ];
         }
 
-        // 5. (Optional) If you add limit later
+        // ❌ LIMIT CHECK (ONLY if feature exists in plan)
         if (
             isset($subscription->featured_jobs_total) &&
+            $subscription->featured_jobs_total > 0 &&
             $subscription->featured_jobs_used >= $subscription->featured_jobs_total
         ) {
             return [
                 'status' => false,
-                'message' => 'Featured limit reached'
+                'message' => 'You have reached your featured limit. Please upgrade your plan.'
             ];
         }
 
