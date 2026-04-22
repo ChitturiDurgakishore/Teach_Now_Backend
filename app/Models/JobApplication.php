@@ -36,7 +36,8 @@ class JobApplication extends Model
         'status',
         'slug',
         'contact_status',
-        'resume_type'
+        'resume_type',
+        'cv_id'
     ];
 
     public function answers()
