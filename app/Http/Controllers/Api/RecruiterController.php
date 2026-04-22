@@ -1142,34 +1142,39 @@ class RecruiterController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 HANDLE RESUME / CV USING TYPE (FIXED 🔥)
+        | 🔥 HANDLE RESUME / CV (FIXED)
         |--------------------------------------------------------------------------
         */
 
             $resume = null;
 
             if ($application->resume_type === 'cv') {
-                $resume = \App\Models\JobSeekerCV::find($application->resume_id);
+                $resume = \App\Models\JobSeekerCV::find($application->cv_id); // ✅ FIXED
             } else {
                 $resume = \App\Models\Resume::find($application->resume_id);
             }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FORMAT RESUME RESPONSE
+        |--------------------------------------------------------------------------
+        */
 
             $resumeData = null;
 
             if ($resume) {
 
-                // 🔥 HANDLE BOTH TYPES CORRECTLY
                 if ($application->resume_type === 'cv') {
-
                     $filePath = $resume->pdf_path ?? null;
+                    $fileName = $resume->title ?? 'CV';
                 } else {
-
                     $filePath = $resume->file_url ?? null;
+                    $fileName = $resume->file_name ?? 'Resume';
                 }
 
                 $resumeData = [
                     'id' => $resume->id,
-                    'file_name' => $resume->file_name ?? $resume->title ?? null,
+                    'file_name' => $fileName,
                     'file_url' => $filePath,
                     'type' => $application->resume_type
                 ];
@@ -1177,7 +1182,7 @@ class RecruiterController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 QUESTIONS + ANSWERS MERGED
+        | 🔥 QUESTIONS + ANSWERS
         |--------------------------------------------------------------------------
         */
 

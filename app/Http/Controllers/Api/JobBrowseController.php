@@ -223,7 +223,7 @@ class JobBrowseController extends Controller
 
             if ($request->filled('resume_id')) {
 
-                // CV first
+                // ✅ Try CV first
                 $resume = JobSeekerCV::where('id', $request->resume_id)
                     ->where('job_seeker_id', $jobSeeker->id)
                     ->first();
@@ -232,7 +232,7 @@ class JobBrowseController extends Controller
                     $resumeType = 'cv';
                 }
 
-                // Resume fallback
+                // ✅ Fallback to Resume
                 if (!$resume) {
                     $resume = Resume::where('id', $request->resume_id)
                         ->where('job_seeker_id', $jobSeeker->id)
@@ -244,7 +244,7 @@ class JobBrowseController extends Controller
                 }
             } else {
 
-                // Default CV
+                // ✅ Default CV
                 $resume = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)
                     ->where('is_default', true)
                     ->first();
@@ -253,7 +253,7 @@ class JobBrowseController extends Controller
                     $resumeType = 'cv';
                 }
 
-                // Default Resume
+                // ✅ Default Resume
                 if (!$resume) {
                     $resume = Resume::where('job_seeker_id', $jobSeeker->id)
                         ->where('is_default', true)
@@ -274,25 +274,34 @@ class JobBrowseController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 CREATE APPLICATION
+        | 🔥 CREATE APPLICATION (FIXED)
         |--------------------------------------------------------------------------
         */
+
+            $resumeId = null;
+            $cvId = null;
+
+            if ($resumeType === 'resume') {
+                $resumeId = $resume->id;
+            } else {
+                $cvId = $resume->id;
+            }
 
             $application = JobApplication::create([
                 'job_id' => $jobId,
                 'job_seeker_id' => $jobSeeker->id,
-                'resume_id' => $resume->id,
+                'resume_id' => $resumeId,
+                'cv_id' => $cvId,
                 'resume_type' => $resumeType,
                 'status' => 'applied'
             ]);
 
             /*
         |--------------------------------------------------------------------------
-        | 🔔 NOTIFICATIONS (🔥 MAIN PART)
+        | 🔔 NOTIFICATIONS
         |--------------------------------------------------------------------------
         */
 
-            // ✅ Notify Employer
             $this->notification->send(
                 'job_applied',
                 'employer',
@@ -305,7 +314,6 @@ class JobBrowseController extends Controller
                 ]
             );
 
-            // ✅ Notify Recruiter (if exists)
             if ($job->created_by) {
                 $this->notification->send(
                     'job_applied',
@@ -351,6 +359,7 @@ class JobBrowseController extends Controller
                     'job_title' => $job->title
                 ], $user->email);
             } catch (\Exception $mailException) {
+
                 Log::error('Job applied mail failed', [
                     'job_id' => $jobId,
                     'error' => $mailException->getMessage()
@@ -375,6 +384,8 @@ class JobBrowseController extends Controller
             ], 500);
         }
     }
+
+
     //Get applied Jobs
 
     public function getAppliedJobs(Request $request)
@@ -434,14 +445,15 @@ class JobBrowseController extends Controller
 
                 /*
             |--------------------------------------------------------------------------
-            | ✅ RESUME / CV (DIRECT FETCH)
+            | ✅ RESUME / CV (FIXED)
             |--------------------------------------------------------------------------
             */
                 $resumeDetails = null;
 
+                // ✅ Resume
                 if ($item->resume_type === 'resume' && $item->resume_id) {
 
-                    $resume = \App\Models\Resume::where('id', $item->resume_id)->first();
+                    $resume = \App\Models\Resume::find($item->resume_id);
 
                     if ($resume) {
                         $resumeDetails = [
@@ -452,9 +464,12 @@ class JobBrowseController extends Controller
                             'url' => $resume->file_url,
                         ];
                     }
-                } elseif ($item->resume_type === 'cv' && $item->resume_id) {
+                }
 
-                    $cv = \App\Models\JobSeekerCV::where('id', $item->resume_id)->first();
+                // ✅ CV (🔥 FIXED HERE)
+                elseif ($item->resume_type === 'cv' && $item->cv_id) {
+
+                    $cv = \App\Models\JobSeekerCV::find($item->cv_id);
 
                     if ($cv) {
                         $resumeDetails = [
@@ -466,6 +481,10 @@ class JobBrowseController extends Controller
                 }
 
                 $item->resume_details = $resumeDetails;
+
+                // ✅ Optional cleanup (recommended)
+                unset($item->resume_id);
+                unset($item->cv_id);
 
                 return $item;
             });

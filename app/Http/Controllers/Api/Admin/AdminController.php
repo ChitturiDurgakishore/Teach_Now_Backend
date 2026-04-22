@@ -1244,8 +1244,9 @@ class AdminController extends Controller
             $jobSeeker = JobSeeker::withTrashed()->with([
                 'user:id,name,email,is_active',
                 'resumes',
+                'cvs', // ✅ ADD THIS RELATION (JobSeekerCV)
 
-                // 🔥 UPDATED
+                // 🔥 UPDATED JOB + EMPLOYER
                 'jobApplications.job' => function ($query) {
                     $query->select('id', 'title', 'employer_id')
                         ->with([
@@ -1261,6 +1262,50 @@ class AdminController extends Controller
                     'message' => 'Job seeker not found'
                 ], 404);
             }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 NORMALIZE APPLICATIONS (IMPORTANT)
+        |--------------------------------------------------------------------------
+        */
+
+            $jobSeeker->jobApplications->transform(function ($app) {
+
+                $resumeData = null;
+
+                // ✅ CV
+                if ($app->resume_type === 'cv' && $app->cv_id) {
+
+                    $cv = \App\Models\JobSeekerCV::find($app->cv_id);
+
+                    if ($cv) {
+                        $resumeData = [
+                            'type' => 'cv',
+                            'title' => $cv->title,
+                            'url' => $cv->pdf_path ? asset($cv->pdf_path) : null
+                        ];
+                    }
+                }
+
+                // ✅ Resume
+                elseif ($app->resume_type === 'resume' && $app->resume_id) {
+
+                    $resume = \App\Models\Resume::find($app->resume_id);
+
+                    if ($resume) {
+                        $resumeData = [
+                            'type' => 'resume',
+                            'title' => $resume->file_name,
+                            'url' => $resume->file_url
+                        ];
+                    }
+                }
+
+                // attach clean field
+                $app->resume_details = $resumeData;
+
+                return $app;
+            });
 
             return response()->json([
                 'status' => true,

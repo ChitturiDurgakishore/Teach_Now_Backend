@@ -1986,14 +1986,14 @@ class EmployerController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 HANDLE RESUME / CV USING TYPE (CLEAN 🔥)
+        | 🔥 HANDLE RESUME / CV (FIXED)
         |--------------------------------------------------------------------------
         */
 
             $resume = null;
 
             if ($application->resume_type === 'cv') {
-                $resume = \App\Models\JobSeekerCV::find($application->resume_id);
+                $resume = \App\Models\JobSeekerCV::find($application->cv_id); // ✅ FIXED
             } else {
                 $resume = \App\Models\Resume::find($application->resume_id);
             }
@@ -2008,18 +2008,17 @@ class EmployerController extends Controller
 
             if ($resume) {
 
-                // 🔥 HANDLE BOTH TYPES CORRECTLY
                 if ($application->resume_type === 'cv') {
-
                     $filePath = $resume->pdf_path ?? null;
+                    $fileName = $resume->title ?? 'CV';
                 } else {
-
                     $filePath = $resume->file_url ?? null;
+                    $fileName = $resume->file_name ?? 'Resume';
                 }
 
                 $resumeData = [
                     'id' => $resume->id,
-                    'file_name' => $resume->file_name ?? $resume->title ?? null,
+                    'file_name' => $fileName,
                     'file_url' => $filePath,
                     'type' => $application->resume_type
                 ];
@@ -2027,7 +2026,7 @@ class EmployerController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 QUESTIONS + ANSWERS MERGED
+        | 🔥 QUESTIONS + ANSWERS
         |--------------------------------------------------------------------------
         */
 
@@ -2095,6 +2094,7 @@ class EmployerController extends Controller
             ], 500);
         }
     }
+
     // Shortlist applicant
     public function shortlistCandidate($applicationId)
     {

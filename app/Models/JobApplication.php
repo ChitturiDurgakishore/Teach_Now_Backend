@@ -25,7 +25,7 @@ class JobApplication extends Model
 
     public function cv()
     {
-        return $this->belongsTo(JobSeekerCV::class, 'resume_id', 'id');
+        return $this->belongsTo(JobSeekerCV::class, 'cv_id');
     }
 
     public $fillable = [

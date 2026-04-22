@@ -74,4 +74,9 @@ class JobSeeker extends Model
     {
         return $this->hasMany(JobSeekerExperience::class)->latest();
     }
+
+    public function cvs()
+    {
+        return $this->hasMany(JobSeekerCV::class, 'job_seeker_id');
+    }
 }
