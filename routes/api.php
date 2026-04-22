@@ -124,6 +124,9 @@ Route::prefix('open')->group(function () {
 
     //Skills
     Route::get('/skills', [PublicAPIController::class, 'getskills']);
+
+    Route::get('/cv-templates', [PublicAPIController::class, 'getActiveCVTemplates']);
+    Route::get('/plans', [PublicAPIController::class, 'getActivePlans']);
 });
 
 //resource download
@@ -380,7 +383,6 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
     //Resume Management for Admin
     Route::delete('/resumes/{id}', [ResumeManagementController::class, 'deleteResume']);
     Route::get('/resumes', [ResumeManagementController::class, 'getAllResumes']);
-
 });
 
 // =================================================================================
@@ -642,5 +644,3 @@ Route::middleware(['auth:sanctum', 'role:job_seeker'])->prefix('jobseeker')->gro
 
 
 // ----------------------------------------------------------------------------------
-
-

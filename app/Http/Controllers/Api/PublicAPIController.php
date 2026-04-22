@@ -1164,4 +1164,63 @@ class PublicAPIController extends Controller
             'data' => $skills
         ], 200);
     }
+
+
+    //Plans API public
+
+    public function getActivePlans()
+    {
+        try {
+
+            $plans = \App\Models\Plan::where('is_active', true)
+                ->select(
+                    'id',
+                    'name',
+                    'price',
+                    'duration',
+                    'job_posts_total',
+                    'featured_jobs_total',
+                    'company_featured'
+                )
+                ->orderBy('price', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $plans
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch plans',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //CV Templates API for public
+    public function getActiveCVTemplates()
+    {
+        try {
+
+            $templates = \App\Models\CVTemplate::where('is_active', true)
+                ->select('id', 'name', 'thumbnail', 'preview_url')
+                ->latest()
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $templates
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch CV templates',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
