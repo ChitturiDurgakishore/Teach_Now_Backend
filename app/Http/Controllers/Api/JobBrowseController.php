@@ -167,7 +167,7 @@ class JobBrowseController extends Controller
                 'answers' => 'nullable|array',
                 'answers.*.question_id' => 'required|exists:job_questions,id',
                 'answers.*.candidate_answer' => 'required',
-                'resume_id' => 'nullable|integer'
+                'resume_id' => 'required|integer' // 🔥 REQUIRED NOW
             ]);
 
             $user = Auth::user();
@@ -214,84 +214,52 @@ class JobBrowseController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 RESUME / CV HANDLING
+        | 🔥 STRICT RESUME / CV SELECTION (NO DEFAULT)
         |--------------------------------------------------------------------------
         */
 
             $resume = null;
             $resumeType = null;
 
-            if ($request->filled('resume_id')) {
+            // ✅ Check CV first
+            $resume = JobSeekerCV::where('id', $request->resume_id)
+                ->where('job_seeker_id', $jobSeeker->id)
+                ->first();
 
-                // ✅ Try CV first
-                $resume = JobSeekerCV::where('id', $request->resume_id)
+            if ($resume) {
+                $resumeType = 'cv';
+            }
+
+            // ✅ Else check Resume
+            if (!$resume) {
+                $resume = Resume::where('id', $request->resume_id)
                     ->where('job_seeker_id', $jobSeeker->id)
                     ->first();
 
                 if ($resume) {
-                    $resumeType = 'cv';
-                }
-
-                // ✅ Fallback to Resume
-                if (!$resume) {
-                    $resume = Resume::where('id', $request->resume_id)
-                        ->where('job_seeker_id', $jobSeeker->id)
-                        ->first();
-
-                    if ($resume) {
-                        $resumeType = 'resume';
-                    }
-                }
-            } else {
-
-                // ✅ Default CV
-                $resume = JobSeekerCV::where('job_seeker_id', $jobSeeker->id)
-                    ->where('is_default', true)
-                    ->first();
-
-                if ($resume) {
-                    $resumeType = 'cv';
-                }
-
-                // ✅ Default Resume
-                if (!$resume) {
-                    $resume = Resume::where('job_seeker_id', $jobSeeker->id)
-                        ->where('is_default', true)
-                        ->first();
-
-                    if ($resume) {
-                        $resumeType = 'resume';
-                    }
+                    $resumeType = 'resume';
                 }
             }
 
+            // ❌ Invalid ID
             if (!$resume) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Please upload or set a default CV/Resume before applying'
+                    'message' => 'Invalid resume/CV selected'
                 ], 422);
             }
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 CREATE APPLICATION (FIXED)
+        | 🔥 CREATE APPLICATION (FIXED STRUCTURE)
         |--------------------------------------------------------------------------
         */
-
-            $resumeId = null;
-            $cvId = null;
-
-            if ($resumeType === 'resume') {
-                $resumeId = $resume->id;
-            } else {
-                $cvId = $resume->id;
-            }
 
             $application = JobApplication::create([
                 'job_id' => $jobId,
                 'job_seeker_id' => $jobSeeker->id,
-                'resume_id' => $resumeId,
-                'cv_id' => $cvId,
+                'resume_id' => $resumeType === 'resume' ? $resume->id : null,
+                'cv_id' => $resumeType === 'cv' ? $resume->id : null,
                 'resume_type' => $resumeType,
                 'status' => 'applied'
             ]);
