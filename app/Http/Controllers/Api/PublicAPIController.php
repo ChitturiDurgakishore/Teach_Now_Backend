@@ -1173,16 +1173,7 @@ class PublicAPIController extends Controller
         try {
 
             $plans = \App\Models\Plan::where('is_active', true)
-                ->select(
-                    'id',
-                    'name',
-                    'price',
-                    'duration',
-                    'job_posts_total',
-                    'featured_jobs_total',
-                    'company_featured'
-                )
-                ->orderBy('price', 'asc')
+                ->orderBy('offer_price', 'asc')
                 ->get();
 
             return response()->json([
@@ -1205,7 +1196,6 @@ class PublicAPIController extends Controller
         try {
 
             $templates = \App\Models\CVTemplate::where('is_active', true)
-                ->select('id', 'name', 'thumbnail', 'preview_url')
                 ->latest()
                 ->get();
 
