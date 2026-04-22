@@ -83,6 +83,14 @@ class ResumeManagementController extends Controller
                     'current_page' => $resumes->currentPage(),
                     'last_page' => $resumes->lastPage(),
                     'per_page' => $resumes->perPage(),
+
+                    // 🔥 IMPORTANT
+                    'next_page_url' => $resumes->nextPageUrl(),
+                    'prev_page_url' => $resumes->previousPageUrl(),
+
+                    // optional (very useful)
+                    'has_more_pages' => $resumes->hasMorePages(),
+
                     'data' => $resumesData
                 ],
 
@@ -91,6 +99,13 @@ class ResumeManagementController extends Controller
                     'current_page' => $generated->currentPage(),
                     'last_page' => $generated->lastPage(),
                     'per_page' => $generated->perPage(),
+
+                    // 🔥 IMPORTANT
+                    'next_page_url' => $generated->nextPageUrl(),
+                    'prev_page_url' => $generated->previousPageUrl(),
+
+                    'has_more_pages' => $generated->hasMorePages(),
+
                     'data' => $generatedData
                 ]
 
