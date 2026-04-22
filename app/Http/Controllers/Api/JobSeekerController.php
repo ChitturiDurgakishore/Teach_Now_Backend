@@ -143,6 +143,30 @@ class JobSeekerController extends Controller
         }
     }
 
+    //Private function for get profile api
+    private function isProfileCompleted($profile)
+    {
+        if (!$profile) return false;
+
+        // ✅ Required fields check
+        $hasBasic =
+            !empty($profile->title) &&
+            !empty($profile->phone) &&
+            !empty($profile->location) &&
+            !is_null($profile->experience_years) &&
+            !empty($profile->availability) &&
+            !empty($profile->gender);
+
+        // ✅ At least one education
+        $hasEducation = $profile->educations && $profile->educations->count() > 0;
+
+        // ✅ At least one skill
+        $hasSkills = $profile->skills && $profile->skills->count() > 0;
+
+        return $hasBasic && $hasEducation && $hasSkills;
+    }
+
+
     // Get profile
     public function getProfile()
     {
@@ -159,6 +183,7 @@ class JobSeekerController extends Controller
             ])->where('user_id', $user->id)->first();
             $Company_logo = HomepageCompanyLogo::where('is_active', true)->get();
             $skills = Skill::all();
+            $profileCompleted = $this->isProfileCompleted($profile);
             if (!$profile) {
                 return response()->json([
                     'status' => false,
@@ -168,6 +193,7 @@ class JobSeekerController extends Controller
 
             return response()->json([
                 'status' => true,
+                'profile_flag'=>$profileCompleted,
                 'data' => $profile,
                 'skills' => $skills,
                 'company_logos' => $Company_logo
