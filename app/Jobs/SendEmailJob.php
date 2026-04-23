@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
@@ -15,19 +16,39 @@ class SendEmailJob implements ShouldQueue
     protected $toEmail;
     protected $subject;
     protected $body;
+    protected $attachments;
 
-    public function __construct($toEmail, $subject, $body)
+    /**
+     * Create a new job instance.
+     */
+    public function __construct($toEmail, $subject, $body, $attachments = [])
     {
         $this->toEmail = $toEmail;
         $this->subject = $subject;
         $this->body = $body;
+        $this->attachments = $attachments;
     }
 
+    /**
+     * Execute the job.
+     */
     public function handle()
     {
-        Mail::raw($this->body, function ($message) {
+        Mail::html($this->body, function ($message) {
+
             $message->to($this->toEmail)
-                    ->subject($this->subject);
+                ->subject($this->subject);
+
+            // ✅ Attachments (PDF invoice etc.)
+            if (!empty($this->attachments)) {
+                foreach ($this->attachments as $file) {
+                    $message->attachData(
+                        base64_decode($file['content']),
+                        $file['name'],
+                        ['mime' => $file['mime']]
+                    );
+                }
+            }
         });
     }
 }
