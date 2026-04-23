@@ -102,7 +102,11 @@ class AdminController extends Controller
     public function getAllJobs(Request $request)
     {
         try {
-
+            $active_jobs=Job::where('job_status','open')->count();
+            $total_jobs=Job::count();
+            $featured_jobs_count=Job::where('admin_featured',1)->where('featured',1)->where('featured_until','>',now())->count();
+            $rejected_jobs=Job::where('status','rejected')->count();
+            $expired_jobs=Job::where('expires_at','<',now())->count();
             $perPage = $request->get('per_page', 10);
             $search = $request->get('search');
 
@@ -143,7 +147,12 @@ class AdminController extends Controller
 
             return response()->json([
                 'status' => true,
-                'total_jobs' => $jobs->total(),
+                'active_jobs' => $active_jobs,
+                'total_jobs' => $total_jobs,
+                'featured_jobs_count' => $featured_jobs_count,
+                'rejected_jobs' => $rejected_jobs,
+                'expired_jobs' => $expired_jobs,
+
                 'current_page' => $jobs->currentPage(),
                 'last_page' => $jobs->lastPage(),
                 'per_page' => $jobs->perPage(),
