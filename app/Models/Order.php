@@ -16,4 +16,9 @@ class Order extends Model
         'currency',
         'receipt',
     ];
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
+    }
 }
