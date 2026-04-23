@@ -102,12 +102,23 @@ class AdminController extends Controller
     public function getAllJobs(Request $request)
     {
         try {
-            $active_jobs=Job::where('job_status','open')->where('status','approved')->where('expires_at','>',now())->count();
-            $total_jobs=Job::count();
-            $featured_jobs_count=Job::where('admin_featured',1)->where('featured',1)->where('featured_until','>',now())->count();
-            $rejected_jobs=Job::where('status','rejected')->count();
-            $expired_jobs=Job::where('expires_at','<',now())->count();
-            $deleted_jobs=Job::onlyTrashed()->count();
+            $total_jobs = Job::withTrashed()->count();
+
+            $active_jobs = Job::where('status', 'approved')
+                ->where('job_status', 'open')
+                ->where('expires_at', '>', now())
+                ->count();
+
+            $expired_jobs = Job::where('status', 'approved')
+                ->where('expires_at', '<=', now())
+                ->count();
+
+            $rejected_jobs = Job::where('status', 'rejected')->count();
+            $featured_jobs_count= Job::where('status', 'approved')
+                ->where('job_status', 'open')->where('admin_featured', 1)->where('featured', 1)->where('featured_until', '>', now())->where('expires_at', '>', now())->count();
+
+
+            $deleted_jobs = Job::onlyTrashed()->count();
             $perPage = $request->get('per_page', 10);
             $search = $request->get('search');
 
@@ -1290,9 +1301,9 @@ class AdminController extends Controller
     {
         try {
 
-            $total_jobseekers=JobSeeker::count();
-            $active_jobseekers=JobSeeker::whereHas('user', function($q){
-                $q->where('is_active',1);
+            $total_jobseekers = JobSeeker::count();
+            $active_jobseekers = JobSeeker::whereHas('user', function ($q) {
+                $q->where('is_active', 1);
             })->count();
             $perPage = $request->get('per_page', 10);
             $search = $request->get('search');
