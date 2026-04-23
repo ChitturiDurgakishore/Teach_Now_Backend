@@ -1280,6 +1280,10 @@ class AdminController extends Controller
     {
         try {
 
+            $total_jobseekers=JobSeeker::count();
+            $active_jobseekers=JobSeeker::whereHas('user', function($q){
+                $q->where('is_active',1);
+            })->count();
             $perPage = $request->get('per_page', 10);
             $search = $request->get('search');
 
@@ -1308,7 +1312,8 @@ class AdminController extends Controller
 
             return response()->json([
                 'status' => true,
-                'total_job_seekers' => $jobSeekers->total(),
+                'total_job_seekers' => $total_jobseekers,
+                'active_job_seekers' => $active_jobseekers,
                 'current_page' => $jobSeekers->currentPage(),
                 'last_page' => $jobSeekers->lastPage(),
                 'per_page' => $jobSeekers->perPage(),
