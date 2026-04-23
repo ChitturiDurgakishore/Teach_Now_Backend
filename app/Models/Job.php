@@ -100,4 +100,8 @@ class Job extends Model
             }
         });
     }
+
+    protected $casts = [
+        'featured_until' => 'datetime',
+    ];
 }
