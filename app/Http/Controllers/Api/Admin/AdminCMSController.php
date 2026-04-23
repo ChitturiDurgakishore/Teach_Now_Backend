@@ -1687,7 +1687,7 @@ class AdminCMSController extends Controller
         try {
             // Use paginate(20) to get 20 skills per page
             // Laravel automatically reads the 'page' query parameter from the request
-            $skills = Skill::orderBy('name')->paginate(20);
+            $skills = Skill::orderBy('name')->paginate(5);
 
             return response()->json([
                 'status' => true,
