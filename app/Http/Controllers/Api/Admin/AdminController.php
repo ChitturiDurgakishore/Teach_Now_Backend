@@ -1745,19 +1745,62 @@ class AdminController extends Controller
     // ==============================================================================
     //Admin Newly uploaded documents
 
-    public function getNewDocuments()
+    public function getNewDocuments(Request $request)
     {
         try {
+
+            $perPage = $request->get('per_page', 10);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 DOCUMENTS (PENDING)
+        |--------------------------------------------------------------------------
+        */
 
             $documents = DocumentVerification::with('employer:id,company_name,company_logo')
                 ->where('status', 'pending')
                 ->latest()
-                ->paginate(10);
+                ->paginate($perPage);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 COUNTS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Total documents
+            $total_documents = DocumentVerification::count();
+
+            // ✅ Verified institutes (employers)
+            $verified_institutes = \App\Models\Employer::where('is_verified', 1)->count();
+
+            // ✅ Optional: total pending (useful for badge)
+            $pending_documents = DocumentVerification::where('status', 'pending')->count();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ RESPONSE
+        |--------------------------------------------------------------------------
+        */
 
             return response()->json([
                 'status' => true,
-                'total_documents' => $documents->total(),
-                'data' => $documents
+
+                // 🔥 COUNTS
+                'total_documents' => $total_documents,
+                'pending_documents' => $pending_documents,
+                'verified_institutes' => $verified_institutes,
+
+                // 🔥 PAGINATION
+                'current_page' => $documents->currentPage(),
+                'last_page' => $documents->lastPage(),
+                'per_page' => $documents->perPage(),
+                'next_page_url' => $documents->nextPageUrl(),
+                'prev_page_url' => $documents->previousPageUrl(),
+
+                'data' => $documents->items()
+
             ], 200);
         } catch (\Exception $e) {
 
