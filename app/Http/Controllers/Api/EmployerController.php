@@ -1063,7 +1063,8 @@ class EmployerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $activeQuery = Job::where('employer_id', $employer->id);
+            $activeQuery = Job::where('employer_id', $employer->id)
+                ->where('expires_at', '>', now());
 
             if ($search) {
                 $activeQuery->where(function ($q) use ($search) {
@@ -1082,7 +1083,8 @@ class EmployerController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $expiredQuery = Job::where('employer_id', $employer->id);
+            $expiredQuery = Job::where('employer_id', $employer->id)
+                ->where('expires_at', '<=', now());
 
             if ($search) {
                 $expiredQuery->where(function ($q) use ($search) {
