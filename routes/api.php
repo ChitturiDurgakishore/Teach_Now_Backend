@@ -25,6 +25,7 @@ use App\Http\Controllers\Payment\OrderController;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\Admin\ResumeManagementController;
+use App\Http\Controllers\Payment\WebhookController;
 
 Route::prefix('auth')->group(function () {
 
@@ -52,6 +53,8 @@ Route::prefix('auth')->middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 });
 
+
+Route::post('/razorpay/webhook',[WebhookController::class, 'handle']);
 // ---------------------------------------------------------------------
 
 // Open routes
