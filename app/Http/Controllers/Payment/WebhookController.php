@@ -20,7 +20,7 @@ class WebhookController extends Controller
 
     public function handle(Request $request)
     {
-        Log::info('Razorpay Handle Triggered', [
+        Log::info('🔔 Webhook Triggered', [
             'url' => $request->fullUrl(),
             'method' => $request->method(),
             'ip' => $request->ip()
@@ -32,9 +32,14 @@ class WebhookController extends Controller
             $signature = $request->header('X-Razorpay-Signature');
             $secret = env('RAZORPAY_WEBHOOK_SECRET');
 
+            Log::info('📥 Raw Webhook Data', [
+                'signature_present' => !!$signature,
+                'payload_length' => strlen($payload)
+            ]);
+
             // ❗ SAFETY CHECK
             if (!$signature || !$secret) {
-                Log::error('Webhook missing signature or secret');
+                Log::error('❌ Missing signature or secret');
                 return response()->json(['status' => false], 400);
             }
 
@@ -42,21 +47,26 @@ class WebhookController extends Controller
             $expectedSignature = hash_hmac('sha256', $payload, $secret);
 
             if (!hash_equals($expectedSignature, $signature)) {
-                Log::error('Webhook signature mismatch');
+                Log::error('❌ Signature mismatch');
                 return response()->json(['status' => false], 400);
             }
+
+            Log::info('✅ Signature verified');
 
             // ✅ PARSE JSON
             $data = json_decode($payload, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('Invalid JSON');
+                Log::error('❌ Invalid JSON', ['error' => json_last_error_msg()]);
                 return response()->json(['status' => false], 400);
             }
 
             $event = $data['event'] ?? null;
 
+            Log::info('📌 Event received', ['event' => $event]);
+
             if (!$event) {
+                Log::error('❌ Event missing');
                 return response()->json(['status' => false], 400);
             }
 
@@ -69,41 +79,72 @@ class WebhookController extends Controller
             */
                 case 'payment.captured':
 
+                    Log::info('💰 Processing payment.captured');
+
                     $payment = $data['payload']['payment']['entity'] ?? null;
 
-                    if (!$payment) return response()->json(['status' => false], 400);
+                    if (!$payment) {
+                        Log::error('❌ Payment entity missing');
+                        return response()->json(['status' => false], 400);
+                    }
 
                     $razorpayOrderId = $payment['order_id'] ?? null;
                     $razorpayPaymentId = $payment['id'] ?? null;
 
+                    Log::info('📊 Payment Data', [
+                        'order_id' => $razorpayOrderId,
+                        'payment_id' => $razorpayPaymentId
+                    ]);
+
                     if (!$razorpayOrderId || !$razorpayPaymentId) {
+                        Log::error('❌ Missing order_id or payment_id');
                         return response()->json(['status' => false], 400);
                     }
 
                     DB::transaction(function () use ($razorpayOrderId, $razorpayPaymentId, $payment) {
 
+                        Log::info('🔄 DB Transaction started');
+
                         $order = Order::where('razorpay_order_id', $razorpayOrderId)
                             ->lockForUpdate()
                             ->first();
 
-                        if (!$order) return;
+                        if (!$order) {
+                            Log::error('❌ Order not found', ['order_id' => $razorpayOrderId]);
+                            return;
+                        }
 
-                        // ✅ prevent duplicate processing
-                        if ($order->status === 'paid') return;
+                        Log::info('✅ Order found', ['order_db_id' => $order->id]);
 
-                        // ✅ update order
+                        // Prevent duplicate
+                        if ($order->status === 'paid') {
+                            Log::warning('⚠️ Order already paid, skipping');
+                            return;
+                        }
+
+                        // Update order
                         $order->update([
                             'status' => 'paid',
                             'razorpay_payment_id' => $razorpayPaymentId
                         ]);
 
-                        // ✅ prevent duplicate subscription
-                        if (Subscription::where('order_id', $order->id)->exists()) return;
+                        Log::info('✅ Order updated to PAID');
+
+                        if (Subscription::where('order_id', $order->id)->exists()) {
+                            Log::warning('⚠️ Subscription already exists');
+                            return;
+                        }
 
                         $plan = Plan::find($order->plan_id);
-                        if (!$plan) return;
 
-                        // 🔥 STACKING
+                        if (!$plan) {
+                            Log::error('❌ Plan not found', ['plan_id' => $order->plan_id]);
+                            return;
+                        }
+
+                        Log::info('✅ Plan found', ['plan' => $plan->name]);
+
+                        // STACKING
                         $lastSubscription = Subscription::where('employer_id', $order->employer_id)
                             ->where('expires_at', '>', now())
                             ->orderBy('expires_at', 'desc')
@@ -115,7 +156,6 @@ class WebhookController extends Controller
 
                         $expiresAt = $startDate->copy()->addDays($plan->validity_days);
 
-                        // ✅ CREATE SUBSCRIPTION
                         $subscription = Subscription::create([
                             'employer_id' => $order->employer_id,
                             'plan_id' => $plan->id,
@@ -130,8 +170,13 @@ class WebhookController extends Controller
                             'featured_jobs_used' => 0,
                         ]);
 
-                        // ✅ STORE PAYMENT
+                        Log::info('✅ Subscription created', [
+                            'subscription_id' => $subscription->id
+                        ]);
+
+                        // PAYMENT STORE
                         if (!Payment::where('transaction_id', $razorpayPaymentId)->exists()) {
+
                             Payment::create([
                                 'employer_id' => $order->employer_id,
                                 'subscription_id' => $subscription->id,
@@ -140,45 +185,40 @@ class WebhookController extends Controller
                                 'payment_status' => 'success',
                                 'transaction_id' => $razorpayPaymentId,
                             ]);
+
+                            Log::info('✅ Payment stored');
+                        } else {
+                            Log::warning('⚠️ Payment already exists');
                         }
 
                         $employer = \App\Models\Employer::find($order->employer_id);
-                        if (!$employer) return;
 
-                        // 🔔 NOTIFICATIONS
+                        if (!$employer) {
+                            Log::error('❌ Employer not found');
+                            return;
+                        }
+
+                        Log::info('✅ Employer found');
+
+                        // Notifications
                         app(\App\Services\Notification::class)->send(
                             'payment_success',
                             'employer',
                             $employer->id,
                             'Payment Successful',
                             "Your payment for '{$plan->name}' plan is successful",
-                            [
-                                'order_id' => $order->id,
-                                'subscription_id' => $subscription->id
-                            ]
+                            []
                         );
 
-                        $admins = \App\Models\User::where('role', 'admin')->get();
+                        Log::info('🔔 Employer notified');
 
-                        foreach ($admins as $admin) {
-                            app(\App\Services\Notification::class)->send(
-                                'payment_success',
-                                'admin',
-                                $admin->id,
-                                'New Payment Received',
-                                "Payment received from '{$employer->company_name}'",
-                                [
-                                    'order_id' => $order->id
-                                ]
-                            );
-                        }
-
-                        // 📄 INVOICE
+                        // Invoice
                         app(\App\Services\InvoiceService::class)->generate($order, $subscription);
+
+                        Log::info('🧾 Invoice generated');
                     });
 
                     break;
-
 
                 /*
             |--------------------------------------------------------------------------
@@ -186,6 +226,8 @@ class WebhookController extends Controller
             |--------------------------------------------------------------------------
             */
                 case 'payment.failed':
+
+                    Log::warning('❌ Payment failed event');
 
                     $payment = $data['payload']['payment']['entity'] ?? null;
                     if (!$payment) break;
@@ -195,9 +237,9 @@ class WebhookController extends Controller
                     $order = Order::where('razorpay_order_id', $razorpayOrderId)->first();
 
                     if ($order) {
+
                         $order->update(['status' => 'failed']);
 
-                        // ✅ STORE FAILED PAYMENT
                         Payment::create([
                             'employer_id' => $order->employer_id,
                             'subscription_id' => null,
@@ -206,16 +248,23 @@ class WebhookController extends Controller
                             'payment_status' => 'failed',
                             'transaction_id' => $payment['id'] ?? null,
                         ]);
+
+                        Log::info('❌ Failed payment stored');
                     }
 
                     break;
             }
 
+            Log::info('✅ Webhook processed successfully');
+
             return response()->json(['status' => true]);
         } catch (\Exception $e) {
 
-            Log::error('Webhook error', [
-                'error' => $e->getMessage()
+            Log::error('🔥 Webhook Exception', [
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json(['status' => false], 500);
