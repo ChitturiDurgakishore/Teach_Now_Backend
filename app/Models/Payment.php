@@ -16,4 +16,12 @@ class Payment extends Model
     {
         return $this->belongsTo(Subscription::class);
     }
+    protected $fillable = [
+        'employer_id',
+        'subscription_id',
+        'amount',
+        'payment_method',
+        'payment_status',
+        'transaction_id'
+    ];
 }
