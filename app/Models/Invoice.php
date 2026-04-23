@@ -13,7 +13,8 @@ class Invoice extends Model
         'subscription_id',
         'amount',
         'currency',
-        'invoice_date'
+        'invoice_date',
+        'pdf_path'
 ];
 
     public function employer()
