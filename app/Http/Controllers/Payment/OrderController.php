@@ -106,7 +106,7 @@ class OrderController extends Controller
 
             Log::info('Razorpay config', [
                 'key' => $key,
-                'secret_present' => $secret ? true : false
+                'secret_present' => $secret
             ]);
 
             $api = new Api($key, $secret);
