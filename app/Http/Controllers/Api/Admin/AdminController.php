@@ -1773,6 +1773,7 @@ class AdminController extends Controller
 
             // ✅ Verified institutes (employers)
             $verified_institutes = \App\Models\Employer::where('is_verified', 1)->count();
+            $unverified_institutes = \App\Models\Employer::where('is_verified', 0)->count();
 
             // ✅ Optional: total pending (useful for badge)
             $pending_documents = DocumentVerification::where('status', 'pending')->count();
@@ -1791,6 +1792,7 @@ class AdminController extends Controller
                 'total_documents' => $total_documents,
                 'pending_documents' => $pending_documents,
                 'verified_institutes' => $verified_institutes,
+                'unverified_institutes' => $unverified_institutes,
 
                 // 🔥 PAGINATION
                 'current_page' => $documents->currentPage(),
