@@ -54,6 +54,7 @@ class Job extends Model
         'job_status',
         'status',
         'featured',
+        'featured_until',
         'admin_featured',
         'application_deadline',
         'slug',
@@ -104,4 +105,5 @@ class Job extends Model
     protected $casts = [
         'featured_until' => 'datetime',
     ];
+
 }
