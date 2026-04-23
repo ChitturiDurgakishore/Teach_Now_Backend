@@ -181,37 +181,6 @@ class OrderController extends Controller
                 'razorpay_signature' => 'required|string',
             ]);
 
-            $employer = Auth::guard('employer')->user();
-
-            if (!$employer) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthenticated'
-                ], 401);
-            }
-
-            DB::beginTransaction();
-
-            // ✅ FIND ORDER
-            $order = Order::where('razorpay_order_id', $request->razorpay_order_id)
-                ->lockForUpdate()
-                ->first();
-
-            if (!$order) {
-                throw new \Exception('Order not found');
-            }
-
-            // ✅ PREVENT DUPLICATE PROCESSING
-            if ($order->status === 'paid') {
-                DB::commit();
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Payment already processed'
-                ]);
-            }
-
-            // ✅ VERIFY SIGNATURE
             $api = new Api(
                 config('services.razorpay.key'),
                 config('services.razorpay.secret')
@@ -223,150 +192,16 @@ class OrderController extends Controller
                 'razorpay_signature' => $request->razorpay_signature,
             ]);
 
-            // ✅ UPDATE ORDER
-            $order->update([
-                'status' => 'paid',
-                'razorpay_payment_id' => $request->razorpay_payment_id
-            ]);
-
-            // ✅ FETCH PLAN
-            $plan = Plan::find($order->plan_id);
-
-            if (!$plan || !$plan->is_active) {
-                throw new \Exception('Invalid or inactive plan');
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 STACKING LOGIC
-        |--------------------------------------------------------------------------
-        */
-
-            $lastSubscription = Subscription::where('employer_id', $employer->id)
-                ->where('expires_at', '>', now())
-                ->orderBy('expires_at', 'desc')
-                ->first();
-
-            $startDate = $lastSubscription
-                ? Carbon::parse($lastSubscription->expires_at)
-                : now();
-
-            $expiresAt = (clone $startDate)->addDays($plan->validity_days);
-
-            // ✅ CREATE SUBSCRIPTION
-            $subscription = Subscription::create([
-                'employer_id' => $employer->id,
-                'plan_id' => $plan->id,
-                'order_id' => $order->id,
-
-                'job_posts_total' => $plan->job_posts_limit,
-                'job_posts_used' => 0,
-
-                'purchase_date' => now(),
-                'starts_at' => $startDate,
-                'expires_at' => $expiresAt,
-                'featured_jobs_total' => $plan->featured_jobs_limit,
-                'featured_jobs_used' => 0,
-                'status' => 'active'
-            ]);
-
-            DB::commit();
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🔔 NOTIFICATIONS
-        |--------------------------------------------------------------------------
-        */
-
-            // ✅ Employer Notification
-            $this->notification->send(
-                'payment_success',
-                'employer',
-                $employer->id,
-                'Payment Successful',
-                "Your payment for '{$plan->name}' plan is successful",
-                [
-                    'order_id' => $order->id,
-                    'subscription_id' => $subscription->id
-                ]
-            );
-
-            // ✅ Admin Notifications
-            $admins = \App\Models\User::where('role', 'admin')
-                ->whereNotNull('email')
-                ->get();
-
-            foreach ($admins as $admin) {
-                $this->notification->send(
-                    'payment_success',
-                    'admin',
-                    $admin->id,
-                    'Payment Received',
-                    "Payment received from '{$employer->company_name}'",
-                    [
-                        'order_id' => $order->id
-                    ]
-                );
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | 📧 MAILS
-        |--------------------------------------------------------------------------
-        */
-
-            try {
-
-                $mailService = new \App\Services\MailService();
-
-                // ✅ Employer Mail
-                $mailService->send('payment_success', [
-                    'name' => $employer->company_name,
-                    'plan_name' => $plan->name,
-                    'amount' => $order->amount
-                ], $employer->email);
-
-                // ✅ Admin Mails
-                foreach ($admins as $admin) {
-                    $mailService->send('payment_received_admin', [
-                        'company_name' => $employer->company_name,
-                        'plan_name' => $plan->name,
-                        'amount' => $order->amount
-                    ], $admin->email);
-                }
-            } catch (\Exception $mailException) {
-
-                Log::error('Payment mail failed (verifyPayment)', [
-                    'error' => $mailException->getMessage()
-                ]);
-            }
-
             return response()->json([
                 'status' => true,
-                'message' => 'Payment verified and subscription activated',
-                'data' => $subscription
+                'message' => 'Payment verified. Awaiting confirmation...'
             ]);
         } catch (SignatureVerificationError $e) {
-
-            DB::rollBack();
 
             return response()->json([
                 'status' => false,
                 'message' => 'Invalid payment signature'
             ], 400);
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-
-            Log::error('Payment verification failed', [
-                'error' => $e->getMessage()
-            ]);
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Payment verification failed',
-                'error' => $e->getMessage()
-            ], 500);
         }
     }
 }
