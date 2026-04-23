@@ -27,7 +27,11 @@ class WebhookController extends Controller
             $payload = $request->getContent();
             $signature = $request->header('X-Razorpay-Signature');
             $secret = env('RAZORPAY_WEBHOOK_SECRET');
-
+           Log::info('Webhook received', [
+                'signature' => $signature,
+                'payload' => $payload,
+                'secret'=>$secret
+            ]);
             // 🔒 VERIFY SIGNATURE
             $expectedSignature = hash_hmac('sha256', $payload, $secret);
 
