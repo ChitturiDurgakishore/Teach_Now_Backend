@@ -78,7 +78,7 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|image|mimes:jpg,jpeg,png|max:4096'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096'
             ]);
 
             $hero = HomepageHeroSection::first();
@@ -415,7 +415,7 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120'
             ]);
 
             // 🔥 Upload image
@@ -463,7 +463,7 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|image|mimes:jpg,jpeg,png|max:5120'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120'
             ]);
 
             // 🔥 Replace image if new uploaded
@@ -869,7 +869,7 @@ class AdminCMSController extends Controller
                 'section_id' => 'required|exists:footer_sections,id',
                 'title' => 'required|string|max:150',
                 'url' => 'required|string|max:255',
-                'icon' => 'nullable|image|mimes:jpg,jpeg,png,svg|max:2048',
+                'icon' => 'nullable|image|mimes:jpg,jpeg,png,svg,webp|max:2048',
                 'display_order' => 'nullable|integer'
             ]);
 
@@ -1039,7 +1039,7 @@ class AdminCMSController extends Controller
 
             $request->validate([
                 'company_name' => 'required|string|max:255',
-                'company_logo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+                'company_logo' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
                 'slug' => 'nullable|string|max:255',
                 'company_url' => 'nullable|string|max:255',
                 'display_order' => 'nullable|integer',
@@ -1095,7 +1095,7 @@ class AdminCMSController extends Controller
 
             $request->validate([
                 'company_name' => 'required|string|max:255',
-                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
                 'slug' => 'nullable|string',
                 'company_url' => 'nullable|string',
                 'display_order' => 'nullable|integer',
@@ -1358,7 +1358,7 @@ class AdminCMSController extends Controller
                 'title' => 'required|string|max:255',
                 'slug' => 'required|string|max:255|unique:blogs,slug',
                 'content' => 'required|string',
-                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:2048',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
@@ -1419,7 +1419,7 @@ class AdminCMSController extends Controller
                 'title' => 'nullable|string|max:255',
                 'slug' => 'nullable|string|max:255|unique:blogs,slug,' . $id,
                 'content' => 'nullable|string',
-                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:2048',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
