@@ -102,31 +102,54 @@ class AdminController extends Controller
     public function getAllJobs(Request $request)
     {
         try {
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 STATS (MUTUALLY EXCLUSIVE)
+        |--------------------------------------------------------------------------
+        */
+
             $total_jobs = Job::withTrashed()->count();
 
+            $deleted_jobs = Job::onlyTrashed()->count();
+
+            // ✅ Approved + Active
             $active_jobs = Job::where('status', 'approved')
                 ->where('job_status', 'open')
                 ->where('expires_at', '>', now())
                 ->count();
 
+            // ✅ Approved + Expired
             $expired_jobs = Job::where('status', 'approved')
                 ->where('expires_at', '<=', now())
                 ->count();
 
+            // ✅ Rejected
             $rejected_jobs = Job::where('status', 'rejected')->count();
-            $featured_jobs_count= Job::where('status', 'approved')
-                ->where('job_status', 'open')->where('admin_featured', 1)->where('featured', 1)->where('featured_until', '>', now())->where('expires_at', '>', now())->count();
 
+            // ✅ Other (IMPORTANT FIX 🔥)
+            $inactive_jobs = Job::where('status', 'approved')
+                ->where('job_status', '!=', 'open')
+                ->count();
 
-            $deleted_jobs = Job::onlyTrashed()->count();
-            $perPage = $request->get('per_page', 10);
-            $search = $request->get('search');
+            // ✅ Featured (subset of active — DO NOT mix in totals)
+            $featured_jobs_count = Job::where('status', 'approved')
+                ->where('job_status', 'open')
+                ->where('admin_featured', 1)
+                ->where('featured', 1)
+                ->where('featured_until', '>', now())
+                ->where('expires_at', '>', now())
+                ->count();
+
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 QUERY WITH SEARCH
+        | 🔥 LISTING (SEARCH + PAGINATION)
         |--------------------------------------------------------------------------
         */
+
+            $perPage = $request->get('per_page', 10);
+            $search = $request->get('search');
 
             $query = Job::with([
                 'employer:id,company_name,company_logo',
@@ -136,41 +159,48 @@ class AdminController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
 
-                    // 🔍 Job fields
                     $q->where('title', 'like', "%$search%")
                         ->orWhere('location', 'like', "%$search%")
-                        ->orWhere('job_type', 'like', "%$search%");
-
-                    // 🔍 Employer (company)
-                    $q->orWhereHas('employer', function ($q2) use ($search) {
-                        $q2->where('company_name', 'like', "%$search%");
-                    });
-
-                    // 🔍 Category
-                    $q->orWhereHas('category', function ($q3) use ($search) {
-                        $q3->where('name', 'like', "%$search%");
-                    });
+                        ->orWhere('job_type', 'like', "%$search%")
+                        ->orWhereHas('employer', function ($q2) use ($search) {
+                            $q2->where('company_name', 'like', "%$search%");
+                        })
+                        ->orWhereHas('category', function ($q3) use ($search) {
+                            $q3->where('name', 'like', "%$search%");
+                        });
                 });
             }
 
-            $jobs = $query
-                ->latest()
-                ->paginate($perPage);
+            $jobs = $query->latest()->paginate($perPage);
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ RESPONSE
+        |--------------------------------------------------------------------------
+        */
 
             return response()->json([
                 'status' => true,
-                'active_jobs' => $active_jobs,
+
+                // 🔥 STATS
                 'total_jobs' => $total_jobs,
-                'featured_jobs_count' => $featured_jobs_count,
-                'rejected_jobs' => $rejected_jobs,
-                'expired_jobs' => $expired_jobs,
                 'deleted_jobs' => $deleted_jobs,
+                'active_jobs' => $active_jobs,
+                'expired_jobs' => $expired_jobs,
+                'rejected_jobs' => $rejected_jobs,
+                'inactive_jobs' => $inactive_jobs, // 🔥 NEW (fixes mismatch)
+                'featured_jobs_count' => $featured_jobs_count,
+
+                // 🔥 PAGINATION
                 'current_page' => $jobs->currentPage(),
                 'last_page' => $jobs->lastPage(),
                 'per_page' => $jobs->perPage(),
                 'next_page_url' => $jobs->nextPageUrl(),
                 'prev_page_url' => $jobs->previousPageUrl(),
+
                 'data' => $jobs->items()
+
             ], 200);
         } catch (\Exception $e) {
 
