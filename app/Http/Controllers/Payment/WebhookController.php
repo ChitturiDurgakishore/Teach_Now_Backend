@@ -16,7 +16,7 @@ class WebhookController extends Controller
 
     public function handle(Request $request)
     {
-        Log::info('Razorpay Handle Triggered', [
+    Log::info('Razorpay Handle Triggered', [
             'url' => $request->fullUrl(),
             'method' => $request->method(),
             'payload' => $request->all(), // Be careful with sensitive data here

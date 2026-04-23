@@ -1996,7 +1996,7 @@ class RecruiterController extends Controller
 
             $job = Job::where('id', $id)
                 ->where('created_by', $recruiter->id)
-                ->withCount('jobApplications')
+                ->withCount('jobApplications')->with(['questions', 'category'])
                 ->first();
 
             if (!$job) {
