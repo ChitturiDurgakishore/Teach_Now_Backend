@@ -444,6 +444,7 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::post('/users', [EmployerController::class, 'createEmployerUser']); //Employer user creation
     Route::get('/users', [EmployerController::class, 'getEmployerUsers']); //Get employer users
     Route::delete('/users/{id}', [EmployerController::class, 'deleteEmployerUser']); //Delete employer user
+    Route::get('/recruiter/{id}', [EmployerController::class, 'getRecruiterDetails']); //Recruiter details
     //Dashboard
     Route::get('/dashboard', [EmployerController::class, 'dashboard']); //Employer dashboard
 

@@ -719,18 +719,59 @@ class EmployerController extends Controller
     //Get Employer Users (Recruiters)
 
 
-    public function getEmployerUsers()
+    public function getEmployerUsers(Request $request)
     {
         try {
 
             $employer = Auth::guard('employer')->user();
 
-            $users = EmployerUser::where('employer_id', $employer->id)->get();
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $perPage = $request->get('per_page', 10);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 PAGINATED USERS
+        |--------------------------------------------------------------------------
+        */
+
+            $users = EmployerUser::where('employer_id', $employer->id)
+                ->latest()
+                ->paginate($perPage);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RESPONSE
+        |--------------------------------------------------------------------------
+        */
 
             return response()->json([
                 'status' => true,
-                'total_users' => $users->count(),
-                'data' => $users
+
+                'total_users' => $users->total(),
+
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'per_page' => $users->perPage(),
+                'next_page_url' => $users->nextPageUrl(),
+                'prev_page_url' => $users->previousPageUrl(),
+                'has_more_pages' => $users->hasMorePages(),
+
+                'data' => collect($users->items())->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'phone' => $user->phone ?? null,
+                        'created_at' => $user->created_at,
+                    ];
+                })
+
             ], 200);
         } catch (\Exception $e) {
 
@@ -2796,6 +2837,97 @@ class EmployerController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch featured status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getRecruiterDetails(Request $request, $recruiterId)
+    {
+        try {
+
+            $employer = Auth::guard('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $perPage = $request->get('per_page', 10);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FETCH RECRUITER (SECURE)
+        |--------------------------------------------------------------------------
+        */
+
+            $recruiter = EmployerUser::where('id', $recruiterId)
+                ->where('employer_id', $employer->id)
+                ->first();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Recruiter not found'
+                ], 404);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 PAGINATED JOBS
+        |--------------------------------------------------------------------------
+        */
+
+            $jobs = Job::where('created_by', $recruiter->id)
+                ->where('employer_id', $employer->id)
+                ->latest()
+                ->paginate($perPage);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RESPONSE
+        |--------------------------------------------------------------------------
+        */
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'recruiter' => [
+                        'id' => $recruiter->id,
+                        'name' => $recruiter->name,
+                        'email' => $recruiter->email,
+                        'phone' => $recruiter->phone ?? null,
+                        'created_at' => $recruiter->created_at,
+                    ],
+
+                    'jobs' => [
+                        'total' => $jobs->total(),
+                        'current_page' => $jobs->currentPage(),
+                        'last_page' => $jobs->lastPage(),
+                        'per_page' => $jobs->perPage(),
+                        'next_page_url' => $jobs->nextPageUrl(),
+                        'prev_page_url' => $jobs->previousPageUrl(),
+                        'has_more_pages' => $jobs->hasMorePages(),
+                        'data' => collect($jobs->items())->map(function ($job) {
+                            return [
+                                'id' => $job->id,
+                                'title' => $job->title,
+                                'job_status' => $job->job_status,
+                                'status' => $job->status,
+                                'featured' => $job->featured,
+                                'created_at' => $job->created_at,
+                            ];
+                        })
+                    ]
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch recruiter details',
                 'error' => $e->getMessage()
             ], 500);
         }
