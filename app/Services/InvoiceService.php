@@ -5,11 +5,11 @@ namespace App\Services;
 use App\Models\Invoice;
 use App\Models\InvoiceSetting;
 use App\Models\EmailTemplate;
+use App\Models\HomepageCompanyLogo;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Mail;
 use App\Jobs\SendEmailJob;
 use Illuminate\Support\Facades\Storage;
-
+use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
@@ -17,13 +17,13 @@ class InvoiceService
     {
         // 🔒 prevent duplicate
         $existing = Invoice::where('order_id', $order->id)->first();
-
         if ($existing) {
             return $existing;
         }
 
+        // ✅ create first (TEMP invoice number)
         $invoice = Invoice::create([
-            'invoice_number' => $this->generateInvoiceNumber(),
+            'invoice_number' => 'TEMP',
             'employer_id' => $order->employer_id,
             'order_id' => $order->id,
             'subscription_id' => $subscription->id,
@@ -32,24 +32,22 @@ class InvoiceService
             'invoice_date' => now()
         ]);
 
-        // 🔥 AFTER CREATE → GENERATE PDF + SEND EMAIL
+        // ✅ generate clean invoice number using ID
+        $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT);
+
+        $invoice->update([
+            'invoice_number' => $invoiceNumber
+        ]);
+
+        // 🔥 generate pdf + email
         $this->generatePdfAndSend($invoice);
 
         return $invoice;
     }
 
-    private function generateInvoiceNumber()
-    {
-        $count = Invoice::count() + 1;
-
-        return 'INV-' . date('Y') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
-    }
-
     /**
-     * 🔥 Generate PDF from DB template + Send Email
+     * 🔥 Generate PDF + Send Email
      */
-
-
     public function generatePdfAndSend($invoice)
     {
         $invoice->load(['order.plan', 'employer']);
@@ -58,86 +56,119 @@ class InvoiceService
         $plan = $invoice->order->plan;
         $employer = $invoice->employer;
 
-        // 🔥 Get template
-        $template = EmailTemplate::where('slug', 'invoice_template')
-            ->where('is_active', true)
-            ->first();
-
-        if (!$template) {
-            throw new \Exception('Invoice template not found');
-        }
-
-        // 🔥 Prepare data
-        $data = [
-            'company_name' => $settings->company_name ?? '',
-            'company_address' => $settings->address ?? '',
-            'footer' => $settings->footer ?? '',
-
-            'invoice_number' => $invoice->invoice_number,
-            'invoice_date' => $invoice->invoice_date,
-
-            'employer_name' => $employer->company_name ?? '',
-            'employer_email' => $employer->email ?? '',
-
-            'plan_name' => $plan->name ?? '',
-            'amount' => $invoice->amount,
-            'currency' => $invoice->currency,
-        ];
-
-        // 🔥 Replace variables
-        $html = $template->body;
-
-        foreach ($data as $key => $value) {
-            $html = str_replace('{' . $key . '}', $value, $html);
-        }
+        // ✅ Logo
+        $logo = \App\Models\HomepageCompanyLogo::latest()->first();
+        $logoPath = $logo && $logo->logo
+            ? public_path('storage/' . $logo->logo)
+            : null;
 
         /*
     |--------------------------------------------------------------------------
-    | 🔥 CHECK IF PDF ALREADY EXISTS
+    | 🔥 HARDCODED PDF HTML (DOMPDF SAFE)
     |--------------------------------------------------------------------------
     */
 
-        if ($invoice->pdf_path && Storage::exists($invoice->pdf_path)) {
+        $html = '
+    <div style="font-family: DejaVu Sans, sans-serif; font-size: 12px; color:#333;">
 
-            $pdfContent = base64_encode(Storage::get($invoice->pdf_path));
-        } else {
+        <!-- HEADER -->
+        <table width="100%" cellpadding="5">
+            <tr>
+                <td width="50%">
+                    ' . ($logoPath ? '<img src="' . $logoPath . '" height="50">' : '') . '
+                </td>
+                <td width="50%" align="right">
+                    <h2 style="margin:0;">INVOICE</h2>
+                    <p style="margin:0;"><strong>' . $invoice->invoice_number . '</strong></p>
+                    <p style="margin:0;">' . $invoice->invoice_date . '</p>
+                </td>
+            </tr>
+        </table>
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 GENERATE PDF
-        |--------------------------------------------------------------------------
-        */
+        <hr>
 
-            $pdf = Pdf::loadHTML($html);
+        <!-- COMPANY -->
+        <p><strong>' . ($settings->company_name ?? '') . '</strong></p>
+        <p>' . ($settings->address ?? '') . '</p>
 
-            $fileName = 'invoice_' . $invoice->invoice_number . '.pdf';
-            $filePath = 'invoices/' . $fileName;
+        <hr>
 
-            // 🔥 Store PDF
-            Storage::disk('public')->put($filePath, $pdf->output());
+        <!-- BILL TO -->
+        <p><strong>Bill To:</strong></p>
+        <p>
+            ' . ($employer->company_name ?? '') . '<br>
+            ' . ($employer->email ?? '') . '
+        </p>
 
-            // 🔥 Save path in DB
-            $invoice->update([
-                'pdf_path' => 'storage/' . $filePath
-            ]);
+        <br>
 
-            $pdfContent = base64_encode($pdf->output());
-        }
+        <!-- PLAN DETAILS -->
+        <table width="100%" border="1" cellspacing="0" cellpadding="8">
+            <tr style="background:#f2f2f2;">
+                <th align="left">Description</th>
+                <th align="right">Amount</th>
+            </tr>
+            <tr>
+                <td>' . ($plan->name ?? '') . '</td>
+                <td align="right">₹ ' . number_format($invoice->amount, 2) . '</td>
+            </tr>
+            <tr>
+                <td align="right"><strong>Total</strong></td>
+                <td align="right"><strong>₹ ' . number_format($invoice->amount, 2) . '</strong></td>
+            </tr>
+        </table>
+
+        <br>
+
+        <!-- PAYMENT INFO -->
+        <p><strong>Status:</strong> Paid</p>
+        <p><strong>Transaction ID:</strong> ' . ($invoice->order->razorpay_payment_id ?? '-') . '</p>
+
+        <br><br>
+
+        <hr>
+
+        <!-- FOOTER -->
+        <p style="font-size:10px; color:#777;">
+            ' . ($settings->footer ?? 'Thank you for choosing us!') . '
+        </p>
+
+    </div>
+    ';
 
         /*
     |--------------------------------------------------------------------------
-    | 🔥 SEND MAIL (QUEUE)
+    | 🔥 PDF GENERATION
     |--------------------------------------------------------------------------
     */
 
-        SendEmailJob::dispatch(
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+
+        $fileName = 'invoice_' . $invoice->invoice_number . '.pdf';
+        $filePath = 'invoices/' . $fileName;
+
+        \Storage::disk('public')->put($filePath, $pdf->output());
+
+        $invoice->update([
+            'pdf_path' => 'storage/' . $filePath
+        ]);
+
+        /*
+    |--------------------------------------------------------------------------
+    | 📧 EMAIL
+    |--------------------------------------------------------------------------
+    */
+
+        $pdfContent = base64_encode($pdf->output());
+
+        \App\Jobs\SendEmailJob::dispatch(
             $employer->email,
-            $template->subject,
+            'Invoice - ' . $invoice->invoice_number,
             $html,
             [
                 [
                     'content' => $pdfContent,
-                    'name' => 'invoice_' . $invoice->invoice_number . '.pdf',
+                    'name' => $fileName,
                     'mime' => 'application/pdf'
                 ]
             ]
