@@ -110,7 +110,9 @@ class OrderController extends Controller
             ]);
 
             $api = new Api($key, $secret);
-            Log::info('Razorpay API initialized',$api);
+            Log::info('Razorpay API initialized', [
+                'api' => $api
+            ]);
             Log::info('Creating Razorpay order...');
 
             $razorpayOrder = $api->order->create([
