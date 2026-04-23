@@ -114,11 +114,11 @@ class InvoiceService
             $filePath = 'invoices/' . $fileName;
 
             // 🔥 Store PDF
-            Storage::put($filePath, $pdf->output());
+            Storage::disk('public')->put($filePath, $pdf->output());
 
             // 🔥 Save path in DB
             $invoice->update([
-                'pdf_path' => $filePath
+                'pdf_path' => 'storage/' . $filePath
             ]);
 
             $pdfContent = base64_encode($pdf->output());
