@@ -1690,49 +1690,53 @@ class EmployerController extends Controller
                 ], 403);
             }
 
-            // 🔥 GET ACTIVE SUBSCRIPTION
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GET SUBSCRIPTION (FIXED)
+        |--------------------------------------------------------------------------
+        */
+
             $subscriptionService = new \App\Services\SubscriptionService();
 
-            $subscription = $subscriptionService->getAvailableFeatureSubscription($employer->id);
+            $result = $subscriptionService->getAvailableFeatureSubscription($employer->id);
 
-            if (!$subscription) {
+            if (!$result['status']) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'No active subscription'
+                    'message' => $result['message'] // ✅ proper reason
                 ], 403);
             }
 
-            // 🔥 Determine action
-            $isNowFeatured = !$job->featured;
+            $subscription = $result['subscription'];
 
             /*
         |--------------------------------------------------------------------------
-        | 🚨 FEATURE LIMIT CHECK (ONLY WHEN ENABLING)
+        | 🔥 TOGGLE LOGIC
         |--------------------------------------------------------------------------
         */
+
+            $isNowFeatured = !$job->featured;
+
             if ($isNowFeatured) {
 
-                if (!$subscription) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'No featured credits available'
-                    ], 403);
-                }
-
+                // ✅ Enable featured
                 $job->update([
                     'featured' => true,
                     'featured_until' => $subscription->expires_at
                 ]);
 
+                // ✅ Increment usage
                 $subscription->increment('featured_jobs_used');
             } else {
 
+                // ✅ Disable featured
                 $job->update([
                     'featured' => false,
                     'featured_until' => null
                 ]);
 
-                if ($subscription && $subscription->featured_jobs_used > 0) {
+                // ✅ Decrement usage safely
+                if ($subscription->featured_jobs_used > 0) {
                     $subscription->decrement('featured_jobs_used');
                 }
             }
@@ -1775,9 +1779,17 @@ class EmployerController extends Controller
                 );
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ RESPONSE
+        |--------------------------------------------------------------------------
+        */
+
             return response()->json([
                 'status' => true,
-                'message' => 'Job feature status updated successfully',
+                'message' => $isNowFeatured
+                    ? 'Job featured successfully'
+                    : 'Job unfeatured successfully',
                 'data' => $job->fresh()
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
