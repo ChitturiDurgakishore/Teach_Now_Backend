@@ -616,7 +616,8 @@ class AdminCMSController extends Controller
                 'title' => $request->title ?? $link->title,
                 'url' => $request->url ?? $link->url,
                 'parent_id' => $request->parent_id ?? $link->parent_id,
-                'display_order' => $request->display_order ?? $link->display_order
+                'display_order' => $request->display_order ?? $link->display_order,
+                'slug'=>$request->slug ?? Str::slug($request->title ?? $link->title)
             ]);
 
             return response()->json([
