@@ -28,17 +28,13 @@ class WebhookController extends Controller
             $signature = $request->header('X-Razorpay-Signature');
             $secret = env('RAZORPAY_WEBHOOK_SECRET');
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔒 SIGNATURE VALIDATION (SAFE)
-        |--------------------------------------------------------------------------
-        */
-
+            // ❗ SAFETY CHECK
             if (!$signature || !$secret) {
-                Log::error('Webhook signature or secret missing');
+                Log::error('Webhook missing signature or secret');
                 return response()->json(['status' => false], 400);
             }
 
+            // ✅ VERIFY SIGNATURE
             $expectedSignature = hash_hmac('sha256', $payload, $secret);
 
             if (!hash_equals($expectedSignature, $signature)) {
@@ -46,16 +42,11 @@ class WebhookController extends Controller
                 return response()->json(['status' => false], 400);
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔒 PARSE PAYLOAD
-        |--------------------------------------------------------------------------
-        */
-
+            // ✅ PARSE JSON
             $data = json_decode($payload, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('Invalid JSON in webhook');
+                Log::error('Invalid JSON');
                 return response()->json(['status' => false], 400);
             }
 
@@ -65,218 +56,155 @@ class WebhookController extends Controller
                 return response()->json(['status' => false], 400);
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 ONLY PROCESS IMPORTANT EVENTS
-        |--------------------------------------------------------------------------
-        */
+            switch ($event) {
 
-            if (!in_array($event, ['payment.captured', 'payment.failed'])) {
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Event ignored'
-                ]);
-            }
+                /*
+            |--------------------------------------------------------------------------
+            | ✅ PAYMENT SUCCESS
+            |--------------------------------------------------------------------------
+            */
+                case 'payment.captured':
 
-            /*
-        |--------------------------------------------------------------------------
-        | ✅ PAYMENT SUCCESS
-        |--------------------------------------------------------------------------
-        */
+                    $payment = $data['payload']['payment']['entity'] ?? null;
 
-            if ($event === 'payment.captured') {
+                    if (!$payment) return response()->json(['status' => false], 400);
 
-                $payment = $data['payload']['payment']['entity'] ?? null;
+                    $razorpayOrderId = $payment['order_id'] ?? null;
+                    $razorpayPaymentId = $payment['id'] ?? null;
 
-                if (!$payment) {
-                    Log::error('Webhook: payment entity missing');
-                    return response()->json(['status' => false], 400);
-                }
+                    if (!$razorpayOrderId || !$razorpayPaymentId) {
+                        return response()->json(['status' => false], 400);
+                    }
 
-                $razorpayOrderId = $payment['order_id'] ?? null;
-                $razorpayPaymentId = $payment['id'] ?? null;
+                    DB::transaction(function () use ($razorpayOrderId, $razorpayPaymentId, $payment) {
 
-                if (!$razorpayOrderId || !$razorpayPaymentId) {
-                    Log::error('Webhook: missing payment data');
-                    return response()->json(['status' => false], 400);
-                }
+                        $order = Order::where('razorpay_order_id', $razorpayOrderId)
+                            ->lockForUpdate()
+                            ->first();
 
-                DB::transaction(function () use ($razorpayOrderId, $razorpayPaymentId) {
+                        if (!$order) return;
 
-                    $order = Order::where('razorpay_order_id', $razorpayOrderId)
-                        ->lockForUpdate()
-                        ->first();
+                        // ✅ prevent duplicate processing
+                        if ($order->status === 'paid') return;
 
-                    if (!$order) {
-                        Log::error('Webhook: Order not found', [
-                            'order_id' => $razorpayOrderId
+                        // ✅ update order
+                        $order->update([
+                            'status' => 'paid',
+                            'razorpay_payment_id' => $razorpayPaymentId
                         ]);
-                        return;
-                    }
 
-                    // ✅ DUPLICATE PROTECTION
-                    if ($order->status === 'paid') {
-                        return;
-                    }
+                        // ✅ prevent duplicate subscription
+                        if (Subscription::where('order_id', $order->id)->exists()) return;
 
-                    // ✅ UPDATE ORDER
-                    $order->update([
-                        'status' => 'paid',
-                        'razorpay_payment_id' => $razorpayPaymentId
-                    ]);
+                        $plan = Plan::find($order->plan_id);
+                        if (!$plan) return;
 
-                    // ✅ PREVENT DUPLICATE SUBSCRIPTION
-                    if (Subscription::where('order_id', $order->id)->exists()) {
-                        return;
-                    }
+                        // 🔥 STACKING
+                        $lastSubscription = Subscription::where('employer_id', $order->employer_id)
+                            ->where('expires_at', '>', now())
+                            ->orderBy('expires_at', 'desc')
+                            ->first();
 
-                    $plan = Plan::find($order->plan_id);
+                        $startDate = $lastSubscription
+                            ? $lastSubscription->expires_at
+                            : now();
 
-                    if (!$plan) {
-                        Log::error('Webhook: Plan not found');
-                        return;
-                    }
+                        $expiresAt = $startDate->copy()->addDays($plan->validity_days);
 
-                    /*
-                |--------------------------------------------------------------------------
-                | 🔥 STACKING LOGIC
-                |--------------------------------------------------------------------------
-                */
-
-                    $lastSubscription = Subscription::where('employer_id', $order->employer_id)
-                        ->where('expires_at', '>', now())
-                        ->orderBy('expires_at', 'desc')
-                        ->first();
-
-                    $startDate = $lastSubscription
-                        ? $lastSubscription->expires_at
-                        : now();
-
-                    $expiresAt = \Carbon\Carbon::parse($startDate)
-                        ->addDays($plan->validity_days);
-
-                    // ✅ CREATE SUBSCRIPTION
-                    $subscription = Subscription::create([
-                        'employer_id' => $order->employer_id,
-                        'plan_id' => $plan->id,
-                        'order_id' => $order->id,
-                        'job_posts_total' => $plan->job_posts_limit,
-                        'job_posts_used' => 0,
-                        'purchase_date' => now(),
-                        'starts_at' => $startDate,
-                        'expires_at' => $expiresAt,
-                        'status' => 'active',
-                        'featured_jobs_total' => $plan->featured_jobs_limit,
-                        'featured_jobs_used' => 0,
-                    ]);
-
-                    $employer = \App\Models\Employer::find($order->employer_id);
-                    if (!$employer) return;
-
-                    /*
-                |--------------------------------------------------------------------------
-                | 🔔 NOTIFICATIONS
-                |--------------------------------------------------------------------------
-                */
-
-                    app(\App\Services\Notification::class)->send(
-                        'payment_success',
-                        'employer',
-                        $employer->id,
-                        'Payment Successful',
-                        "Your payment for '{$plan->name}' plan is successful",
-                        [
+                        // ✅ CREATE SUBSCRIPTION
+                        $subscription = Subscription::create([
+                            'employer_id' => $order->employer_id,
+                            'plan_id' => $plan->id,
                             'order_id' => $order->id,
-                            'subscription_id' => $subscription->id
-                        ]
-                    );
+                            'job_posts_total' => $plan->job_posts_limit,
+                            'job_posts_used' => 0,
+                            'purchase_date' => now(),
+                            'starts_at' => $startDate,
+                            'expires_at' => $expiresAt,
+                            'status' => 'active',
+                            'featured_jobs_total' => $plan->featured_jobs_limit,
+                            'featured_jobs_used' => 0,
+                        ]);
 
-                    $admins = \App\Models\User::where('role', 'admin')->get();
+                        // ✅ STORE PAYMENT
+                        if (!Payment::where('transaction_id', $razorpayPaymentId)->exists()) {
+                            Payment::create([
+                                'employer_id' => $order->employer_id,
+                                'subscription_id' => $subscription->id,
+                                'amount' => $order->amount,
+                                'payment_method' => $payment['method'] ?? 'unknown',
+                                'payment_status' => 'success',
+                                'transaction_id' => $razorpayPaymentId,
+                            ]);
+                        }
 
-                    foreach ($admins as $admin) {
+                        $employer = \App\Models\Employer::find($order->employer_id);
+                        if (!$employer) return;
+
+                        // 🔔 NOTIFICATIONS
                         app(\App\Services\Notification::class)->send(
                             'payment_success',
-                            'admin',
-                            $admin->id,
-                            'New Payment Received',
-                            "Payment received from '{$employer->company_name}'",
+                            'employer',
+                            $employer->id,
+                            'Payment Successful',
+                            "Your payment for '{$plan->name}' plan is successful",
                             [
                                 'order_id' => $order->id,
-                                'employer_id' => $employer->id
+                                'subscription_id' => $subscription->id
                             ]
                         );
-                    }
 
-                    /*
-                |--------------------------------------------------------------------------
-                | 📧 MAILS
-                |--------------------------------------------------------------------------
-                */
+                        $admins = \App\Models\User::where('role', 'admin')->get();
 
-                    try {
-                        $mailService = new \App\Services\MailService();
+                        foreach ($admins as $admin) {
+                            app(\App\Services\Notification::class)->send(
+                                'payment_success',
+                                'admin',
+                                $admin->id,
+                                'New Payment Received',
+                                "Payment received from '{$employer->company_name}'",
+                                [
+                                    'order_id' => $order->id
+                                ]
+                            );
+                        }
 
-                        $mailService->send('payment_success', [
-                            'name' => $employer->company_name,
-                            'plan_name' => $plan->name,
-                            'amount' => $order->amount
-                        ], $employer->email);
-                    } catch (\Exception $e) {
-                        Log::error('Mail failed', ['error' => $e->getMessage()]);
-                    }
+                        // 📄 INVOICE
+                        app(\App\Services\InvoiceService::class)->generate($order, $subscription);
+                    });
 
-                    /*
-                |--------------------------------------------------------------------------
-                | 🧾 INVOICE
-                |--------------------------------------------------------------------------
-                */
+                    break;
 
-                    try {
-                        app(\App\Services\InvoiceService::class)
-                            ->generate($order, $subscription);
-                    } catch (\Exception $e) {
-                        Log::error('Invoice failed', ['error' => $e->getMessage()]);
-                    }
-                });
-            }
 
-            /*
-        |--------------------------------------------------------------------------
-        | ❌ PAYMENT FAILED
-        |--------------------------------------------------------------------------
-        */
+                /*
+            |--------------------------------------------------------------------------
+            | ❌ PAYMENT FAILED
+            |--------------------------------------------------------------------------
+            */
+                case 'payment.failed':
 
-            if ($event === 'payment.failed') {
-
-                $payment = $data['payload']['payment']['entity'] ?? null;
-
-                if ($payment) {
+                    $payment = $data['payload']['payment']['entity'] ?? null;
+                    if (!$payment) break;
 
                     $razorpayOrderId = $payment['order_id'] ?? null;
 
-                    if ($razorpayOrderId) {
+                    $order = Order::where('razorpay_order_id', $razorpayOrderId)->first();
 
-                        $order = Order::where('razorpay_order_id', $razorpayOrderId)->first();
+                    if ($order) {
+                        $order->update(['status' => 'failed']);
 
-                        if ($order) {
-
-                            $order->update(['status' => 'failed']);
-
-                            $employer = \App\Models\Employer::find($order->employer_id);
-
-                            if ($employer) {
-                                app(\App\Services\Notification::class)->send(
-                                    'payment_failed',
-                                    'employer',
-                                    $employer->id,
-                                    'Payment Failed',
-                                    "Your payment failed. Please try again",
-                                    ['order_id' => $order->id]
-                                );
-                            }
-                        }
+                        // ✅ STORE FAILED PAYMENT
+                        Payment::create([
+                            'employer_id' => $order->employer_id,
+                            'subscription_id' => null,
+                            'amount' => ($payment['amount'] ?? 0) / 100,
+                            'payment_method' => $payment['method'] ?? 'unknown',
+                            'payment_status' => 'failed',
+                            'transaction_id' => $payment['id'] ?? null,
+                        ]);
                     }
-                }
+
+                    break;
             }
 
             return response()->json(['status' => true]);
