@@ -107,6 +107,7 @@ class AdminController extends Controller
             $featured_jobs_count=Job::where('admin_featured',1)->where('featured',1)->where('featured_until','>',now())->count();
             $rejected_jobs=Job::where('status','rejected')->count();
             $expired_jobs=Job::where('expires_at','<',now())->count();
+            $deleted_jobs=Job::onlyTrashed()->count();
             $perPage = $request->get('per_page', 10);
             $search = $request->get('search');
 
@@ -152,7 +153,7 @@ class AdminController extends Controller
                 'featured_jobs_count' => $featured_jobs_count,
                 'rejected_jobs' => $rejected_jobs,
                 'expired_jobs' => $expired_jobs,
-
+                'deleted_jobs' => $deleted_jobs,
                 'current_page' => $jobs->currentPage(),
                 'last_page' => $jobs->lastPage(),
                 'per_page' => $jobs->perPage(),
