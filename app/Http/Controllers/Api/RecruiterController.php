@@ -904,20 +904,66 @@ class RecruiterController extends Controller
 
     // Get recruiter Jobs
 
-    public function getRecruiterJobs()
+    public function getRecruiterJobs(Request $request)
     {
         try {
 
             $recruiter = Auth::guard('employer_user')->user();
 
-            $jobs = Job::where('expires_at', '>', now())->where('created_by', $recruiter->id)
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            $perPage = $request->get('per_page', 10);
+            $search = $request->get('search');
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 ACTIVE JOBS
+        |--------------------------------------------------------------------------
+        */
+
+            $activeQuery = Job::where('created_by', $recruiter->id)
+                ->where('expires_at', '>', now());
+
+            if ($search) {
+                $activeQuery->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%$search%")
+                        ->orWhere('location', 'like', "%$search%");
+                });
+            }
+
+            $activeJobs = $activeQuery
                 ->latest()
-                ->get();
+                ->paginate($perPage, ['*'], 'active_page');
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 EXPIRED JOBS
+        |--------------------------------------------------------------------------
+        */
+
+            $expiredQuery = Job::where('created_by', $recruiter->id)
+                ->where('expires_at', '<=', now());
+
+            if ($search) {
+                $expiredQuery->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%$search%")
+                        ->orWhere('location', 'like', "%$search%");
+                });
+            }
+
+            $expiredJobs = $expiredQuery
+                ->latest()
+                ->paginate($perPage, ['*'], 'expired_page');
 
             return response()->json([
                 'status' => true,
-                'total_jobs' => $jobs->count(),
-                'data' => $jobs
+                'active_jobs' => $activeJobs,
+                'expired_jobs' => $expiredJobs
             ], 200);
         } catch (\Exception $e) {
 

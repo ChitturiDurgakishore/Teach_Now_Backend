@@ -14,21 +14,37 @@ class ResumeManagementController extends Controller
     {
         try {
 
-            // 🔥 Separate pagination controls
+            // 🔥 Pagination controls
             $resumePerPage = $request->get('resume_per_page', 10);
             $cvPerPage = $request->get('cv_per_page', 10);
 
             $resumePage = $request->get('resume_page', 1);
             $cvPage = $request->get('cv_page', 1);
 
+            $search = $request->get('search');
+
             /*
         |--------------------------------------------------------------------------
-        | 🔥 RESUMES (UPLOADS)
+        | 🔥 RESUMES (UPLOADS) + SEARCH
         |--------------------------------------------------------------------------
         */
-            $resumes = Resume::with([
+
+            $resumeQuery = Resume::with([
                 'jobSeeker.user:id,name,email'
-            ])
+            ]);
+
+            if ($search) {
+                $resumeQuery->where(function ($q) use ($search) {
+                    $q->where('file_name', 'like', "%$search%")
+                        ->orWhere('name', 'like', "%$search%")
+                        ->orWhereHas('jobSeeker.user', function ($q2) use ($search) {
+                            $q2->where('name', 'like', "%$search%")
+                                ->orWhere('email', 'like', "%$search%");
+                        });
+                });
+            }
+
+            $resumes = $resumeQuery
                 ->latest()
                 ->paginate($resumePerPage, ['*'], 'resume_page', $resumePage);
 
@@ -49,12 +65,25 @@ class ResumeManagementController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 GENERATED RESUMES (CV)
+        | 🔥 GENERATED RESUMES (CV) + SEARCH
         |--------------------------------------------------------------------------
         */
-            $generated = JobSeekerCV::with([
+
+            $generatedQuery = JobSeekerCV::with([
                 'jobSeeker.user:id,name,email'
-            ])
+            ]);
+
+            if ($search) {
+                $generatedQuery->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%$search%")
+                        ->orWhereHas('jobSeeker.user', function ($q2) use ($search) {
+                            $q2->where('name', 'like', "%$search%")
+                                ->orWhere('email', 'like', "%$search%");
+                        });
+                });
+            }
+
+            $generated = $generatedQuery
                 ->latest()
                 ->paginate($cvPerPage, ['*'], 'cv_page', $cvPage);
 
@@ -87,12 +116,9 @@ class ResumeManagementController extends Controller
                     'current_page' => $resumes->currentPage(),
                     'last_page' => $resumes->lastPage(),
                     'per_page' => $resumes->perPage(),
-
-                    // 🔥 pagination controls
                     'next_page_url' => $resumes->nextPageUrl(),
                     'prev_page_url' => $resumes->previousPageUrl(),
                     'has_more_pages' => $resumes->hasMorePages(),
-
                     'data' => $resumesData
                 ],
 
@@ -101,12 +127,9 @@ class ResumeManagementController extends Controller
                     'current_page' => $generated->currentPage(),
                     'last_page' => $generated->lastPage(),
                     'per_page' => $generated->perPage(),
-
-                    // 🔥 pagination controls
                     'next_page_url' => $generated->nextPageUrl(),
                     'prev_page_url' => $generated->previousPageUrl(),
                     'has_more_pages' => $generated->hasMorePages(),
-
                     'data' => $generatedData
                 ]
 

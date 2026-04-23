@@ -99,21 +99,57 @@ class AdminController extends Controller
 
     //Jobs management
     //Get All Jobs
-    public function getAllJobs()
+    public function getAllJobs(Request $request)
     {
         try {
 
-            $jobs = Job::with([
+            $perPage = $request->get('per_page', 10);
+            $search = $request->get('search');
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 QUERY WITH SEARCH
+        |--------------------------------------------------------------------------
+        */
+
+            $query = Job::with([
                 'employer:id,company_name,company_logo',
                 'category:id,name'
-            ])
+            ]);
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+
+                    // 🔍 Job fields
+                    $q->where('title', 'like', "%$search%")
+                        ->orWhere('location', 'like', "%$search%")
+                        ->orWhere('job_type', 'like', "%$search%");
+
+                    // 🔍 Employer (company)
+                    $q->orWhereHas('employer', function ($q2) use ($search) {
+                        $q2->where('company_name', 'like', "%$search%");
+                    });
+
+                    // 🔍 Category
+                    $q->orWhereHas('category', function ($q3) use ($search) {
+                        $q3->where('name', 'like', "%$search%");
+                    });
+                });
+            }
+
+            $jobs = $query
                 ->latest()
-                ->paginate(10);
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
                 'total_jobs' => $jobs->total(),
-                'data' => $jobs
+                'current_page' => $jobs->currentPage(),
+                'last_page' => $jobs->lastPage(),
+                'per_page' => $jobs->perPage(),
+                'next_page_url' => $jobs->nextPageUrl(),
+                'prev_page_url' => $jobs->previousPageUrl(),
+                'data' => $jobs->items()
             ], 200);
         } catch (\Exception $e) {
 
@@ -544,16 +580,43 @@ class AdminController extends Controller
 
     //Employers management
     //Get All Employers
-    public function getEmployers()
+    public function getEmployers(Request $request)
     {
         try {
 
-            $employers = Employer::latest()->paginate(10);
+            $perPage = $request->get('per_page', 10);
+            $search = $request->get('search');
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 QUERY WITH SEARCH
+        |--------------------------------------------------------------------------
+        */
+
+            $query = Employer::query();
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('company_name', 'like', "%$search%")
+                        ->orWhere('email', 'like', "%$search%")
+                        ->orWhere('phone', 'like', "%$search%")
+                        ->orWhere('city', 'like', "%$search%");
+                });
+            }
+
+            $employers = $query
+                ->latest()
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
                 'total_employers' => $employers->total(),
-                'data' => $employers
+                'current_page' => $employers->currentPage(),
+                'last_page' => $employers->lastPage(),
+                'per_page' => $employers->perPage(),
+                'next_page_url' => $employers->nextPageUrl(),
+                'prev_page_url' => $employers->previousPageUrl(),
+                'data' => $employers->items()
             ], 200);
         } catch (\Exception $e) {
 
@@ -1213,18 +1276,45 @@ class AdminController extends Controller
 
     //Get All Job Seekers
 
-    public function getJobSeekers()
+    public function getJobSeekers(Request $request)
     {
         try {
 
-            $jobSeekers = JobSeeker::with('user:id,name,email,is_active')
+            $perPage = $request->get('per_page', 10);
+            $search = $request->get('search');
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 QUERY WITH SEARCH
+        |--------------------------------------------------------------------------
+        */
+
+            $query = JobSeeker::with('user:id,name,email,is_active');
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%$search%") // e.g. "English Teacher"
+                        ->orWhere('location', 'like', "%$search%")
+                        ->orWhereHas('user', function ($q2) use ($search) {
+                            $q2->where('name', 'like', "%$search%")
+                                ->orWhere('email', 'like', "%$search%");
+                        });
+                });
+            }
+
+            $jobSeekers = $query
                 ->latest()
-                ->paginate(10);
+                ->paginate($perPage);
 
             return response()->json([
                 'status' => true,
                 'total_job_seekers' => $jobSeekers->total(),
-                'data' => $jobSeekers
+                'current_page' => $jobSeekers->currentPage(),
+                'last_page' => $jobSeekers->lastPage(),
+                'per_page' => $jobSeekers->perPage(),
+                'next_page_url' => $jobSeekers->nextPageUrl(),
+                'prev_page_url' => $jobSeekers->previousPageUrl(),
+                'data' => $jobSeekers->items()
             ], 200);
         } catch (\Exception $e) {
 
