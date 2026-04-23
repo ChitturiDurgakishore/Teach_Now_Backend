@@ -102,7 +102,7 @@ class AdminController extends Controller
     public function getAllJobs(Request $request)
     {
         try {
-            $active_jobs=Job::where('job_status','open')->count();
+            $active_jobs=Job::where('job_status','open')->where('expires_at','>',now())->count();
             $total_jobs=Job::count();
             $featured_jobs_count=Job::where('admin_featured',1)->where('featured',1)->where('featured_until','>',now())->count();
             $rejected_jobs=Job::where('status','rejected')->count();
