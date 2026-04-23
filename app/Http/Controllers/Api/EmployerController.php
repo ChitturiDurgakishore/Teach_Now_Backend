@@ -1054,36 +1054,51 @@ class EmployerController extends Controller
                 ], 401);
             }
 
-            $perPage = $request->get('per_page', 10); // default 10
+            $perPage = $request->get('per_page', 10);
+            $search = $request->get('search');
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 ACTIVE JOBS (PAGINATED)
+        | 🔥 ACTIVE JOBS (WITH SEARCH)
         |--------------------------------------------------------------------------
         */
 
-            $activeJobs = Job::where('employer_id', $employer->id)
-                ->where('expires_at', '>', now())
+            $activeQuery = Job::where('employer_id', $employer->id);
+
+            if ($search) {
+                $activeQuery->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%$search%")
+                        ->orWhere('location', 'like', "%$search%");
+                });
+            }
+
+            $activeJobs = $activeQuery
                 ->latest()
                 ->paginate($perPage, ['*'], 'active_page');
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 EXPIRED JOBS (PAGINATED)
+        | 🔥 EXPIRED JOBS (WITH SEARCH)
         |--------------------------------------------------------------------------
         */
 
-            $expiredJobs = Job::where('employer_id', $employer->id)
-                ->where('expires_at', '<=', now())
+            $expiredQuery = Job::where('employer_id', $employer->id);
+
+            if ($search) {
+                $expiredQuery->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%$search%")
+                        ->orWhere('location', 'like', "%$search%");
+                });
+            }
+
+            $expiredJobs = $expiredQuery
                 ->latest()
                 ->paginate($perPage, ['*'], 'expired_page');
 
             return response()->json([
                 'status' => true,
-
                 'active_jobs' => $activeJobs,
                 'expired_jobs' => $expiredJobs
-
             ], 200);
         } catch (\Exception $e) {
 
