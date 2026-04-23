@@ -56,7 +56,8 @@ class LocationController extends Controller
     // Get all locations (Admin)
     public function all()
     {
-        $locations = Location::all();
+        // Fetches 15 locations per page
+        $locations = Location::orderBy('name', 'asc')->paginate(15);
 
         return response()->json([
             'status' => 200,
@@ -74,7 +75,7 @@ class LocationController extends Controller
             $validatedData = $request->validate([
                 'name' => 'required|string|max:150',
                 'country' => 'nullable|string|max:150',
-                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png,svg,webp|max:2048',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
@@ -133,7 +134,7 @@ class LocationController extends Controller
             $request->validate([
                 'name' => 'required|string|max:150',
                 'country' => 'nullable|string|max:150',
-                'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png,svg,webp|max:2048',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'

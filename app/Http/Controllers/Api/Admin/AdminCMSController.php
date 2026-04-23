@@ -617,7 +617,7 @@ class AdminCMSController extends Controller
                 'url' => $request->url ?? $link->url,
                 'parent_id' => $request->parent_id ?? $link->parent_id,
                 'display_order' => $request->display_order ?? $link->display_order,
-                'slug'=>$request->slug ?? Str::slug($request->title ?? $link->title)
+                'slug' => $request->slug ?? Str::slug($request->title ?? $link->title)
             ]);
 
             return response()->json([
@@ -1685,16 +1685,16 @@ class AdminCMSController extends Controller
     public function getSkills()
     {
         try {
-
-            $skills = Skill::orderBy('name')->get();
+            // Use paginate(20) to get 20 skills per page
+            // Laravel automatically reads the 'page' query parameter from the request
+            $skills = Skill::orderBy('name')->paginate(20);
 
             return response()->json([
                 'status' => true,
-                'total' => $skills->count(),
+                // When using paginate, the results are inside the 'data' key of the paginator
                 'data' => $skills
             ]);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch skills',
@@ -2499,7 +2499,7 @@ class AdminCMSController extends Controller
 
         $search->update([
             'is_featured' => $search->is_featured ? 0 : 1,
-            'order'=>$search->order
+            'order' => $search->order
         ]);
 
         return response()->json([
@@ -2542,5 +2542,4 @@ class AdminCMSController extends Controller
             'message' => 'Deleted successfully'
         ]);
     }
-
 }

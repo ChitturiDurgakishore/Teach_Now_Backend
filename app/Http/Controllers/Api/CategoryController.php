@@ -44,7 +44,8 @@ class CategoryController extends Controller
     // All categories (ADMIN)
     public function all()
     {
-        $categories = Category::all();
+        // Fetches 10 items per page (you can change this number)
+        $categories = Category::paginate(10);
 
         return response()->json([
             'status' => true,
