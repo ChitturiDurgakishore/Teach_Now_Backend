@@ -1748,100 +1748,36 @@ class EmployerController extends Controller
                 ], 403);
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 GET SUBSCRIPTION (FIXED)
-        |--------------------------------------------------------------------------
-        */
-
-            $subscriptionService = new \App\Services\SubscriptionService();
-
-            $result = $subscriptionService->getAvailableFeatureSubscription($employer->id);
-
-            if (!$result['status']) {
-                return response()->json([
-                    'status' => false,
-                    'message' => $result['message'] // ✅ proper reason
-                ], 403);
-            }
-
-            $subscription = $result['subscription'];
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 TOGGLE LOGIC
-        |--------------------------------------------------------------------------
-        */
+            $subscriptionService = app(\App\Services\SubscriptionService::class);
 
             $isNowFeatured = !$job->featured;
 
             if ($isNowFeatured) {
 
-                // ✅ Enable featured
+                // ✅ ONLY THIS handles limit + locking + increment
+                $result = $subscriptionService->consumeFeatureCredit($employer->id);
+
+                if (!$result['status']) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => $result['message']
+                    ], 403);
+                }
+
+                $subscription = $result['subscription'];
+
                 $job->update([
                     'featured' => true,
                     'featured_until' => $subscription->expires_at
                 ]);
-
-                // ✅ Increment usage
-                $subscription->increment('featured_jobs_used');
             } else {
 
-                // ✅ Disable featured
+                // ❌ DO NOT DECREMENT (IMPORTANT BUSINESS RULE)
                 $job->update([
                     'featured' => false,
                     'featured_until' => null
                 ]);
-
-                // ✅ Decrement usage safely
-                if ($subscription->featured_jobs_used > 0) {
-                    $subscription->decrement('featured_jobs_used');
-                }
             }
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🔔 NOTIFICATIONS
-        |--------------------------------------------------------------------------
-        */
-
-            $message = $isNowFeatured
-                ? "Your job '{$job->title}' is now featured"
-                : "Your job '{$job->title}' is no longer featured";
-
-            // ✅ Employer
-            $this->notification->send(
-                'job_featured',
-                'employer',
-                $job->employer_id,
-                $isNowFeatured ? 'Job Featured' : 'Job Unfeatured',
-                $message,
-                [
-                    'job_id' => $job->id,
-                    'featured' => $isNowFeatured
-                ]
-            );
-
-            // ✅ Recruiter
-            if ($job->created_by) {
-                $this->notification->send(
-                    'job_featured',
-                    'recruiter',
-                    $job->created_by,
-                    $isNowFeatured ? 'Job Featured' : 'Job Unfeatured',
-                    $message,
-                    [
-                        'job_id' => $job->id,
-                        'featured' => $isNowFeatured
-                    ]
-                );
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | ✅ RESPONSE
-        |--------------------------------------------------------------------------
-        */
 
             return response()->json([
                 'status' => true,
@@ -1849,19 +1785,13 @@ class EmployerController extends Controller
                     ? 'Job featured successfully'
                     : 'Job unfeatured successfully',
                 'data' => $job->fresh()
-            ], 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Job not found'
-            ], 404);
+            ]);
         } catch (\Exception $e) {
 
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to update job feature status',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage() // 👈 keep this for debugging
             ], 500);
         }
     }

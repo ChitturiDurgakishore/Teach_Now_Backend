@@ -648,7 +648,6 @@ class RecruiterController extends Controller
                 ], 401);
             }
 
-            // ✅ Ensure recruiter belongs to same employer
             if ($job->employer_id != $recruiter->employer_id) {
                 return response()->json([
                     'status' => false,
@@ -656,53 +655,43 @@ class RecruiterController extends Controller
                 ], 403);
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 GET VALID FEATURE SUBSCRIPTION (FIXED)
-        |--------------------------------------------------------------------------
-        */
-            $subscriptionService = new \App\Services\SubscriptionService();
+            $subscriptionService = app(\App\Services\SubscriptionService::class);
 
-            $subscription = $subscriptionService
-                ->getAvailableFeatureSubscription($recruiter->employer_id);
-
-            // 🔥 Determine action
             $isNowFeatured = !$job->featured;
 
             /*
         |--------------------------------------------------------------------------
-        | 🚨 FEATURE ENABLE CHECK
+        | ✅ ENABLE FEATURE (SAFE)
         |--------------------------------------------------------------------------
         */
             if ($isNowFeatured) {
 
-                if (!$subscription) {
+                $result = $subscriptionService->consumeFeatureCredit($recruiter->employer_id);
+
+                if (!$result['status']) {
                     return response()->json([
                         'status' => false,
-                        'message' => 'No featured credits available'
+                        'message' => $result['message']
                     ], 403);
                 }
 
-                // ✅ Enable feature
+                $subscription = $result['subscription'];
+
                 $job->update([
                     'featured' => true,
                     'featured_until' => $subscription->expires_at
                 ]);
-
-                // ✅ Increment usage
-                $subscription->increment('featured_jobs_used');
             } else {
 
-                // ✅ Disable feature
+                /*
+            |--------------------------------------------------------------------------
+            | ❌ DO NOT REFUND CREDIT
+            |--------------------------------------------------------------------------
+            */
                 $job->update([
                     'featured' => false,
                     'featured_until' => null
                 ]);
-
-                // ✅ Safe decrement (optional)
-                if ($subscription && $subscription->featured_jobs_used > 0) {
-                    $subscription->decrement('featured_jobs_used');
-                }
             }
 
             /*
@@ -713,7 +702,6 @@ class RecruiterController extends Controller
 
             $statusText = $isNowFeatured ? 'featured' : 'unfeatured';
 
-            // ✅ Recruiter
             $this->notification->send(
                 'job_featured',
                 'recruiter',
@@ -726,7 +714,6 @@ class RecruiterController extends Controller
                 ]
             );
 
-            // ✅ Employer
             $this->notification->send(
                 'job_featured',
                 'employer',
@@ -739,7 +726,6 @@ class RecruiterController extends Controller
                 ]
             );
 
-            // ✅ Admins
             $admins = \App\Models\User::where('role', 'admin')->get();
 
             foreach ($admins as $admin) {
@@ -761,13 +747,7 @@ class RecruiterController extends Controller
                 'status' => true,
                 'message' => 'Job feature status updated successfully',
                 'data' => $job->fresh()
-            ], 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Job not found'
-            ], 404);
+            ]);
         } catch (\Exception $e) {
 
             return response()->json([
