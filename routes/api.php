@@ -208,6 +208,11 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/applications/{id}', [AdminController::class, 'getApplicationDetails']);
     Route::get('/jobs/{jobId}/applications', [AdminController::class, 'getApplicationsByJob']);
     Route::delete('/applications/{id}', [AdminController::class, 'deleteApplication']);
+
+
+    //Payment management for Admin
+    Route::get('/payments', [AdminController::class, 'getPayments']);
+    Route::get('/payments/{id}', [AdminController::class, 'getPaymentDetails']);
 });
 
 // ----------------------------------------------------------------------------------

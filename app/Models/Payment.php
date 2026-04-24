@@ -24,4 +24,9 @@ class Payment extends Model
         'payment_status',
         'transaction_id'
     ];
+
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class, 'subscription_id', 'subscription_id');
+    }
 }

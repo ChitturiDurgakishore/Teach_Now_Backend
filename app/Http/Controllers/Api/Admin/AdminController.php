@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Services\Notification;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use App\Models\Payment;
 
 
 class AdminController extends Controller
@@ -1809,6 +1812,162 @@ class AdminController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch documents',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    //Payment management for Admin
+    public function getPayments(Request $request)
+    {
+        try {
+
+            $perPage = $request->get('per_page', 10);
+
+            $payments = Payment::with([
+                'employer:id,company_name,company_logo',
+                'subscription.plan:id,name'
+            ])
+                ->latest()
+                ->paginate($perPage);
+
+            $data = $payments->map(function ($payment) {
+
+                return [
+                    'id' => $payment->id,
+
+                    'employer_name' => $payment->employer->company_name ?? null,
+                    'employer_logo' => $payment->employer->company_logo
+                        ? config('app.media_url') . $payment->employer->company_logo
+                        : null,
+
+                    'plan_name' => $payment->subscription->plan->name ?? null,
+
+                    'amount' => $payment->amount,
+                    'payment_method' => $payment->payment_method,
+                    'status' => $payment->payment_status,
+
+                    'transaction_id' => $payment->transaction_id,
+                    'created_at' => $payment->created_at,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'total_payments' => $payments->total(),
+                'current_page' => $payments->currentPage(),
+                'last_page' => $payments->lastPage(),
+                'per_page' => $payments->perPage(),
+                'next_page_url' => $payments->nextPageUrl(),
+                'prev_page_url' => $payments->previousPageUrl(),
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch payments',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getPaymentDetails($id)
+    {
+        try {
+
+            $payment = Payment::with([
+                'employer',
+                'subscription.plan',
+                'invoice'
+            ])->find($id);
+
+            if (!$payment) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Payment not found'
+                ], 404);
+            }
+
+            $baseUrl = rtrim(config('app.media_url'), '/');
+
+            $data = [
+
+                /*
+            |--------------------------------------------------------------------------
+            | 🏢 EMPLOYER / INSTITUTE
+            |--------------------------------------------------------------------------
+            */
+                'employer' => [
+                    'id' => $payment->employer->id ?? null,
+                    'name' => $payment->employer->company_name ?? null,
+                    'email' => $payment->employer->email ?? null,
+                    'phone' => $payment->employer->phone ?? null,
+                    'logo' => $payment->employer->company_logo
+                        ? $baseUrl . '/' . ltrim($payment->employer->company_logo, '/')
+                        : null,
+                    'address' => $payment->employer->address ?? null,
+                ],
+
+                /*
+            |--------------------------------------------------------------------------
+            | 💳 PAYMENT
+            |--------------------------------------------------------------------------
+            */
+                'payment' => [
+                    'id' => $payment->id,
+                    'transaction_id' => $payment->transaction_id,
+                    'amount' => $payment->amount,
+                    'payment_method' => $payment->payment_method,
+                    'status' => $payment->payment_status,
+                    'created_at' => $payment->created_at,
+                ],
+
+                /*
+            |--------------------------------------------------------------------------
+            | 📦 SUBSCRIPTION
+            |--------------------------------------------------------------------------
+            */
+                'subscription' => [
+                    'id' => $payment->subscription->id ?? null,
+                    'plan_name' => $payment->subscription->plan->name ?? null,
+                    'job_posts_total' => $payment->subscription->job_posts_total ?? null,
+                    'job_posts_used' => $payment->subscription->job_posts_used ?? null,
+                    'featured_jobs_total' => $payment->subscription->featured_jobs_total ?? null,
+                    'featured_jobs_used' => $payment->subscription->featured_jobs_used ?? null,
+                    'starts_at' => $payment->subscription->starts_at ?? null,
+                    'expires_at' => $payment->subscription->expires_at ?? null,
+                    'status' => $payment->subscription->status ?? null,
+                ],
+
+                /*
+            |--------------------------------------------------------------------------
+            | 🧾 INVOICE
+            |--------------------------------------------------------------------------
+            */
+                'invoice' => [
+                    'id' => $payment->invoice->id ?? null,
+                    'invoice_number' => $payment->invoice->invoice_number ?? null,
+                    'amount' => $payment->invoice->amount ?? null,
+                    'currency' => $payment->invoice->currency ?? null,
+                    'invoice_date' => $payment->invoice->invoice_date ?? null,
+                    'pdf_url' => $payment->invoice->pdf_path
+                        ? $baseUrl . '/' . ltrim($payment->invoice->pdf_path, '/')
+                        : null,
+                ]
+
+            ];
+
+            return response()->json([
+                'status' => true,
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch payment details',
                 'error' => $e->getMessage()
             ], 500);
         }
