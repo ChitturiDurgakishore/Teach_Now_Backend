@@ -93,6 +93,11 @@ class InvoiceService
 
         <p><strong>' . ($settings->company_name ?? '') . '</strong></p>
         <p>' . ($settings->address ?? '') . '</p>
+        <p><strong>' . ($settings->company_name ?? '') . '</strong></p>
+         <p>' . ($settings->address ?? '') . '</p>
+         <p>Email: ' . ($settings->email ?? '') . '</p>
+         <p>Phone: ' . ($settings->phone ?? '') . '</p>
+         <p>GST: ' . ($settings->gst_number ?? '') . '</p>
 
         <hr>
 
@@ -180,24 +185,40 @@ class InvoiceService
             '{logo}',
             '{invoice_number}',
             '{invoice_date}',
+
             '{company_name}',
+            '{company_email}',
+            '{company_phone}',
             '{company_address}',
+            '{company_gst}',
+
             '{employer_name}',
             '{employer_email}',
+
             '{plan_name}',
             '{amount}',
             '{currency}',
+
+            '{footer}'
         ], [
             $logoUrl,
             $invoice->invoice_number,
             $invoice->invoice_date->format('d M Y'),
+
             $settings->company_name ?? '',
+            $settings->email ?? '',
+            $settings->phone ?? '',
             $settings->address ?? '',
+            $settings->gst_number ?? '',
+
             $employer->company_name ?? '',
             $employer->email ?? '',
+
             $plan->name ?? '',
             number_format($invoice->amount, 2),
             $invoice->currency,
+
+            $settings->footer ?? ''
         ], $emailHtml);
 
         SendEmailJob::dispatch(
