@@ -338,7 +338,7 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
     Route::post('corn/toggle/{id}', [MailController::class, 'toggleTemplate']);
 
     //Corn Job Time settings
-    Route::post('/mail/settings', [MailController::class, 'saveEmailSettings']);
+    Route::put('/mail/settings', [MailController::class, 'saveEmailSettings']);
     Route::get('/mail/settings', [MailController::class, 'getEmailSettings']);
 
     // Teaching Resources management
