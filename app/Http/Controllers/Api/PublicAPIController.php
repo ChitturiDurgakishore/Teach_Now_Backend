@@ -89,47 +89,9 @@ class PublicAPIController extends Controller
 
             $keyword = strtolower(trim($request->input('keyword')));
             $location = $request->input('location');
-
             $perPage = $request->get('per_page', 10);
 
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 SYNONYMS
-        |--------------------------------------------------------------------------
-        */
-            $synonyms = [
-                'coding' => ['programming', 'computer science', 'developer', 'software'],
-                'programming' => ['coding', 'software', 'computer science'],
-                'teacher' => ['faculty', 'lecturer', 'trainer', 'tutor'],
-                'lecturer' => ['teacher', 'faculty', 'professor'],
-                'maths' => ['mathematics'],
-                'physics' => ['science'],
-                'chemistry' => ['science'],
-                'biology' => ['science'],
-                'cse' => ['computer science', 'it'],
-                'btech' => ['engineering'],
-            ];
-
-            $expandedKeywords = [];
-
-            if ($keyword) {
-                $words = array_filter(explode(' ', $keyword));
-
-                foreach ($words as $word) {
-                    $expandedKeywords[] = $word;
-
-                    $root = preg_replace('/(ing|ed|s)$/', '', $word);
-                    if ($root && $root !== $word) {
-                        $expandedKeywords[] = $root;
-                    }
-
-                    if (isset($synonyms[$word])) {
-                        $expandedKeywords = array_merge($expandedKeywords, $synonyms[$word]);
-                    }
-                }
-
-                $expandedKeywords = array_unique($expandedKeywords);
-            }
+            $words = $keyword ? array_filter(explode(' ', $keyword)) : [];
 
             /*
         |--------------------------------------------------------------------------
@@ -145,37 +107,57 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ SEARCH JOBS (PAGE PARAM: search_page)
+        | ✅ SEARCH JOBS (STRONG MATCH + RANKING)
         |--------------------------------------------------------------------------
         */
             $searchQuery = clone $baseQuery;
 
             if ($keyword) {
-                $searchQuery->where(function ($q) use ($keyword) {
-                    $q->where('title', 'LIKE', "%{$keyword}%")
-                        ->orWhere('keywords', 'LIKE', "%{$keyword}%");
+
+                $searchQuery->where(function ($q) use ($keyword, $words) {
+
+                    // exact phrase match (highest priority)
+                    $q->where('title', 'LIKE', "%{$keyword}%");
+
+                    // all words match
+                    foreach ($words as $word) {
+                        $q->orWhere('title', 'LIKE', "%{$word}%")
+                            ->orWhere('keywords', 'LIKE', "%{$word}%");
+                    }
                 });
+
+                // 🔥 CUSTOM RANKING (IMPORTANT)
+                $searchQuery->orderByRaw("
+                CASE
+                    WHEN title LIKE ? THEN 1
+                    WHEN keywords LIKE ? THEN 2
+                    ELSE 3
+                END
+            ", [
+                    "%{$keyword}%",
+                    "%{$keyword}%"
+                ]);
             }
 
             if ($location) {
                 $searchQuery->where('location', 'LIKE', "%{$location}%");
             }
 
-            $searchJobs = $searchQuery->latest()
+            $searchJobs = $searchQuery
                 ->paginate($perPage, ['*'], 'search_page');
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ SIMILAR JOBS (PAGE PARAM: similar_page)
+        | ✅ SIMILAR JOBS (PARTIAL MATCH ONLY)
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
 
-            if (!empty($expandedKeywords)) {
-                $similarQuery->where(function ($q) use ($expandedKeywords) {
-                    foreach ($expandedKeywords as $word) {
+            if (!empty($words)) {
+                $similarQuery->where(function ($q) use ($words) {
+
+                    foreach ($words as $word) {
                         $q->orWhere('title', 'LIKE', "%{$word}%")
-                            ->orWhere('keywords', 'LIKE', "%{$word}%")
                             ->orWhere('description', 'LIKE', "%{$word}%");
                     }
                 });
@@ -185,11 +167,22 @@ class PublicAPIController extends Controller
                 $similarQuery->where('location', 'LIKE', "%{$location}%");
             }
 
+            // ❗ remove duplicates
             if ($searchJobs->total() > 0) {
                 $similarQuery->whereNotIn('id', $searchJobs->pluck('id'));
             }
 
-            $similarJobs = $similarQuery->latest()
+            // 🔥 light ranking for similar
+            if ($keyword) {
+                $similarQuery->orderByRaw("
+                CASE
+                    WHEN title LIKE ? THEN 1
+                    ELSE 2
+                END
+            ", ["%{$keyword}%"]);
+            }
+
+            $similarJobs = $similarQuery
                 ->paginate($perPage, ['*'], 'similar_page');
 
             /*
