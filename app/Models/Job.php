@@ -66,6 +66,8 @@ class Job extends Model
         'experience_type',
         'expires_at',
         'is_active',
+        'job_subscription_id',
+        'feature_subscription_id',
     ];
 
     // 🔥 UNIQUE SLUG GENERATOR
@@ -106,4 +108,8 @@ class Job extends Model
         'featured_until' => 'datetime',
     ];
 
+    public function republishHistories()
+    {
+        return $this->hasMany(JobRepublishHistory::class);
+    }
 }

@@ -24,6 +24,9 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Services\Notification;
+use App\Models\JobRepublishHistory;
+
+
 
 class RecruiterController extends Controller
 {
@@ -278,7 +281,7 @@ class RecruiterController extends Controller
                 'keywords' => $request->keywords,
                 'gender' => $request->gender ?? 'both',
                 'experience_type' => $request->experience_type,
-
+                'job_subscription_id' => $subscription->id,
                 // 🔥 IMPORTANT: dynamic expiry from plan
                 'expires_at' => now()->addDays($subscription->plan->job_live_days),
 
@@ -490,6 +493,8 @@ class RecruiterController extends Controller
     }
     // Republish Job
 
+
+
     public function republishJob($id)
     {
         try {
@@ -524,10 +529,9 @@ class RecruiterController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 CHECK & CONSUME EMPLOYER CREDITS
+        | 🔥 CONSUME JOB CREDIT (FIFO)
         |--------------------------------------------------------------------------
         */
-
             $subscriptionService = app(SubscriptionService::class);
 
             $result = $subscriptionService->consumeJobCredit($recruiter->employer_id);
@@ -544,10 +548,9 @@ class RecruiterController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 OPTIONAL: Prevent republishing active job
+        | 🔥 PREVENT REPUBLISH IF ACTIVE
         |--------------------------------------------------------------------------
         */
-
             if ($job->is_active && $job->expires_at > now()) {
                 DB::rollBack();
                 return response()->json([
@@ -561,21 +564,36 @@ class RecruiterController extends Controller
         | 🔥 REPUBLISH JOB
         |--------------------------------------------------------------------------
         */
-
             $job->update([
                 'expires_at' => now()->addDays($subscription->plan->job_live_days),
                 'is_active' => true,
-                'job_status' => 'open' // recommended
+                'job_status' => 'open',
+
+                // 🔥 track latest subscription (optional but useful)
+                'job_subscription_id' => $subscription->id
+            ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 STORE REPUBLISH HISTORY
+        |--------------------------------------------------------------------------
+        */
+            JobRepublishHistory::create([
+                'job_id' => $job->id,
+                'subscription_id' => $subscription->id,
+                'employer_id' => $recruiter->employer_id,
+                'recruiter_id' => $recruiter->id
             ]);
 
             DB::commit();
-            /*
-|--------------------------------------------------------------------------
-| 🔔 NOTIFICATIONS
-|--------------------------------------------------------------------------
-*/
 
-            // ✅ Recruiter (self confirmation)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Recruiter
             $this->notification->send(
                 'job_republished',
                 'recruiter',
@@ -600,6 +618,7 @@ class RecruiterController extends Controller
                 ]
             );
 
+            // ✅ Admins
             $admins = \App\Models\User::where('role', 'admin')->get();
 
             foreach ($admins as $admin) {
@@ -618,7 +637,8 @@ class RecruiterController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Job republished successfully'
+                'message' => 'Job republished successfully',
+                'data' => $job->fresh()
             ]);
         } catch (\Exception $e) {
 
@@ -661,7 +681,7 @@ class RecruiterController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ ENABLE FEATURE (SAFE)
+        | ✅ ENABLE FEATURE
         |--------------------------------------------------------------------------
         */
             if ($isNowFeatured) {
@@ -679,18 +699,22 @@ class RecruiterController extends Controller
 
                 $job->update([
                     'featured' => true,
-                    'featured_until' => $subscription->expires_at
+                    'featured_until' => $subscription->expires_at,
+
+                    // 🔥 IMPORTANT (you missed this)
+                    'feature_subscription_id' => $subscription->id
                 ]);
             } else {
 
                 /*
             |--------------------------------------------------------------------------
-            | ❌ DO NOT REFUND CREDIT
+            | ❌ NO REFUND (KEEP HISTORY)
             |--------------------------------------------------------------------------
             */
                 $job->update([
                     'featured' => false,
                     'featured_until' => null
+                    // DO NOT remove feature_subscription_id
                 ]);
             }
 
@@ -748,6 +772,12 @@ class RecruiterController extends Controller
                 'message' => 'Job feature status updated successfully',
                 'data' => $job->fresh()
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Job not found'
+            ], 404);
         } catch (\Exception $e) {
 
             return response()->json([
