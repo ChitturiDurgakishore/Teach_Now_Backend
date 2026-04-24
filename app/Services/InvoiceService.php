@@ -53,92 +53,97 @@ class InvoiceService
         $plan = $invoice->order->plan;
         $employer = $invoice->employer;
 
-        // ✅ Logo
+        /*
+    |--------------------------------------------------------------------------
+    | ✅ LOGO (IMPORTANT FIX)
+    |--------------------------------------------------------------------------
+    */
+
+        $baseUrl = rtrim(env('MEDIA_URL'), '/');
+
         $logo = HomepageCompanyLogo::latest()->first();
 
-        $logoPath = $logo && $logo->logo
-            ? public_path('storage/' . $logo->logo) // for PDF
+        $logoUrl = $logo && $logo->logo
+            ? $baseUrl . '/storage/' . ltrim($logo->logo, '/')
             : null;
 
-        $logoUrl = $logo && $logo->logo
-            ? asset('storage/' . $logo->logo) // for Email
-            : '';
-
         /*
-        |--------------------------------------------------------------------------
-        | 🔥 PDF HTML (HARDCODED)
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | 🔥 PDF HTML
+    |--------------------------------------------------------------------------
+    */
 
         $html = '
-        <div style="font-family: DejaVu Sans, sans-serif; font-size: 12px; color:#333;">
+    <div style="font-family: DejaVu Sans, sans-serif; font-size: 12px; color:#333;">
 
-            <table width="100%" cellpadding="5">
-                <tr>
-                    <td width="50%">
-                        ' . ($logoPath ? '<img src="' . $logoPath . '" height="50">' : '') . '
-                    </td>
-                    <td width="50%" align="right">
-                        <h2 style="margin:0;">INVOICE</h2>
-                        <p style="margin:0;"><strong>' . $invoice->invoice_number . '</strong></p>
-                        <p style="margin:0;">' . $invoice->invoice_date->format('d M Y') . '</p>
-                    </td>
-                </tr>
-            </table>
+        <table width="100%" cellpadding="5">
+            <tr>
+                <td width="50%">
+                    ' . ($logoUrl ? '<img src="' . $logoUrl . '" height="50">' : '') . '
+                </td>
+                <td width="50%" align="right">
+                    <h2 style="margin:0;">INVOICE</h2>
+                    <p style="margin:0;"><strong>' . $invoice->invoice_number . '</strong></p>
+                    <p style="margin:0;">' . $invoice->invoice_date->format('d M Y') . '</p>
+                </td>
+            </tr>
+        </table>
 
-            <hr>
+        <hr>
 
-            <p><strong>' . ($settings->company_name ?? '') . '</strong></p>
-            <p>' . ($settings->address ?? '') . '</p>
+        <p><strong>' . ($settings->company_name ?? '') . '</strong></p>
+        <p>' . ($settings->address ?? '') . '</p>
 
-            <hr>
+        <hr>
 
-            <p><strong>Bill To:</strong></p>
-            <p>
-                ' . ($employer->company_name ?? '') . '<br>
-                ' . ($employer->email ?? '') . '
-            </p>
+        <p><strong>Bill To:</strong></p>
+        <p>
+            ' . ($employer->company_name ?? '') . '<br>
+            ' . ($employer->email ?? '') . '
+        </p>
 
-            <br>
+        <br>
 
-            <table width="100%" border="1" cellspacing="0" cellpadding="8">
-                <tr style="background:#f2f2f2;">
-                    <th align="left">Description</th>
-                    <th align="right">Amount</th>
-                </tr>
-                <tr>
-                    <td>' . ($plan->name ?? '') . '</td>
-                    <td align="right">₹ ' . number_format($invoice->amount, 2) . '</td>
-                </tr>
-                <tr>
-                    <td align="right"><strong>Total</strong></td>
-                    <td align="right"><strong>₹ ' . number_format($invoice->amount, 2) . '</strong></td>
-                </tr>
-            </table>
+        <table width="100%" border="1" cellspacing="0" cellpadding="8">
+            <tr style="background:#f2f2f2;">
+                <th align="left">Description</th>
+                <th align="right">Amount</th>
+            </tr>
+            <tr>
+                <td>' . ($plan->name ?? '') . '</td>
+                <td align="right">₹ ' . number_format($invoice->amount, 2) . '</td>
+            </tr>
+            <tr>
+                <td align="right"><strong>Total</strong></td>
+                <td align="right"><strong>₹ ' . number_format($invoice->amount, 2) . '</strong></td>
+            </tr>
+        </table>
 
-            <br>
+        <br>
 
-            <p><strong>Status:</strong> Paid</p>
-            <p><strong>Transaction ID:</strong> ' . ($invoice->order->razorpay_payment_id ?? '-') . '</p>
+        <p><strong>Status:</strong> Paid</p>
+        <p><strong>Transaction ID:</strong> ' . ($invoice->order->razorpay_payment_id ?? '-') . '</p>
 
-            <br><br>
+        <br><br>
 
-            <hr>
+        <hr>
 
-            <p style="font-size:10px; color:#777;">
-                ' . ($settings->footer ?? 'Thank you for choosing us!') . '
-            </p>
+        <p style="font-size:10px; color:#777;">
+            ' . ($settings->footer ?? 'Thank you for choosing us!') . '
+        </p>
 
-        </div>
-        ';
+    </div>
+    ';
 
         /*
-        |--------------------------------------------------------------------------
-        | 🔥 PDF GENERATION
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | 🔥 PDF GENERATION (FIXED)
+    |--------------------------------------------------------------------------
+    */
 
-        $pdf = Pdf::loadHTML($html);
+        $pdf = Pdf::loadHTML($html)->setOptions([
+            'isRemoteEnabled' => true // ✅ REQUIRED for logo
+        ]);
 
         $fileName = 'invoice_' . $invoice->invoice_number . '.pdf';
         $filePath = 'invoices/' . $fileName;
@@ -150,12 +155,15 @@ class InvoiceService
         ]);
 
         /*
-        |--------------------------------------------------------------------------
-        | 📧 EMAIL (DB TEMPLATE)
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | 📧 EMAIL
+    |--------------------------------------------------------------------------
+    */
 
-        $pdfContent = base64_encode($pdf->output());
+        // ✅ ALWAYS read from stored file (fix timing issue)
+        $pdfContent = base64_encode(
+            Storage::disk('public')->get($filePath)
+        );
 
         $template = EmailTemplate::where('slug', 'invoice_template')
             ->where('is_active', true)
