@@ -14,7 +14,7 @@ use App\Models\Payment;
 use App\Models\Employer;
 use App\Models\User;
 use App\Services\Notification;
-
+use App\Services\MailService;
 class WebhookController extends Controller
 {
 
@@ -212,10 +212,32 @@ class WebhookController extends Controller
 
                         Log::info('🔔 Employer notified');
 
+
                         // Invoice
                         app(\App\Services\InvoiceService::class)->generate($order, $subscription);
 
                         Log::info('🧾 Invoice generated');
+
+                        //admin notification
+                        $mailService = app(MailService::class);
+
+                        $admins = \App\Models\User::where('role', 'admin')->get();
+
+                        foreach ($admins as $admin) {
+
+                            $mailService->send(
+                                'payment_received_admin', // 🔥 your template slug
+                                [
+                                    'admin_name' => $admin->name ?? 'Admin',
+                                    'company_name' => $employer->company_name ?? '',
+                                    'plan_name' => $plan->name ?? '',
+                                    'amount' => $order->amount,
+                                    'currency' => 'INR',
+                                    'date' => now()->format('d M Y'),
+                                ],
+                                $admin->email
+                            );
+                        }
                     });
 
                     break;
