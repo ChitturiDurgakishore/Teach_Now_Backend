@@ -2317,7 +2317,7 @@ class AdminCMSController extends Controller
 
     public function GetAllTemplates(Request $request)
     {
-        $perPage = $request->get('per_page', 10); // default 10
+        $perPage = $request->get('per_page', 10);
 
         $templates = CVTemplate::latest()->paginate($perPage);
 
@@ -2329,6 +2329,11 @@ class AdminCMSController extends Controller
                 'last_page' => $templates->lastPage(),
                 'per_page' => $templates->perPage(),
                 'total' => $templates->total(),
+
+                'next_page_url' => $templates->nextPageUrl(),
+                'prev_page_url' => $templates->previousPageUrl(),
+
+                'has_more' => $templates->hasMorePages(),
             ]
         ]);
     }
