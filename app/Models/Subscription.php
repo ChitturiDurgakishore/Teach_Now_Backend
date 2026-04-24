@@ -27,7 +27,9 @@ class Subscription extends Model
         'purchase_date',
         'starts_at',
         'expires_at',
-        'status'
+        'status',
+        'featured_jobs_total',
+        'featured_jobs_used',
     ];
 
     protected $casts = [
