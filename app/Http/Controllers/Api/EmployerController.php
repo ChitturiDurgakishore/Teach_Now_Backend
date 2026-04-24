@@ -903,7 +903,7 @@ class EmployerController extends Controller
 
     //Employer Dashboard
 
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         try {
 
@@ -933,7 +933,7 @@ class EmployerController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 ACTIVE SUBSCRIPTION (FIFO LOGIC)
+        | 🔥 ACTIVE SUBSCRIPTION (FIFO)
         |--------------------------------------------------------------------------
         */
 
@@ -954,12 +954,10 @@ class EmployerController extends Controller
                 $subscriptionData = [
                     'plan_name' => $subscription->plan->name ?? null,
 
-                    // JOB CREDITS
                     'job_credits_total' => $subscription->job_posts_total,
                     'job_credits_used' => $subscription->job_posts_used,
                     'job_credits_remaining' => $subscription->job_posts_total - $subscription->job_posts_used,
 
-                    // FEATURE CREDITS
                     'feature_credits_total' => $subscription->featured_jobs_total ?? 0,
                     'feature_credits_used' => $subscription->featured_jobs_used ?? 0,
                     'feature_credits_remaining' => ($subscription->featured_jobs_total ?? 0) - ($subscription->featured_jobs_used ?? 0),
@@ -979,15 +977,42 @@ class EmployerController extends Controller
                 ->where('expires_at', '>', now())
                 ->get();
 
-            // JOB TOTALS
             $totalJobCredits = $activeSubscriptions->sum('job_posts_total');
             $totalJobUsed = $activeSubscriptions->sum('job_posts_used');
             $totalJobRemaining = $totalJobCredits - $totalJobUsed;
 
-            // FEATURE TOTALS
             $totalFeatureCredits = $activeSubscriptions->sum('featured_jobs_total');
             $totalFeatureUsed = $activeSubscriptions->sum('featured_jobs_used');
             $totalFeatureRemaining = $totalFeatureCredits - $totalFeatureUsed;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RECRUITER USAGE (PAGINATED)
+        |--------------------------------------------------------------------------
+        */
+
+            $perPage = $request->get('per_page', 5);
+
+            $recruiters = EmployerUser::where('employer_id', $employer->id)
+                ->select('id', 'name', 'email')
+                ->paginate($perPage);
+
+            $recruiterData = collect($recruiters->items())->map(function ($rec) {
+
+                $jobsUsed = Job::where('created_by', $rec->id)->count();
+
+                $featuredUsed = Job::where('created_by', $rec->id)
+                    ->where('featured', true)
+                    ->count();
+
+                return [
+                    'id' => $rec->id,
+                    'name' => $rec->name,
+                    'email' => $rec->email,
+                    'jobs_used' => $jobsUsed,
+                    'featured_jobs_used' => $featuredUsed,
+                ];
+            });
 
             /*
         |--------------------------------------------------------------------------
@@ -1049,10 +1074,8 @@ class EmployerController extends Controller
                     'total_applications' => $totalApplications,
                     'shortlisted_candidates' => $shortlisted,
 
-                    // 🔥 ACTIVE PLAN
                     'active_subscription' => $subscriptionData,
 
-                    // 🔥 TOTAL SUMMARY
                     'credits_summary' => [
                         'job_credits' => [
                             'total' => $totalJobCredits,
@@ -1067,11 +1090,20 @@ class EmployerController extends Controller
                         'active_subscriptions_count' => $activeSubscriptions->count()
                     ],
 
-                    'subscription_history' => $subscriptionHistory,
+                    // 🔥 NEW RECRUITER SECTION
+                    'recruiters' => [
+                        'data' => $recruiterData,
+                        'current_page' => $recruiters->currentPage(),
+                        'last_page' => $recruiters->lastPage(),
+                        'per_page' => $recruiters->perPage(),
+                        'total' => $recruiters->total(),
+                        'next_page_url' => $recruiters->nextPageUrl(),
+                        'prev_page_url' => $recruiters->previousPageUrl(),
+                    ],
 
+                    'subscription_history' => $subscriptionHistory,
                     'active_featured_jobs' => $activeFeaturedJobs,
                     'subscription_expiring_soon' => $expiringSoon,
-
                     'latest_jobs' => $latestJobs,
                     'latest_applications' => $latestApplications,
 
@@ -1093,6 +1125,8 @@ class EmployerController extends Controller
             ], 500);
         }
     }
+
+
     // Jobs Created by Company
 
 

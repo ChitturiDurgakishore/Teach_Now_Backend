@@ -1549,6 +1549,12 @@ class RecruiterController extends Controller
 
             $employerId = $recruiter->employer_id;
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 JOB STATS
+        |--------------------------------------------------------------------------
+        */
+
             $activeJobs = Job::where('created_by', $recruiter->id)
                 ->where('job_status', 'open')
                 ->count();
@@ -1561,22 +1567,46 @@ class RecruiterController extends Controller
                 $q->where('created_by', $recruiter->id);
             })->count();
 
-            // 🔥 CREDIT INFO (FROM EMPLOYER)
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 SUBSCRIPTIONS (EMPLOYER LEVEL)
+        |--------------------------------------------------------------------------
+        */
+
             $subscriptions = Subscription::with('plan')
                 ->where('employer_id', $employerId)
                 ->where('status', 'active')
                 ->where('expires_at', '>', now())
                 ->get();
 
-            $totalCredits = $subscriptions->sum('job_posts_total');
-            $usedCredits = $subscriptions->sum('job_posts_used');
-            $remainingCredits = $totalCredits - $usedCredits;
-            // 🔥 FEATURE JOBS CREDIT
-            $totalFeaturedJobs = $subscriptions->sum('featured_jobs_total');
-            $usedFeaturedJobs = $subscriptions->sum('featured_jobs_used');
-            $remainingFeaturedJobs = $totalFeaturedJobs - $usedFeaturedJobs;
+            // JOB CREDITS (COMPANY)
+            $totalJobCredits = $subscriptions->sum('job_posts_total');
+            $usedJobCredits = $subscriptions->sum('job_posts_used');
+            $remainingJobCredits = $totalJobCredits - $usedJobCredits;
 
-            // 🔥 CURRENT ACTIVE PLAN (for display)
+            // FEATURE CREDITS (COMPANY)
+            $totalFeatureCredits = $subscriptions->sum('featured_jobs_total');
+            $usedFeatureCredits = $subscriptions->sum('featured_jobs_used');
+            $remainingFeatureCredits = $totalFeatureCredits - $usedFeatureCredits;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RECRUITER PERSONAL USAGE
+        |--------------------------------------------------------------------------
+        */
+
+            $recruiterJobsUsed = Job::where('created_by', $recruiter->id)->count();
+
+            $recruiterFeaturedUsed = Job::where('created_by', $recruiter->id)
+                ->where('featured', true)
+                ->count();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CURRENT PLAN (FIFO)
+        |--------------------------------------------------------------------------
+        */
+
             $currentPlan = $subscriptions
                 ->sortBy('starts_at')
                 ->first();
@@ -1590,6 +1620,23 @@ class RecruiterController extends Controller
                 ];
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FEATURED JOBS ACTIVE
+        |--------------------------------------------------------------------------
+        */
+
+            $activeFeaturedJobs = Job::where('created_by', $recruiter->id)
+                ->where('featured', true)
+                ->where('featured_until', '>', now())
+                ->count();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RECENT DATA
+        |--------------------------------------------------------------------------
+        */
+
             $recentJobs = Job::where('created_by', $recruiter->id)
                 ->withCount('jobApplications')
                 ->latest()
@@ -1601,13 +1648,14 @@ class RecruiterController extends Controller
             })
                 ->latest()
                 ->limit(5)
-                ->with(['jobSeeker', 'jobSeeker.user:id,name,email'])
+                ->with(['jobSeeker.user:id,name,email'])
                 ->get();
-            $activeFeaturedJobs = Job::where('created_by', $recruiter->id)
-                ->where('featured', true)
-                ->whereNotNull('featured_until')
-                ->where('featured_until', '>', now())
-                ->count();
+
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ FINAL RESPONSE
+        |--------------------------------------------------------------------------
+        */
 
             return response()->json([
                 'status' => true,
@@ -1616,16 +1664,26 @@ class RecruiterController extends Controller
                     'jobs_filled' => $jobsFilled,
                     'total_applicants' => $totalApplicants,
 
-                    // 🔥 NEW CREDIT DATA
                     'credits' => [
-                        'total_credits' => $totalCredits,
-                        'used_credits' => $usedCredits,
-                        'remaining_credits' => $remainingCredits,
+
+                        // ✅ SIMPLE VIEW
+                        'jobs_remaining' => $remainingJobCredits,
+                        'feature_jobs_remaining' => $remainingFeatureCredits,
+
+                        // ✅ COMPANY TOTAL (for UI context)
+                        'jobs_total' => $totalJobCredits,
+                        'jobs_used' => $usedJobCredits,
+
+                        'feature_total' => $totalFeatureCredits,
+                        'feature_used' => $usedFeatureCredits,
+
+                        // ✅ 🔥 RECRUITER PERSONAL USAGE
+                        'your_usage' => [
+                            'jobs_used' => $recruiterJobsUsed,
+                            'featured_jobs_used' => $recruiterFeaturedUsed,
+                        ],
+
                         'current_plan' => $planData,
-                        // 🔥 FEATURE JOBS
-                        'featured_jobs_total' => $totalFeaturedJobs,
-                        'featured_jobs_used' => $usedFeaturedJobs,
-                        'remaining_featured_jobs' => $remainingFeaturedJobs,
                         'active_featured_jobs' => $activeFeaturedJobs,
                     ],
 
