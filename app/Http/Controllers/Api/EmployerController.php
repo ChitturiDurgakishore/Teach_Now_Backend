@@ -917,6 +917,7 @@ class EmployerController extends Controller
             }
 
             $employerdetails = Employer::where('id', $employer->id)->first();
+
             $totalRecruiters = EmployerUser::where('employer_id', $employer->id)->count();
 
             $totalJobs = Job::where('employer_id', $employer->id)->count();
@@ -930,12 +931,20 @@ class EmployerController extends Controller
                     $q->where('employer_id', $employer->id);
                 })->count();
 
-            // 🔥 CURRENT ACTIVE SUBSCRIPTION
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 ACTIVE SUBSCRIPTION (FIFO LOGIC)
+        |--------------------------------------------------------------------------
+        */
+
             $subscription = Subscription::with('plan')
                 ->where('employer_id', $employer->id)
                 ->where('status', 'active')
                 ->where('expires_at', '>', now())
-                ->whereColumn('job_posts_used', '<', 'job_posts_total')
+                ->where(function ($q) {
+                    $q->whereColumn('job_posts_used', '<', 'job_posts_total')
+                        ->orWhereColumn('featured_jobs_used', '<', 'featured_jobs_total');
+                })
                 ->orderBy('starts_at', 'asc')
                 ->first();
 
@@ -944,17 +953,48 @@ class EmployerController extends Controller
             if ($subscription) {
                 $subscriptionData = [
                     'plan_name' => $subscription->plan->name ?? null,
-                    'total_credits' => $subscription->job_posts_total,
-                    'used_credits' => $subscription->job_posts_used,
-                    'remaining_credits' => $subscription->job_posts_total - $subscription->job_posts_used,
+
+                    // JOB CREDITS
+                    'job_credits_total' => $subscription->job_posts_total,
+                    'job_credits_used' => $subscription->job_posts_used,
+                    'job_credits_remaining' => $subscription->job_posts_total - $subscription->job_posts_used,
+
+                    // FEATURE CREDITS
+                    'feature_credits_total' => $subscription->featured_jobs_total ?? 0,
+                    'feature_credits_used' => $subscription->featured_jobs_used ?? 0,
+                    'feature_credits_remaining' => ($subscription->featured_jobs_total ?? 0) - ($subscription->featured_jobs_used ?? 0),
+
                     'expires_at' => $subscription->expires_at,
-                    'featured_jobs_total' => $subscription->featured_jobs_total ?? 0,
-                    'featured_jobs_used' => $subscription->featured_jobs_used ?? 0,
-                    'remaining_featured_jobs' => ($subscription->featured_jobs_total ?? 0) - ($subscription->featured_jobs_used ?? 0),
                 ];
             }
 
-            // 🔥 LAST 5 SUBSCRIPTION HISTORY
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 ALL ACTIVE SUBSCRIPTIONS SUMMARY
+        |--------------------------------------------------------------------------
+        */
+
+            $activeSubscriptions = Subscription::where('employer_id', $employer->id)
+                ->where('status', 'active')
+                ->where('expires_at', '>', now())
+                ->get();
+
+            // JOB TOTALS
+            $totalJobCredits = $activeSubscriptions->sum('job_posts_total');
+            $totalJobUsed = $activeSubscriptions->sum('job_posts_used');
+            $totalJobRemaining = $totalJobCredits - $totalJobUsed;
+
+            // FEATURE TOTALS
+            $totalFeatureCredits = $activeSubscriptions->sum('featured_jobs_total');
+            $totalFeatureUsed = $activeSubscriptions->sum('featured_jobs_used');
+            $totalFeatureRemaining = $totalFeatureCredits - $totalFeatureUsed;
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 OTHER DATA
+        |--------------------------------------------------------------------------
+        */
+
             $subscriptionHistory = Subscription::with('plan')
                 ->where('employer_id', $employer->id)
                 ->latest()
@@ -963,9 +1003,6 @@ class EmployerController extends Controller
                 ->map(function ($sub) {
                     return [
                         'plan_name' => $sub->plan->name ?? null,
-                        'total_credits' => $sub->job_posts_total,
-                        'used_credits' => $sub->job_posts_used,
-                        'remaining_credits' => $sub->job_posts_total - $sub->job_posts_used,
                         'purchase_date' => $sub->purchase_date,
                         'starts_at' => $sub->starts_at,
                         'expires_at' => $sub->expires_at,
@@ -978,19 +1015,12 @@ class EmployerController extends Controller
                 ->where('featured_until', '>', now())
                 ->count();
 
-            // 🔥 OPTIONAL: TOTAL REMAINING CREDITS (ALL ACTIVE PLANS)
-            $totalRemainingCredits = Subscription::where('employer_id', $employer->id)
-                ->where('expires_at', '>', now())
-                ->sum(DB::raw('job_posts_total - job_posts_used'));
-
-            // Latest 5 Jobs
             $latestJobs = Job::where('employer_id', $employer->id)
                 ->latest()
                 ->limit(5)
                 ->select('id', 'title', 'job_status', 'created_at')
                 ->get();
 
-            // Latest 5 Applications
             $latestApplications = JobApplication::whereHas('job', function ($q) use ($employer) {
                 $q->where('employer_id', $employer->id);
             })
@@ -1002,8 +1032,14 @@ class EmployerController extends Controller
                 ->limit(5)
                 ->get();
 
-            $Company_verification = $employer->is_verified;
             $expiringSoon = $subscription && $subscription->expires_at <= now()->addDays(3);
+
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ FINAL RESPONSE
+        |--------------------------------------------------------------------------
+        */
+
             return response()->json([
                 'status' => true,
                 'data' => [
@@ -1013,15 +1049,34 @@ class EmployerController extends Controller
                     'total_applications' => $totalApplications,
                     'shortlisted_candidates' => $shortlisted,
 
-                    // 🔥 NEW
-                    'subscription' => $subscriptionData,
+                    // 🔥 ACTIVE PLAN
+                    'active_subscription' => $subscriptionData,
+
+                    // 🔥 TOTAL SUMMARY
+                    'credits_summary' => [
+                        'job_credits' => [
+                            'total' => $totalJobCredits,
+                            'used' => $totalJobUsed,
+                            'remaining' => $totalJobRemaining,
+                        ],
+                        'feature_credits' => [
+                            'total' => $totalFeatureCredits,
+                            'used' => $totalFeatureUsed,
+                            'remaining' => $totalFeatureRemaining,
+                        ],
+                        'active_subscriptions_count' => $activeSubscriptions->count()
+                    ],
+
                     'subscription_history' => $subscriptionHistory,
-                    'total_remaining_credits' => $totalRemainingCredits,
+
                     'active_featured_jobs' => $activeFeaturedJobs,
                     'subscription_expiring_soon' => $expiringSoon,
+
                     'latest_jobs' => $latestJobs,
                     'latest_applications' => $latestApplications,
-                    'company_verification' => $Company_verification,
+
+                    'company_verification' => $employer->is_verified,
+
                     'company_featured' => $employer->company_featured
                         && $employer->featured_until
                         && $employer->featured_until > now(),
