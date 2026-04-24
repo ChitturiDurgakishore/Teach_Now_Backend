@@ -89,83 +89,40 @@ class PublicAPIController extends Controller
 
             $keyword = strtolower(trim($request->input('keyword')));
             $location = $request->input('location');
-            $categoryId = $request->input('category_id');
-            $jobType = $request->input('job_type');
-            $experience_required = $request->input('experience_required');
-            $salaryMin = $request->input('salary_min');
-            $salaryMax = $request->input('salary_max');
-            $gender = $request->input('gender');
-            $experience_type = $request->input('experience_type');
-            $institution_type = $request->input('institution_type');
+
+            $perPage = $request->get('per_page', 10);
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 EDUCATION DOMAIN SYNONYMS (UPGRADED)
+        | 🔥 SYNONYMS
         |--------------------------------------------------------------------------
         */
             $synonyms = [
-
-                // TECH
                 'coding' => ['programming', 'computer science', 'developer', 'software'],
                 'programming' => ['coding', 'software', 'computer science'],
-                'computer' => ['computer science', 'it', 'programming'],
-                'it' => ['information technology', 'computer science'],
-
-                // TEACHING ROLES
                 'teacher' => ['faculty', 'lecturer', 'trainer', 'tutor'],
-                'faculty' => ['teacher', 'lecturer', 'professor'],
                 'lecturer' => ['teacher', 'faculty', 'professor'],
-                'professor' => ['lecturer', 'faculty'],
-
-                // SUBJECTS (CORE)
-                'maths' => ['mathematics', 'algebra', 'statistics'],
+                'maths' => ['mathematics'],
                 'physics' => ['science'],
                 'chemistry' => ['science'],
-                'biology' => ['life science'],
-                'science' => ['physics', 'chemistry', 'biology'],
-
-                // SCHOOL LEVEL
-                'english' => ['grammar', 'literature'],
-                'social' => ['social studies', 'history', 'geography', 'civics'],
-                'history' => ['social studies'],
-                'geography' => ['social studies'],
-
-                // ENGINEERING / UG / PG
-                'btech' => ['engineering'],
-                'engineering' => ['btech', 'technical'],
-                'mechanical' => ['mechanical engineering'],
-                'civil' => ['civil engineering'],
-                'ece' => ['electronics', 'electronics engineering'],
-                'eee' => ['electrical', 'electrical engineering'],
+                'biology' => ['science'],
                 'cse' => ['computer science', 'it'],
-
-                // EDUCATION TYPES
-                'school' => ['primary', 'secondary'],
-                'intermediate' => ['junior college'],
-                'ug' => ['undergraduate'],
-                'pg' => ['postgraduate'],
-
-                // GENERIC
-                'trainer' => ['teacher', 'instructor'],
-                'tutor' => ['teacher', 'faculty'],
+                'btech' => ['engineering'],
             ];
 
             $expandedKeywords = [];
 
             if ($keyword) {
-                $words = array_values(array_filter(explode(' ', $keyword)));
+                $words = array_filter(explode(' ', $keyword));
 
                 foreach ($words as $word) {
-
                     $expandedKeywords[] = $word;
 
-                    // root word
                     $root = preg_replace('/(ing|ed|s)$/', '', $word);
                     if ($root && $root !== $word) {
                         $expandedKeywords[] = $root;
                     }
 
-                    // synonyms
                     if (isset($synonyms[$word])) {
                         $expandedKeywords = array_merge($expandedKeywords, $synonyms[$word]);
                     }
@@ -179,7 +136,7 @@ class PublicAPIController extends Controller
         | 🔥 BASE QUERY
         |--------------------------------------------------------------------------
         */
-            $query = Job::with(['employer:id,company_name,company_logo,institution_type'])
+            $baseQuery = Job::with(['employer:id,company_name,company_logo,institution_type'])
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->where('status', 'approved')
@@ -188,126 +145,112 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 SMART SEARCH
+        | ✅ SEARCH JOBS (PAGE PARAM: search_page)
         |--------------------------------------------------------------------------
         */
+            $searchQuery = clone $baseQuery;
+
+            if ($keyword) {
+                $searchQuery->where(function ($q) use ($keyword) {
+                    $q->where('title', 'LIKE', "%{$keyword}%")
+                        ->orWhere('keywords', 'LIKE', "%{$keyword}%");
+                });
+            }
+
+            if ($location) {
+                $searchQuery->where('location', 'LIKE', "%{$location}%");
+            }
+
+            $searchJobs = $searchQuery->latest()
+                ->paginate($perPage, ['*'], 'search_page');
+
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ SIMILAR JOBS (PAGE PARAM: similar_page)
+        |--------------------------------------------------------------------------
+        */
+            $similarQuery = clone $baseQuery;
+
             if (!empty($expandedKeywords)) {
-
-                $query->where(function ($q) use ($expandedKeywords) {
-
+                $similarQuery->where(function ($q) use ($expandedKeywords) {
                     foreach ($expandedKeywords as $word) {
                         $q->orWhere('title', 'LIKE', "%{$word}%")
                             ->orWhere('keywords', 'LIKE', "%{$word}%")
                             ->orWhere('description', 'LIKE', "%{$word}%");
                     }
                 });
-
-                // 🔥 PRIORITY ORDER
-                $query->orderByRaw("
-                CASE
-                    WHEN title LIKE ? THEN 1
-                    WHEN keywords LIKE ? THEN 2
-                    WHEN description LIKE ? THEN 3
-                    ELSE 4
-                END
-            ", [
-                    "%{$keyword}%",
-                    "%{$keyword}%",
-                    "%{$keyword}%"
-                ]);
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 FILTERS
-        |--------------------------------------------------------------------------
-        */
-            if ($categoryId) {
-                $query->where('category_id', $categoryId);
             }
 
             if ($location) {
-                $query->where('location', 'LIKE', "%{$location}%");
+                $similarQuery->where('location', 'LIKE', "%{$location}%");
             }
 
-            if ($jobType) {
-                $query->where('job_type', $jobType);
+            if ($searchJobs->total() > 0) {
+                $similarQuery->whereNotIn('id', $searchJobs->pluck('id'));
             }
 
-            if (!is_null($experience_required)) {
-                $query->where('experience_required', '<=', $experience_required);
-            }
+            $similarJobs = $similarQuery->latest()
+                ->paginate($perPage, ['*'], 'similar_page');
 
-            if ($experience_type) {
-                $query->where('experience_type', $experience_type);
-            }
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FORMAT
+        |--------------------------------------------------------------------------
+        */
+            $formatJobs = function ($jobs) {
+                return collect($jobs->items())->map(function ($job) {
 
-            if ($institution_type) {
-                $query->whereHas('employer', function ($q) use ($institution_type) {
-                    $q->where('institution_type', $institution_type);
+                    $jobArray = $job->toArray();
+
+                    $jobArray['employer'] = [
+                        'id' => $job->employer->id ?? null,
+                        'company_name' => $job->employer->company_name ?? null,
+                        'company_logo' => $job->employer->company_logo ?? null,
+                        'institution_type' => $job->employer->institution_type ?? null
+                    ];
+
+                    return $jobArray;
                 });
-            }
-
-            if ($salaryMin) {
-                $query->where('salary_max', '>=', $salaryMin);
-            }
-
-            if ($salaryMax) {
-                $query->where('salary_min', '<=', $salaryMax);
-            }
-
-            if ($gender) {
-                $query->whereIn('gender', [$gender, 'both']);
-            }
+            };
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 EXECUTE
+        | ❌ NO DATA
         |--------------------------------------------------------------------------
         */
-            $jobs = $query->latest()->paginate(10);
-
-            $jobsData = collect($jobs->items())->map(function ($job) {
-
-                $jobArray = $job->toArray();
-
-                $jobArray['employer'] = [
-                    'id' => $job->employer->id ?? null,
-                    'company_name' => $job->employer->company_name ?? null,
-                    'company_logo' => $job->employer->company_logo ?? null,
-                    'institution_type' => $job->employer->institution_type ?? null
-                ];
-
-                return $jobArray;
-            });
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 SEARCH LOG
-        |--------------------------------------------------------------------------
-        */
-            if ($keyword || $location) {
-                SearchLog::create([
-                    'keyword' => $keyword,
-                    'location' => $location,
-                    'ip_address' => $request->ip(),
-                    'user_id' => auth()->id()
-                ]);
-            }
-
-            if ($jobs->total() == 0) {
+            if ($searchJobs->total() == 0 && $similarJobs->total() == 0) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Job not found'
                 ], 404);
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ RESPONSE
+        |--------------------------------------------------------------------------
+        */
             return response()->json([
                 'status' => true,
-                'total_jobs' => $jobs->total(),
-                'current_page' => $jobs->currentPage(),
-                'last_page' => $jobs->lastPage(),
-                'data' => $jobsData
+
+                'search_jobs' => [
+                    'total' => $searchJobs->total(),
+                    'current_page' => $searchJobs->currentPage(),
+                    'last_page' => $searchJobs->lastPage(),
+                    'next_page_url' => $searchJobs->nextPageUrl(),
+                    'prev_page_url' => $searchJobs->previousPageUrl(),
+                    'data' => $formatJobs($searchJobs)
+                ],
+
+                'similar_jobs' => [
+                    'total' => $similarJobs->total(),
+                    'current_page' => $similarJobs->currentPage(),
+                    'last_page' => $similarJobs->lastPage(),
+                    'next_page_url' => $similarJobs->nextPageUrl(),
+                    'prev_page_url' => $similarJobs->previousPageUrl(),
+                    'data' => $formatJobs($similarJobs)
+                ]
+
             ], 200);
         } catch (\Exception $e) {
 
