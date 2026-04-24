@@ -98,72 +98,120 @@ class PublicAPIController extends Controller
             $experience_type = $request->input('experience_type');
             $institution_type = $request->input('institution_type');
 
-            // ✅ ONLY CHANGE → added employer relation
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 EDUCATION DOMAIN SYNONYMS (UPGRADED)
+        |--------------------------------------------------------------------------
+        */
+            $synonyms = [
+
+                // TECH
+                'coding' => ['programming', 'computer science', 'developer', 'software'],
+                'programming' => ['coding', 'software', 'computer science'],
+                'computer' => ['computer science', 'it', 'programming'],
+                'it' => ['information technology', 'computer science'],
+
+                // TEACHING ROLES
+                'teacher' => ['faculty', 'lecturer', 'trainer', 'tutor'],
+                'faculty' => ['teacher', 'lecturer', 'professor'],
+                'lecturer' => ['teacher', 'faculty', 'professor'],
+                'professor' => ['lecturer', 'faculty'],
+
+                // SUBJECTS (CORE)
+                'maths' => ['mathematics', 'algebra', 'statistics'],
+                'physics' => ['science'],
+                'chemistry' => ['science'],
+                'biology' => ['life science'],
+                'science' => ['physics', 'chemistry', 'biology'],
+
+                // SCHOOL LEVEL
+                'english' => ['grammar', 'literature'],
+                'social' => ['social studies', 'history', 'geography', 'civics'],
+                'history' => ['social studies'],
+                'geography' => ['social studies'],
+
+                // ENGINEERING / UG / PG
+                'btech' => ['engineering'],
+                'engineering' => ['btech', 'technical'],
+                'mechanical' => ['mechanical engineering'],
+                'civil' => ['civil engineering'],
+                'ece' => ['electronics', 'electronics engineering'],
+                'eee' => ['electrical', 'electrical engineering'],
+                'cse' => ['computer science', 'it'],
+
+                // EDUCATION TYPES
+                'school' => ['primary', 'secondary'],
+                'intermediate' => ['junior college'],
+                'ug' => ['undergraduate'],
+                'pg' => ['postgraduate'],
+
+                // GENERIC
+                'trainer' => ['teacher', 'instructor'],
+                'tutor' => ['teacher', 'faculty'],
+            ];
+
+            $expandedKeywords = [];
+
+            if ($keyword) {
+                $words = array_values(array_filter(explode(' ', $keyword)));
+
+                foreach ($words as $word) {
+
+                    $expandedKeywords[] = $word;
+
+                    // root word
+                    $root = preg_replace('/(ing|ed|s)$/', '', $word);
+                    if ($root && $root !== $word) {
+                        $expandedKeywords[] = $root;
+                    }
+
+                    // synonyms
+                    if (isset($synonyms[$word])) {
+                        $expandedKeywords = array_merge($expandedKeywords, $synonyms[$word]);
+                    }
+                }
+
+                $expandedKeywords = array_unique($expandedKeywords);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 BASE QUERY
+        |--------------------------------------------------------------------------
+        */
             $query = Job::with(['employer:id,company_name,company_logo,institution_type'])
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
                 ->where('status', 'approved')
                 ->where('job_status', 'open')
                 ->where('application_deadline', '>', now());
+
             /*
         |--------------------------------------------------------------------------
-        | 🔥 KEYWORD SEARCH (UNCHANGED)
+        | 🔥 SMART SEARCH
         |--------------------------------------------------------------------------
         */
-            if ($keyword) {
+            if (!empty($expandedKeywords)) {
 
-                $keywords = array_values(array_filter(explode(' ', $keyword)));
+                $query->where(function ($q) use ($expandedKeywords) {
 
-                $query->where(function ($q) use ($keyword, $keywords) {
-
-                    $q->where('title', 'LIKE', "%{$keyword}%")
-                        ->orWhere('slug', 'LIKE', "%{$keyword}%");
-
-                    if (count($keywords) > 1) {
-
-                        $q->orWhere(function ($sub) use ($keywords) {
-
-                            foreach ($keywords as $word) {
-
-                                $root = preg_replace('/(ing|ed|s)$/', '', $word);
-
-                                $sub->where(function ($inner) use ($word, $root) {
-
-                                    $inner->where('title', 'LIKE', "%{$word}%")
-                                        ->orWhere('keywords', 'LIKE', "%{$word}%");
-
-                                    if ($root && $root !== $word) {
-                                        $inner->orWhere('title', 'LIKE', "%{$root}%")
-                                            ->orWhere('keywords', 'LIKE', "%{$root}%");
-                                    }
-                                });
-                            }
-                        });
-                    } else {
-
-                        $word = $keywords[0] ?? null;
-
-                        if ($word) {
-                            $root = preg_replace('/(ing|ed|s)$/', '', $word);
-
-                            $q->orWhere('title', 'LIKE', "%{$word}%")
-                                ->orWhere('keywords', 'LIKE', "%{$word}%");
-
-                            if ($root && $root !== $word) {
-                                $q->orWhere('title', 'LIKE', "%{$root}%")
-                                    ->orWhere('keywords', 'LIKE', "%{$root}%");
-                            }
-                        }
+                    foreach ($expandedKeywords as $word) {
+                        $q->orWhere('title', 'LIKE', "%{$word}%")
+                            ->orWhere('keywords', 'LIKE', "%{$word}%")
+                            ->orWhere('description', 'LIKE', "%{$word}%");
                     }
                 });
 
+                // 🔥 PRIORITY ORDER
                 $query->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
-                    WHEN slug LIKE ? THEN 2
-                    ELSE 3
+                    WHEN keywords LIKE ? THEN 2
+                    WHEN description LIKE ? THEN 3
+                    ELSE 4
                 END
             ", [
+                    "%{$keyword}%",
                     "%{$keyword}%",
                     "%{$keyword}%"
                 ]);
@@ -171,10 +219,9 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FILTERS (UNCHANGED)
+        | 🔥 FILTERS
         |--------------------------------------------------------------------------
         */
-
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
             }
@@ -194,12 +241,12 @@ class PublicAPIController extends Controller
             if ($experience_type) {
                 $query->where('experience_type', $experience_type);
             }
+
             if ($institution_type) {
                 $query->whereHas('employer', function ($q) use ($institution_type) {
                     $q->where('institution_type', $institution_type);
                 });
             }
-
 
             if ($salaryMin) {
                 $query->where('salary_max', '>=', $salaryMin);
@@ -218,14 +265,7 @@ class PublicAPIController extends Controller
         | 🔥 EXECUTE
         |--------------------------------------------------------------------------
         */
-
             $jobs = $query->latest()->paginate(10);
-
-            /*
-        |--------------------------------------------------------------------------
-        | 🔥 TRANSFORM ONLY EMPLOYER (MINIMAL CHANGE)
-        |--------------------------------------------------------------------------
-        */
 
             $jobsData = collect($jobs->items())->map(function ($job) {
 
@@ -234,7 +274,7 @@ class PublicAPIController extends Controller
                 $jobArray['employer'] = [
                     'id' => $job->employer->id ?? null,
                     'company_name' => $job->employer->company_name ?? null,
-                    'company_logo' => $job->employer->company_logo ?? null, // ✅ NO BASE URL
+                    'company_logo' => $job->employer->company_logo ?? null,
                     'institution_type' => $job->employer->institution_type ?? null
                 ];
 
@@ -243,7 +283,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 SEARCH LOG (UNCHANGED)
+        | 🔥 SEARCH LOG
         |--------------------------------------------------------------------------
         */
             if ($keyword || $location) {
@@ -1213,5 +1253,3 @@ class PublicAPIController extends Controller
         }
     }
 }
-
-
