@@ -151,7 +151,11 @@ class MailController extends Controller
         $request->validate([
             'day' => 'required|string',
             'time' => 'required',
-            'is_active' => 'nullable|boolean'
+            'is_active' => 'nullable|boolean',
+            'type'=>'required',
+            'subject'=>'required|string|max:255',
+            'html_template'=>'required|string',
+            'is_active'=>'boolean'
         ]);
 
         $setting = EmailSetting::updateOrCreate(
@@ -162,11 +166,20 @@ class MailController extends Controller
                 'is_active' => $request->is_active ?? true
             ]
         );
+        $template = CornEmailTemplate::updateOrCreate(
+            ['type' => 'weekly'],
+            [
+                'subject' => $request->subject,
+                'html_template' => $request->html_template,
+                'is_active' => $request->is_active ?? true
+            ]
+        );
 
         return response()->json([
             'status' => true,
             'message' => 'Email settings saved',
-            'data' => $setting
+            'data' => [$setting, $template]
+
         ]);
     }
 
@@ -175,10 +188,13 @@ class MailController extends Controller
     public function getEmailSettings()
     {
         $setting = EmailSetting::where('type', 'weekly')->first();
-
+        $template= CornEmailTemplate::where('type', 'weekly')->first();
         return response()->json([
             'status' => true,
-            'data' => $setting
+            'data' => [
+                'setting' => $setting,
+                'template' => $template
+            ]
         ]);
     }
 }
