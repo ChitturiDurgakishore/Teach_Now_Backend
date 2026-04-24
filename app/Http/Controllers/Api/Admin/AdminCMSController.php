@@ -1852,13 +1852,16 @@ class AdminCMSController extends Controller
             return response()->json([
                 'status' => true,
 
-                // 🔥 PAGINATION META
                 'total' => $templates->total(),
                 'current_page' => $templates->currentPage(),
                 'last_page' => $templates->lastPage(),
                 'per_page' => $templates->perPage(),
 
-                // 🔥 DATA
+                'next_page_url' => $templates->nextPageUrl(),
+                'prev_page_url' => $templates->previousPageUrl(),
+
+                'has_more' => $templates->hasMorePages(),
+
                 'data' => $templates->items()
             ]);
         } catch (\Exception $e) {
@@ -2312,15 +2315,25 @@ class AdminCMSController extends Controller
 
     // CV Template addition
 
-    public function GetAllTemplates()
+    public function GetAllTemplates(Request $request)
     {
-        $templates = CVTemplate::latest()->get();
+        $perPage = $request->get('per_page', 10); // default 10
+
+        $templates = CVTemplate::latest()->paginate($perPage);
 
         return response()->json([
             'status' => true,
-            'data' => $templates
+            'data' => $templates->items(),
+            'pagination' => [
+                'current_page' => $templates->currentPage(),
+                'last_page' => $templates->lastPage(),
+                'per_page' => $templates->perPage(),
+                'total' => $templates->total(),
+            ]
         ]);
     }
+
+
     //Create template
     public function CreateCV(Request $request)
     {
