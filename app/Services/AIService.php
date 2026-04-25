@@ -13,6 +13,10 @@ class AIService
 {
     public function generateCV($data, $jobDescription = null)
     {
+        Log::info('Generating CV with data', [
+            'data' => $data,
+            'job_description' => $jobDescription
+        ]);
         $prompt = $this->buildPrompt($data, $jobDescription);
 
         $url = config('ai.url') . '?key=' . config('ai.key');
@@ -79,7 +83,7 @@ Instructions:
     public function checkAndConsume($userId)
     {
         Log::info('checkAndConsume called', [
-            'user_id' => $employerId ?? null
+            'user_id' => $userId ?? null
         ]);
         $month = now()->format('Y-m');
 

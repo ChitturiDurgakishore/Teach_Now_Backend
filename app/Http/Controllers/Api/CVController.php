@@ -35,7 +35,8 @@ class CVController extends Controller
         ]);
 
         try {
-            Log::info('Auth user', ['user' => auth('job_seeker')->user()]);
+            Log::info('generate base cv called');
+            Log::info('Auth user ', ['user' => auth('job_seeker')->user()]);
 
             $userId = auth('job_seeker')->id();
 
@@ -45,7 +46,7 @@ class CVController extends Controller
         |--------------------------------------------------------------------------
         */
             $resumeService = app(\App\Services\AIService::class);
-
+            Log::info('Calling checkAndConsume for user', ['user_id' => $userId]);
             $limitCheck = $resumeService->checkAndConsume($userId);
 
             if (!$limitCheck['status']) {
