@@ -40,8 +40,8 @@ class CVController extends Controller
                 'user_id' => auth('job_seeker')->id(),
                 'email' => optional(auth('job_seeker')->user())->email
             ]);
-
-            $userId = auth('job_seeker')->id();
+           Log::info('Auth checking started');
+            $userId = auth()->user()->id();
 
             /*
         |--------------------------------------------------------------------------
