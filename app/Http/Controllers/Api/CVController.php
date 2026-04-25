@@ -88,6 +88,31 @@ class CVController extends Controller
         try {
 
             $user = auth()->user();
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            /*
+|--------------------------------------------------------------------------
+| 🔥 RESUME LIMIT CHECK (ADD HERE)
+|--------------------------------------------------------------------------
+*/
+
+            $resumeService = app(\App\Services\AIService::class); // since you already put it there
+
+            $limitCheck = $resumeService->checkAndConsume($user->id);
+
+            if (!$limitCheck['status']) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $limitCheck['message'],
+                    'limit' => $limitCheck['limit'] ?? null,
+                    'used' => $limitCheck['used'] ?? null
+                ], 403);
+            }
 
             $jobSeeker = JobSeeker::with([
                 'educations',
