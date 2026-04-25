@@ -12,6 +12,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\AIService;
 use Spatie\Browsershot\Browsershot;
 use App\Models\CVTemplate;
+use Illuminate\Support\Facades\Log;
 
 class CVController extends Controller
 {
@@ -34,6 +35,7 @@ class CVController extends Controller
         ]);
 
         try {
+            Log::info('Auth user', ['user' => auth()->user()]);
 
             $userId = auth()->id();
 

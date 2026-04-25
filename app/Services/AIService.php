@@ -78,6 +78,9 @@ Instructions:
     //Resume generation limit checking function for AI
     public function checkAndConsume($userId)
     {
+        Log::info('checkAndConsume called', [
+            'user_id' => $employerId ?? null
+        ]);
         $month = now()->format('Y-m');
 
         $limit = ResumeLimitAdmin::value('limit') ?? 5;
@@ -103,6 +106,10 @@ Instructions:
 
         $usage->increment('count');
 
+        Log::info('checkAndConsume result', [
+            'usage' => $usage,
+            'limit' => $limit
+        ]);
         return [
             'status' => true,
             'remaining' => $limit - $usage->count,
