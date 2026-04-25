@@ -33,7 +33,53 @@ class CVController extends Controller
             'template_id' => 'required|exists:cv_templates,id'
         ]);
 
-        return $this->generateCVLogic(null, $request->template_id);
+        try {
+
+            $userId = auth()->id();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CHECK RESUME LIMIT
+        |--------------------------------------------------------------------------
+        */
+            $resumeService = app(\App\Services\AIService::class);
+
+            $limitCheck = $resumeService->checkAndConsume($userId);
+
+            if (!$limitCheck['status']) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $limitCheck['message'],
+                    'limit' => $limitCheck['limit'] ?? null,
+                    'used' => $limitCheck['used'] ?? null
+                ], 403);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GENERATE BASE CV
+        |--------------------------------------------------------------------------
+        */
+            $response = $this->generateCVLogic(null, $request->template_id);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 OPTIONAL: ADD REMAINING COUNT
+        |--------------------------------------------------------------------------
+        */
+            if (is_array($response)) {
+                $response['remaining'] = $limitCheck['remaining'];
+            }
+
+            return $response;
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'CV generation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /*
@@ -50,6 +96,31 @@ class CVController extends Controller
 
         try {
 
+            $userId = auth()->id();
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CHECK RESUME LIMIT
+        |--------------------------------------------------------------------------
+        */
+            $resumeService = app(\App\Services\AIService::class);
+
+            $limitCheck = $resumeService->checkAndConsume($userId);
+
+            if (!$limitCheck['status']) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $limitCheck['message'],
+                    'limit' => $limitCheck['limit'] ?? null,
+                    'used' => $limitCheck['used'] ?? null
+                ], 403);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FETCH JOB
+        |--------------------------------------------------------------------------
+        */
             $job = Job::find($request->job_id);
 
             if (!$job) {
@@ -59,6 +130,11 @@ class CVController extends Controller
                 ], 404);
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 BUILD JOB DESCRIPTION
+        |--------------------------------------------------------------------------
+        */
             $jobDescription = "
         Job Title: {$job->title}
         Description: {$job->description}
@@ -67,6 +143,11 @@ class CVController extends Controller
         Location: {$job->location}
         ";
 
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GENERATE CV
+        |--------------------------------------------------------------------------
+        */
             return $this->generateCVLogic($jobDescription, $request->template_id);
         } catch (\Exception $e) {
 

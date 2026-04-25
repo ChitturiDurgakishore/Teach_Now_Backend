@@ -11,14 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('resume_limits', function (Blueprint $table) {
+        Schema::create('resume_limit_admin', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->integer('count')->default(0);
-            $table->string('month'); // format: 2026-04
+            $table->integer('limit')->default(0);
             $table->timestamps();
-
-            $table->unique(['user_id', 'month']);
         });
     }
 
@@ -27,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('resume_limits');
+        Schema::dropIfExists('resume_limit_admin');
     }
 };

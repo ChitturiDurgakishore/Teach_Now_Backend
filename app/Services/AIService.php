@@ -6,6 +6,8 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Prompts;
+use App\Models\ResumeLimitAdmin;
+use App\Models\ResumeLimit;
 
 class AIService
 {
@@ -69,6 +71,43 @@ Instructions:
         }
 
         return $base;
+    }
+
+    //================================================================================
+
+    //Resume generation limit checking function for AI
+    public function checkAndConsume($userId)
+    {
+        $month = now()->format('Y-m');
+
+        $limit = ResumeLimitAdmin::value('limit') ?? 5;
+
+        $usage = ResumeLimit::firstOrCreate(
+            [
+                'user_id' => $userId,
+                'month' => $month
+            ],
+            [
+                'count' => 0
+            ]
+        );
+
+        if ($usage->count >= $limit) {
+            return [
+                'status' => false,
+                'message' => 'Monthly resume limit reached',
+                'limit' => $limit,
+                'used' => $usage->count
+            ];
+        }
+
+        $usage->increment('count');
+
+        return [
+            'status' => true,
+            'remaining' => $limit - $usage->count,
+            'used' => $usage->count
+        ];
     }
 
 
