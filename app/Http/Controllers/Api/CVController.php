@@ -36,10 +36,7 @@ class CVController extends Controller
 
         try {
             Log::info('generate base cv called');
-            Log::info('Auth user', [
-                'user_id' => auth('job_seeker')->id(),
-                'email' => optional(auth('job_seeker')->user())->email
-            ]);
+
            Log::info('Auth checking started');
             $userId = auth()->user()->id();
 
