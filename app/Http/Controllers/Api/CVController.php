@@ -35,9 +35,9 @@ class CVController extends Controller
         ]);
 
         try {
-            Log::info('Auth user', ['user' => auth()->user()]);
+            Log::info('Auth user', ['user' => auth('job_seeker')->user()]);
 
-            $userId = auth()->id();
+            $userId = auth('job_seeker')->id();
 
             /*
         |--------------------------------------------------------------------------
@@ -98,7 +98,7 @@ class CVController extends Controller
 
         try {
 
-            $userId = auth()->id();
+            $userId = auth('job_seeker')->id();
 
             /*
         |--------------------------------------------------------------------------
