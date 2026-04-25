@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\Admin\ResumeManagementController;
 use App\Http\Controllers\Payment\WebhookController;
+use App\Http\Controllers\AIAPIController;
 
 Route::prefix('auth')->group(function () {
 
@@ -54,7 +55,7 @@ Route::prefix('auth')->middleware('auth')->group(function () {
 });
 
 
-Route::post('/razorpay/webhook',[WebhookController::class, 'handle']);
+Route::post('/razorpay/webhook', [WebhookController::class, 'handle']);
 // ---------------------------------------------------------------------
 
 // Open routes
@@ -513,6 +514,9 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 
+    //AI Rewriting Job descripiton API
+    Route::post('/jd-rewrite', [AIAPIController::class, 'JdRewrite']);
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [EmployerController::class, 'logout']);
     });
@@ -570,6 +574,9 @@ Route::prefix('recruiter')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'getNotifications']);
         Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
+        //AI Rewriting Job descripiton API
+        Route::post('/jd-rewrite', [AIAPIController::class, 'JdRewrite']);
     });
 
     Route::middleware('auth:sanctum')->group(function () {
