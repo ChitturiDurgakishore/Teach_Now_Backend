@@ -85,40 +85,60 @@ Instructions:
         Log::info('checkAndConsume called', [
             'user_id' => $userId ?? null
         ]);
-        $month = now()->format('Y-m');
 
-        $limit = ResumeLimitAdmin::value('limit') ?? 5;
+        try {
 
-        $usage = ResumeLimit::firstOrCreate(
-            [
-                'user_id' => $userId,
-                'month' => $month
-            ],
-            [
-                'count' => 0
-            ]
-        );
+            $month = now()->format('Y-m');
+            Log::info('Month generated', ['month' => $month]);
 
-        if ($usage->count >= $limit) {
+            // 🔥 CHECK ADMIN LIMIT
+            $limit = ResumeLimitAdmin::value('limit') ?? 5;
+            Log::info('Limit fetched', ['limit' => $limit]);
+
+            // 🔥 CHECK USAGE ROW
+            $usage = ResumeLimit::firstOrCreate(
+                [
+                    'user_id' => $userId,
+                    'month' => $month
+                ],
+                [
+                    'count' => 0
+                ]
+            );
+
+            Log::info('Usage record', ['usage' => $usage]);
+
+            if ($usage->count >= $limit) {
+                return [
+                    'status' => false,
+                    'message' => 'Monthly resume limit reached',
+                    'limit' => $limit,
+                    'used' => $usage->count
+                ];
+            }
+
+            $usage->increment('count');
+
+            Log::info('After increment', [
+                'count' => $usage->count
+            ]);
+
             return [
-                'status' => false,
-                'message' => 'Monthly resume limit reached',
-                'limit' => $limit,
+                'status' => true,
+                'remaining' => $limit - $usage->count,
                 'used' => $usage->count
             ];
+        } catch (\Exception $e) {
+
+            Log::error('checkAndConsume ERROR', [
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'status' => false,
+                'message' => 'Something went wrong in limit check'
+            ];
         }
-
-        $usage->increment('count');
-
-        Log::info('checkAndConsume result', [
-            'usage' => $usage,
-            'limit' => $limit
-        ]);
-        return [
-            'status' => true,
-            'remaining' => $limit - $usage->count,
-            'used' => $usage->count
-        ];
     }
 
 
