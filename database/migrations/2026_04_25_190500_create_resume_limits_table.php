@@ -13,12 +13,9 @@ return new class extends Migration
     {
         Schema::create('resume_limits', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->integer('count')->default(0);
-            $table->string('month'); // format: 2026-04
+
             $table->timestamps();
 
-            $table->unique(['user_id', 'month']);
         });
     }
 
