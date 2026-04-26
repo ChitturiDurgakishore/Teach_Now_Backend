@@ -107,7 +107,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ SEARCH JOBS (STRONG MATCH + RANKING)
+        | ✅ SEARCH JOBS (STRONG MATCH + ADVANCED RANKING)
         |--------------------------------------------------------------------------
         */
             $searchQuery = clone $baseQuery;
@@ -116,51 +116,56 @@ class PublicAPIController extends Controller
 
                 $searchQuery->where(function ($q) use ($keyword, $words) {
 
-                    // exact phrase match (highest priority)
+                    // 🔥 exact full match (highest)
                     $q->where('title', 'LIKE', "%{$keyword}%");
 
-                    // all words match
                     foreach ($words as $word) {
                         $q->orWhere('title', 'LIKE', "%{$word}%")
                             ->orWhere('slug', 'LIKE', "%{$word}%")
-                            ->orWhere('keywords', 'LIKE', "%{$word}%");
+                            ->orWhere('keywords', 'LIKE', "%{$word}%")
+                            ->orWhere('description', 'LIKE', "%{$word}%");
                     }
                 });
 
-                // 🔥 CUSTOM RANKING (IMPORTANT)
+                // 🔥 ADVANCED RANKING
                 $searchQuery->orderByRaw("
-                CASE
-                    WHEN title LIKE ? THEN 1
-                    WHEN keywords LIKE ? THEN 2
-                    ELSE 3
-                END
-            ", [
-                    "%{$keyword}%",
-                    "%{$keyword}%"
-                ]);
+                (
+                    CASE WHEN title LIKE ? THEN 100 ELSE 0 END +
+                    CASE WHEN keywords LIKE ? THEN 80 ELSE 0 END +
+                    CASE WHEN description LIKE ? THEN 50 ELSE 0 END
+                )
+                +
+                (
+                    " . collect($words)->map(function () {
+                    return "CASE WHEN keywords LIKE ? THEN 10 ELSE 0 END";
+                })->implode(' + ') . "
+                )
+                DESC
+            ", array_merge(
+                    ["%{$keyword}%", "%{$keyword}%", "%{$keyword}%"],
+                    array_map(fn($w) => "%{$w}%", $words)
+                ));
             }
 
             if ($location) {
                 $searchQuery->where('location', 'LIKE', "%{$location}%");
             }
 
-            $searchJobs = $searchQuery
-                ->paginate($perPage, ['*'], 'search_page');
+            $searchJobs = $searchQuery->paginate($perPage, ['*'], 'search_page');
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ SIMILAR JOBS (PARTIAL MATCH ONLY)
+        | ✅ SIMILAR JOBS (WEAKER MATCH)
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
 
             if (!empty($words)) {
                 $similarQuery->where(function ($q) use ($words) {
-
                     foreach ($words as $word) {
                         $q->orWhere('title', 'LIKE', "%{$word}%")
-                            ->orWhere('description', 'LIKE', "%{$word}%");
-
+                            ->orWhere('description', 'LIKE', "%{$word}%")
+                            ->orWhere('keywords', 'LIKE', "%{$word}%");
                     }
                 });
             }
@@ -169,23 +174,23 @@ class PublicAPIController extends Controller
                 $similarQuery->where('location', 'LIKE', "%{$location}%");
             }
 
-            // ❗ remove duplicates
+            // remove duplicates
             if ($searchJobs->total() > 0) {
                 $similarQuery->whereNotIn('id', $searchJobs->pluck('id'));
             }
 
-            // 🔥 light ranking for similar
+            // light ranking
             if ($keyword) {
                 $similarQuery->orderByRaw("
                 CASE
-                    WHEN title LIKE ? THEN 1
-                    ELSE 2
+                    WHEN keywords LIKE ? THEN 1
+                    WHEN title LIKE ? THEN 2
+                    ELSE 3
                 END
-            ", ["%{$keyword}%"]);
+            ", ["%{$keyword}%", "%{$keyword}%"]);
             }
 
-            $similarJobs = $similarQuery
-                ->paginate($perPage, ['*'], 'similar_page');
+            $similarJobs = $similarQuery->paginate($perPage, ['*'], 'similar_page');
 
             /*
         |--------------------------------------------------------------------------
