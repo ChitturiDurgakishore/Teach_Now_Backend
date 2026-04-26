@@ -507,6 +507,8 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
 
     //Payments
     Route::get('payments-history', [EmployerController::class, 'getPaymentHistory']);
+
+    Route::get('subscription/{id}/usage',[EmployerController::class,'getSubscriptionUsage']);
     //Invoice management
     Route::get('/invoices', [EmployerController::class, 'getInvoices']);
     Route::get('/invoices/{id}', [EmployerController::class, 'getInvoicePdf']);

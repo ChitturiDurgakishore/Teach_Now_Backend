@@ -2845,6 +2845,171 @@ class EmployerController extends Controller
         }
     }
 
+    //Subscription usage details
+    public function getSubscriptionUsage($id, Request $request)
+    {
+        try {
+
+            $perPage = $request->get('per_page', 10);
+
+            $employer = Auth::guard('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 VALIDATE SUBSCRIPTION
+        |--------------------------------------------------------------------------
+        */
+            $subscription = Subscription::with('plan')
+                ->where('id', $id)
+                ->where('employer_id', $employer->id)
+                ->first();
+
+            if (!$subscription) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Subscription not found'
+                ], 404);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 SUMMARY
+        |--------------------------------------------------------------------------
+        */
+            $jobUsed = CreditHistory::where('subscription_id', $id)
+                ->where('type', 'job')
+                ->count();
+
+            $featureUsed = CreditHistory::where('subscription_id', $id)
+                ->where('type', 'feature')
+                ->count();
+
+            $summary = [
+                'total_job_credits' => $subscription->job_posts_total,
+                'used_job_credits' => $jobUsed,
+                'remaining_job_credits' => max(0, $subscription->job_posts_total - $jobUsed),
+
+                'total_feature_credits' => $subscription->featured_jobs_total,
+                'used_feature_credits' => $featureUsed,
+                'remaining_feature_credits' => max(0, $subscription->featured_jobs_total - $featureUsed),
+            ];
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 JOBS CREATED USING THIS SUBSCRIPTION
+        |--------------------------------------------------------------------------
+        */
+            $jobsQuery = CreditHistory::with([
+                'job:id,title,location',
+                'recruiter:id,name'
+            ])
+                ->where('subscription_id', $id)
+                ->where('type', 'job')
+                ->latest();
+
+            $jobs = $jobsQuery->paginate($perPage, ['*'], 'jobs_page');
+
+            $jobsData = collect($jobs->items())->map(function ($item) {
+
+                return [
+                    'job_id' => $item->job->id ?? null,
+                    'title' => $item->job->title ?? null,
+                    'location' => $item->job->location ?? null,
+
+                    'created_by' => $item->recruiter_id ? 'recruiter' : 'employer',
+
+                    'recruiter' => $item->recruiter ? [
+                        'id' => $item->recruiter->id,
+                        'name' => $item->recruiter->name
+                    ] : null,
+
+                    'created_at' => $item->created_at
+                ];
+            });
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FEATURED JOBS USING THIS SUBSCRIPTION
+        |--------------------------------------------------------------------------
+        */
+            $featureQuery = CreditHistory::with([
+                'job:id,title,location',
+                'recruiter:id,name'
+            ])
+                ->where('subscription_id', $id)
+                ->where('type', 'feature')
+                ->latest();
+
+            $featured = $featureQuery->paginate($perPage, ['*'], 'feature_page');
+
+            $featuredData = collect($featured->items())->map(function ($item) {
+
+                return [
+                    'job_id' => $item->job->id ?? null,
+                    'title' => $item->job->title ?? null,
+                    'location' => $item->job->location ?? null,
+
+                    'featured_by' => $item->recruiter_id ? 'recruiter' : 'employer',
+
+                    'recruiter' => $item->recruiter ? [
+                        'id' => $item->recruiter->id,
+                        'name' => $item->recruiter->name
+                    ] : null,
+
+                    'featured_at' => $item->created_at
+                ];
+            });
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 RESPONSE
+        |--------------------------------------------------------------------------
+        */
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'subscription' => [
+                        'id' => $subscription->id,
+                        'plan_name' => $subscription->plan->name ?? null,
+                        'starts_at' => $subscription->starts_at,
+                        'expires_at' => $subscription->expires_at,
+                    ],
+
+                    'summary' => $summary,
+
+                    'jobs' => [
+                        'data' => $jobsData,
+                        'total' => $jobs->total(),
+                        'current_page' => $jobs->currentPage(),
+                        'last_page' => $jobs->lastPage(),
+                    ],
+
+                    'featured_jobs' => [
+                        'data' => $featuredData,
+                        'total' => $featured->total(),
+                        'current_page' => $featured->currentPage(),
+                        'last_page' => $featured->lastPage(),
+                    ]
+                ]
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch subscription usage',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
 
     //Contact status update
     public function updateContactStatusByEmployer(Request $request, $id)
