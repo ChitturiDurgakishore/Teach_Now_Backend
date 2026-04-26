@@ -839,6 +839,7 @@ class JobSeekerController extends Controller
                         'job_id' => $app->job->id ?? null,
                         'title' => $app->job->title ?? null,
                         'company_name' => $app->job->employer->company_name ?? null,
+                        'company_logo'=>$app->job->employer->company_logo ?? null,
                         'status' => $app->status,
                         'applied_at' => $app->created_at,
                     ];
