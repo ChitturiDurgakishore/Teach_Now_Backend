@@ -392,6 +392,9 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
     //Resume Management for Admin
     Route::delete('/resumes/{id}', [ResumeManagementController::class, 'deleteResume']);
     Route::get('/resumes', [ResumeManagementController::class, 'getAllResumes']);
+    //Resume Limit Setting
+    Route::get('resume-limit',[ResumeManagementController::class,'GetLimit']);
+    Route::put('resume-limit',[ResumeManagementController::class,'UpdateLimit']);
 });
 
 // =================================================================================

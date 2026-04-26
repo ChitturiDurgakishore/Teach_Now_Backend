@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Resume;
 use App\Models\JobSeekerCV;
+use App\Models\ResumeLimitAdmin;
 use Illuminate\Support\Facades\Storage;
 
 class ResumeManagementController extends Controller
@@ -217,5 +218,41 @@ class ResumeManagementController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+
+    //API for Controlling Limit on Resume Generation
+
+    public function GetLimit(Request $request)
+    {
+        $Limit = ResumeLimitAdmin::value('limit');
+        return response()->json([
+            'status' => true,
+            'message' => 'Successfully fetched Limit',
+            'Limit' => $Limit
+        ]);
+    }
+
+    public function UpdateLimit(Request $request)
+    {
+        $request->validate([
+            'limit' => 'required|integer|min:1|max:100'
+        ]);
+        $record = ResumeLimitAdmin::first();
+        if (!$record) {
+            // create if not exists
+            ResumeLimitAdmin::create([
+                'limit' => $request->limit
+            ]);
+        } else {
+            $record->update([
+                'limit' => $request->limit
+            ]);
+        }
+        return response()->json([
+            'status' => true,
+            'message' => 'Resume generation limit updated successfully',
+            'limit' => $request->limit
+        ]);
     }
 }

@@ -29,6 +29,7 @@ use App\Models\CVTemplate;
 use App\Models\PrivacyPolicySections;
 use App\Models\TermsConditionsSections;
 use App\Models\PopularSearch;
+use App\Models\ResumeLimitAdmin;
 
 class AdminCMSController extends Controller
 {
@@ -2560,4 +2561,6 @@ class AdminCMSController extends Controller
             'message' => 'Deleted successfully'
         ]);
     }
+
+
 }
