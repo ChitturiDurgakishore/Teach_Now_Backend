@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CreditHistories;
 use Illuminate\Http\Request;
 use App\Models\Employer;
 use App\Models\EmployerUser;
@@ -1329,6 +1330,15 @@ class EmployerController extends Controller
                 }
             }
 
+            // 🔥 STORE CREDIT HISTORY
+            CreditHistories::create([
+                'job_id' => $job->id,
+                'employer_id' => $employer->id,
+                'recruiter_id' => null, // employer action
+                'subscription_id' => $subscription->id,
+                'type' => 'job'
+            ]);
+
             DB::commit();
 
             /*
@@ -1585,17 +1595,20 @@ class EmployerController extends Controller
                 'job_subscription_id' => $subscription->id
             ]);
 
+            CreditHistories::create([
+                'job_id' => $job->id,
+                'employer_id' => $employer->id,
+                'recruiter_id' => null,
+                'subscription_id' => $subscription->id,
+                'type' => 'republish'
+            ]);
+
             /*
         |--------------------------------------------------------------------------
         | 🔥 STORE REPUBLISH HISTORY (IMPORTANT)
         |--------------------------------------------------------------------------
         */
-            JobRepublishHistory::create([
-                'job_id' => $job->id,
-                'subscription_id' => $subscription->id,
-                'employer_id' => $employer->id,
-                'recruiter_id' => null // employer action
-            ]);
+
 
             DB::commit();
 
@@ -1899,12 +1912,23 @@ class EmployerController extends Controller
                     // 🔥 IMPORTANT: TRACK WHICH SUBSCRIPTION USED
                     'feature_subscription_id' => $subscription->id
                 ]);
+
+                CreditHistories::create([
+                    'job_id' => $job->id,
+                    'employer_id' => $employer->id,
+                    'recruiter_id' => null,
+                    'subscription_id' => $subscription->id,
+                    'type' => 'feature'
+                ]);
             }
             /*
         |--------------------------------------------------------------------------
         | 🔥 DISABLE FEATURE
         |--------------------------------------------------------------------------
-        */ else {
+        */
+
+            //Present In Frontend we are implement rule for no Unfeature option
+            else {
 
                 // ❌ NO CREDIT REFUND (BUSINESS RULE)
                 $job->update([

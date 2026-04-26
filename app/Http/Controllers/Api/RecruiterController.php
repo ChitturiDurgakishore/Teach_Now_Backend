@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CreditHistories;
 use Illuminate\Http\Request;
 use App\Models\EmployerUser;
 use Illuminate\Support\Facades\Hash;
@@ -303,6 +304,13 @@ class RecruiterController extends Controller
                     $questionsCreated[] = $question;
                 }
             }
+            CreditHistories::create([
+                'job_id' => $job->id,
+                'employer_id' => $employerId,
+                'recruiter_id' => $recruiter->id, // 🔥 important difference
+                'subscription_id' => $subscription->id,
+                'type' => 'job'
+            ]);
 
             // 🔥 MAILS (unchanged)
             try {
@@ -578,11 +586,18 @@ class RecruiterController extends Controller
         | 🔥 STORE REPUBLISH HISTORY
         |--------------------------------------------------------------------------
         */
-            JobRepublishHistory::create([
+            // JobRepublishHistory::create([
+            //     'job_id' => $job->id,
+            //     'subscription_id' => $subscription->id,
+            //     'employer_id' => $recruiter->employer_id,
+            //     'recruiter_id' => $recruiter->id
+            // ]);
+            CreditHistories::create([
                 'job_id' => $job->id,
-                'subscription_id' => $subscription->id,
                 'employer_id' => $recruiter->employer_id,
-                'recruiter_id' => $recruiter->id
+                'recruiter_id' => $recruiter->id,
+                'subscription_id' => $subscription->id,
+                'type' => 'republish'
             ]);
 
             DB::commit();
@@ -703,6 +718,13 @@ class RecruiterController extends Controller
 
                     // 🔥 IMPORTANT (you missed this)
                     'feature_subscription_id' => $subscription->id
+                ]);
+                \App\Models\CreditHistories::create([
+                    'job_id' => $job->id,
+                    'employer_id' => $recruiter->employer_id,
+                    'recruiter_id' => $recruiter->id,
+                    'subscription_id' => $subscription->id,
+                    'type' => 'feature'
                 ]);
             } else {
 
