@@ -1907,7 +1907,8 @@ class EmployerController extends Controller
 
                 $job->update([
                     'featured' => true,
-                    'featured_until' => $subscription->expires_at,
+                    'featured_until' => now()->addDays($subscription->plan->feature_days),
+                    'admin_featured' => false,
 
                     // 🔥 IMPORTANT: TRACK WHICH SUBSCRIPTION USED
                     'feature_subscription_id' => $subscription->id

@@ -22,6 +22,7 @@ class PlanController extends Controller
                 'features' => 'nullable|array',
                 'featured_jobs_limit' => 'required|integer|min:0',
                 'company_featured' => 'required|boolean',
+                'feature_days'=>'required|integer'
             ]);
 
             $plan = Plan::create([
@@ -37,6 +38,7 @@ class PlanController extends Controller
                 'company_featured' => $request->company_featured,
                 'display_order' => Plan::max('display_order') + 1,
                 'is_highlighted'=>$request->is_highlighted ?? false,
+                'feature_days'=>$request->feature_days
             ]);
 
             return response()->json([
@@ -82,6 +84,7 @@ class PlanController extends Controller
                 'features' => 'nullable|array',
                 'featured_jobs_limit' => 'required|integer|min:0',
                 'company_featured' => 'required|boolean',
+                'feature_days'=>'required'
             ]);
 
             $plan->update($request->only([
@@ -95,7 +98,8 @@ class PlanController extends Controller
                 'featured_jobs_limit',
                 'company_featured',
                 'is_highlighted',
-                'display_order'
+                'display_order',
+                'feature_days'
             ]));
 
             return response()->json([
