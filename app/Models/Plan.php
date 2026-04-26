@@ -16,7 +16,8 @@ class Plan extends Model
         'features',
         'is_active',
         'is_highlighted',
-        'display_order'
+        'display_order',
+        'feature_days'
     ];
 
     protected $casts = [
