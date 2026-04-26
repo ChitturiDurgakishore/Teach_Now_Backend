@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\AIService;
-use App\Models\Prompts;
+use App\Models\Prompt;
 
 class AIAPIController extends Controller
 {

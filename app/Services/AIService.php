@@ -149,7 +149,7 @@ Instructions:
     //Service function for AI to genearte job description based on the given data
 
 
-    public function rewriteJob(array $data)
+    public function rewriteJob($data)
     {
         $prompt = \App\Models\Prompt::where('key', 'job_description_rewrite')
             ->where('is_active', true)
@@ -159,56 +159,24 @@ Instructions:
             throw new \Exception('Prompt not found');
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | 🔥 BUILD DYNAMIC INPUT TEXT
-    |--------------------------------------------------------------------------
-    */
-
-        $inputText = "";
-
-        foreach ($data as $key => $value) {
-
-            if (!is_null($value) && $value !== '') {
-
-                // make key readable (salary_min → Salary Min)
-                $formattedKey = ucwords(str_replace('_', ' ', $key));
-
-                $inputText .= "{$formattedKey}: {$value}\n";
-            }
-        }
-
-        /*
-    |--------------------------------------------------------------------------
-    | 🔥 FINAL PROMPT
-    |--------------------------------------------------------------------------
-    */
-
         $finalPrompt = str_replace(
             ['{data}'],
-            [$inputText],
+            [json_encode($data)],
             $prompt->prompt
         );
-
-        /*
-    |--------------------------------------------------------------------------
-    | 🔥 AI CALL
-    |--------------------------------------------------------------------------
-    */
 
         $apiKey = config('services.ai.key');
         $url = config('services.ai.url');
 
-        $response = \Illuminate\Support\Facades\Http::timeout(15)
-            ->post($url . '?key=' . $apiKey, [
-                "contents" => [
-                    [
-                        "parts" => [
-                            ["text" => $finalPrompt]
-                        ]
+        $response = Http::post($url . '?key=' . $apiKey, [
+            "contents" => [
+                [
+                    "parts" => [
+                        ["text" => $finalPrompt]
                     ]
                 ]
-            ]);
+            ]
+        ]);
 
         if (!$response->successful()) {
             throw new \Exception('AI API failed: ' . $response->body());
@@ -220,6 +188,31 @@ Instructions:
             throw new \Exception('Invalid AI response');
         }
 
-        return $output;
+        /*
+    |--------------------------------------------------------------------------
+    | 🔥 CLEAN MARKDOWN (IMPORTANT FIX)
+    |--------------------------------------------------------------------------
+    */
+        $output = trim($output);
+
+        // remove ```json or ```
+        $output = preg_replace('/^```json/', '', $output);
+        $output = preg_replace('/^```/', '', $output);
+        $output = preg_replace('/```$/', '', $output);
+
+        $output = trim($output);
+
+        /*
+    |--------------------------------------------------------------------------
+    | 🔥 CONVERT TO ARRAY
+    |--------------------------------------------------------------------------
+    */
+        $decoded = json_decode($output, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \Exception('AI returned invalid JSON: ' . $output);
+        }
+
+        return $decoded;
     }
 }
