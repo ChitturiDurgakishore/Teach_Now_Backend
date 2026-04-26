@@ -12,6 +12,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\AIService;
 use Spatie\Browsershot\Browsershot;
 use App\Models\CVTemplate;
+use App\Models\ResumeLimit;
+use App\Models\ResumeLimitAdmin;
 
 class CVController extends Controller
 {
@@ -365,10 +367,22 @@ class CVController extends Controller
                         : null
                 ];
             });
-
+        //data for sending limit and user usage
+        $user = auth()->user();
+        $month = now()->format('Y-m');
+        $limit = ResumeLimitAdmin::value('limit') ?? 5;
+        $usage = ResumeLimit::where('user_id', $user->id)
+            ->where('month', $month)
+            ->first();
+        $used = $usage->count ?? 0;
         return response()->json([
             'status' => true,
-            'data' => $templates
+            'data' => $templates,
+            'resume_limit' => [
+                'limit' => $limit,
+                'used' => $used,
+                'remaining' => max(0, $limit - $used)
+            ]
         ]);
     }
 }
