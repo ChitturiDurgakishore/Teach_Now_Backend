@@ -2883,11 +2883,11 @@ class EmployerController extends Controller
         | 🔥 SUMMARY
         |--------------------------------------------------------------------------
         */
-            $jobUsed = CreditHistory::where('subscription_id', $id)
+            $jobUsed = CreditHistories::where('subscription_id', $id)
                 ->where('type', 'job')
                 ->count();
 
-            $featureUsed = CreditHistory::where('subscription_id', $id)
+            $featureUsed = CreditHistories::where('subscription_id', $id)
                 ->where('type', 'feature')
                 ->count();
 
@@ -2906,7 +2906,7 @@ class EmployerController extends Controller
         | 🔥 JOBS CREATED USING THIS SUBSCRIPTION
         |--------------------------------------------------------------------------
         */
-            $jobsQuery = CreditHistory::with([
+            $jobsQuery = CreditHistories::with([
                 'job:id,title,location',
                 'recruiter:id,name'
             ])
@@ -2939,7 +2939,7 @@ class EmployerController extends Controller
         | 🔥 FEATURED JOBS USING THIS SUBSCRIPTION
         |--------------------------------------------------------------------------
         */
-            $featureQuery = CreditHistory::with([
+            $featureQuery = CreditHistories::with([
                 'job:id,title,location',
                 'recruiter:id,name'
             ])
