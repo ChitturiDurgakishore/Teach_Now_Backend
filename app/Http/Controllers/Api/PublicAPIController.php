@@ -122,7 +122,8 @@ class PublicAPIController extends Controller
                     // all words match
                     foreach ($words as $word) {
                         $q->orWhere('title', 'LIKE', "%{$word}%")
-                            ->orWhere('slug', 'LIKE', "%{$word}%");
+                            ->orWhere('slug', 'LIKE', "%{$word}%")
+                            ->orWhere('keywords', 'LIKE', "%{$word}%");
                     }
                 });
 
@@ -158,8 +159,8 @@ class PublicAPIController extends Controller
 
                     foreach ($words as $word) {
                         $q->orWhere('title', 'LIKE', "%{$word}%")
-                            ->orWhere('description', 'LIKE', "%{$word}%")
-                               ->orWhere('keywords', 'LIKE', "%{$word}%");
+                            ->orWhere('description', 'LIKE', "%{$word}%");
+
                     }
                 });
             }
