@@ -1891,36 +1891,32 @@ class AdminController extends Controller
 
             $data = [
                 'employer' => [
-                    'id' => $payment->employer->id ?? null,
-                    'name' => $payment->employer->company_name ?? null,
-                    'email' => $payment->employer->email ?? null,
-                    'logo' => $payment->employer->company_logo
-                        ? $baseUrl . '/' . ltrim($payment->employer->company_logo, '/')
-                        : null,
+                    'id'    => $payment->employer->id ?? null,
+                    'name'  => $payment->employer->company_name ?? null,
+                    // ... other fields
                 ],
 
                 'payment' => [
-                    'id' => $payment->id,
-                    'transaction_id' => $payment->razorpay_payment_id, // Corrected
-                    'amount' => $payment->amount,
-                    'status' => $payment->status,                     // Corrected
-                    'currency' => $payment->currency,
-                    'created_at' => $payment->created_at,
+                    'id'             => $payment->id,
+                    'transaction_id' => $payment->transaction_id, // Match your table column
+                    'amount'         => $payment->amount,
+                    'status'         => $payment->payment_status,  // Match your table column
+                    'created_at'     => $payment->created_at,
                 ],
 
                 'subscription' => [
-                    'id' => $payment->subscription->id ?? null,
-                    // Fallback: If subscription is null, get plan from order directly
-                    'plan_name' => $payment->subscription->plan->name ?? $payment->plan->name ?? null,
-                    'starts_at' => $payment->subscription->starts_at ?? null,
+                    // This will now work because of the hasOne(Subscription::class, 'order_id')
+                    'id'         => $payment->subscription->id ?? null,
+                    'plan_name'  => $payment->plan->name ?? $payment->subscription->plan->name ?? null,
+                    'starts_at'  => $payment->subscription->starts_at ?? null,
                     'expires_at' => $payment->subscription->expires_at ?? null,
-                    'status' => $payment->subscription->status ?? null,
                 ],
 
                 'invoice' => [
-                    'id' => $payment->invoice->id ?? null,
+                    // This will now work because of the hasOne(Invoice::class, 'order_id')
+                    'id'             => $payment->invoice->id ?? null,
                     'invoice_number' => $payment->invoice->invoice_number ?? null,
-                    'pdf_url' => ($payment->invoice && $payment->invoice->pdf_path)
+                    'pdf_url'        => $payment->invoice->pdf_path
                         ? $baseUrl . '/' . ltrim($payment->invoice->pdf_path, '/')
                         : null,
                 ]

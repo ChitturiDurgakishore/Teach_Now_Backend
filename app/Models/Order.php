@@ -26,12 +26,19 @@ class Order extends Model
         return $this->belongsTo(Employer::class);
     }
 
+    // Order.php
+
+
+
     public function subscription()
     {
-        return $this->belongsTo(Subscription::class);
+        // You have order_id in subscription table, so Order HAS ONE subscription
+        return $this->hasOne(Subscription::class, 'order_id', 'id');
     }
+
     public function invoice()
     {
-        return $this->hasOne(Invoice::class, 'subscription_id', 'subscription_id');
+        // You have order_id in invoice table, so Order HAS ONE invoice
+        return $this->hasOne(Invoice::class, 'order_id', 'id');
     }
 }
