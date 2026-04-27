@@ -1897,10 +1897,11 @@ class AdminController extends Controller
 
                 'payment' => [
                     'id'             => $payment->id,
-                    'transaction_id' => $payment->razorpay_payment_id, // ✅ correct column
+                    'transaction_id' => $payment->transaction_id, // ✅ correct column
                     'amount'         => $payment->amount,
                     'status'         => $payment->status, // ✅ FIXED
                     'created_at'     => $payment->created_at,
+                    'payment_method' => $payment->payment_method, // ✅ added field
                 ],
 
                 'subscription' => [
@@ -1911,9 +1912,14 @@ class AdminController extends Controller
                     optional($payment->plan)->name
                         ?? optional(optional($payment->subscription)->plan)->name
                         ?? null,
-
+                    'job_posts_used'=> optional($payment->subscription)->job_posts_used,
+                    'jobs_posts_total'=> optional($payment->subscription)->job_posts_total,
+                    'featured_jobs_used'=> optional($payment->subscription)->featured_jobs_used,
+                    'featured_jobs_total'=> optional($payment->subscription)->featured_jobs_total,
                     'starts_at'  => optional($payment->subscription)->starts_at,
                     'expires_at' => optional($payment->subscription)->expires_at,
+                    'purchase_date'=> optional($payment->subscription)->purchase_date,
+                    'status'=> optional($payment->subscription)->status,
                 ],
 
                 'invoice' => [
