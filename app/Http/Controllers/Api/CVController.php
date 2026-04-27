@@ -186,13 +186,8 @@ class CVController extends Controller
         line-height: 1.3; /* Tighter spacing to keep everything on one page */
     }
     .page {
-        width: 210mm;
-        height: 297mm;
-        padding: 35px;
-        box-sizing: border-box;
-        overflow: hidden; /* Prevents content from leaking into a second page */
-        background: #ffffff;
-    }
+    padding: 25px;
+}
     /* Circular Image Container */
     .photo-container {
         width: 100px;
@@ -331,8 +326,8 @@ class CVController extends Controller
             '{{profile_photo}}' => $data['profile_photo'] ?? '',
             '{{name}}'          => $data['name'],
             '{{title}}'         => $data['title'] ?? 'Professional',
-            '{{email}}'         => $data['email'],
-            '{{phone}}'         => $data['phone'],
+            '{{email}}'         => "<div style='word-wrap: break-word; word-break: break-all; max-width: 180px;'>{$data['email']}</div>",
+            '{{phone}}'         => "<div>{$data['phone']}</div>",
             '{{location}}'      => $data['location'],
             '{{summary}}'       => nl2br($aiContent ?? ''),
             '{{skills}}'        => $skillsHtml,
