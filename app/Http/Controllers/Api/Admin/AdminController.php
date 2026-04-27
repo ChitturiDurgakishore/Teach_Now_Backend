@@ -1695,7 +1695,7 @@ class AdminController extends Controller
                 ->where('job_id', $jobId)
                 ->with([
                     'jobSeeker.user:id,name,email',
-                    'jobSeeker.profile_photo'
+                    'jobSeeker:profile_photo'
                 ])
                 ->latest()
                 ->paginate(10); // ✅ FIX
