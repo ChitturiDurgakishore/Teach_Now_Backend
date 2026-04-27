@@ -273,7 +273,7 @@ class CVController extends Controller
 
     private function parseTemplate($template, $data, $aiContent = null)
     {
-        // 1. SKILLS → 5 PER COLUMN (MATCHES YOUR LOGIC)
+        // 1. SKILLS → 5 PER COLUMN (KEEPING YOUR EXISTING LOGIC)
         $skills = $data['skills'];
         $chunks = array_chunk($skills, 5);
         $skillsHtml = "<tr>";
@@ -288,38 +288,42 @@ class CVController extends Controller
         }
         $skillsHtml .= "</tr>";
 
-        // 2. EXPERIENCE (CLEAN BLOCKS FOR COLUMN LAYOUT)
+        // 2. EXPERIENCE (FIXED: Stacked layout with dates on new line)
         $expHtml = '';
         foreach ($data['experiences'] as $exp) {
             $end = (!empty($exp['end_date'])) ? $exp['end_date'] : 'Present';
 
             $expHtml .= "
         <div style='margin-bottom: 20px;'>
-            <strong style='font-size: 15px; display: block; color: #1a1a1a;'>{$exp['job_title']}</strong>
-            <span style='color: #64748b; font-size: 11px; display: block; margin-bottom: 5px;'>
-                {$exp['company_name']} | {$exp['location']} | {$exp['start_date']} - {$end}
-            </span>
-            <p style='margin: 0; font-size: 12px; color: #444;'>Built impactful educational experiences and fostered student growth.</p>
+            <div style='font-weight: 800; font-size: 13px; color: #1a1a1a;'>{$exp['job_title']}</div>
+            <div style='font-size: 10.5px; color: #555; margin-top: 2px;'>{$exp['company_name']} | {$exp['location']}</div>
+            <div style='font-size: 10px; color: #888; font-weight: 600; text-transform: uppercase; margin-bottom: 6px;'>
+                {$exp['start_date']} — {$end}
+            </div>
+            <div style='font-size: 11px; color: #444; line-height: 1.4; text-align: justify;'>
+                Built impactful educational experiences and fostered student growth.
+            </div>
         </div>";
         }
 
-        // 3. EDUCATION (CLEAN BLOCKS)
+        // 3. EDUCATION (FIXED: Stacked layout)
         $eduHtml = '';
         foreach ($data['educations'] as $edu) {
             $eduHtml .= "
         <div style='margin-bottom: 15px;'>
-            <strong style='font-size: 15px; display: block; color: #1a1a1a;'>{$edu['degree']}</strong>
-            <span style='color: #64748b; font-size: 11px; display: block;'>
-                {$edu['institution']} ({$edu['start_year']} - {$edu['end_year']})
-            </span>
+            <div style='font-weight: 800; font-size: 12px; color: #1a1a1a;'>{$edu['degree']}</div>
+            <div style='font-size: 10.5px; color: #555; margin-top: 2px;'>{$edu['institution']}</div>
+            <div style='font-size: 10px; color: #888; font-weight: 600;'>
+                ({$edu['start_year']} — {$edu['end_year']})
+            </div>
         </div>";
         }
 
-        // 4. ACHIEVEMENTS (IF APPLICABLE)
-        // You can handle achievements similar to skills but as a single list
-        $achievementsHtml = "<ul style='margin:0; padding-left:15px;'>
-                            <li style='margin-bottom:5px;'>Achieved an outstanding 95% aggregate in B.Tech.</li>
-                            <li style='margin-bottom:5px;'>Successfully guided numerous students as an English Teacher[cite: 11].</li>
+        // 4. ACHIEVEMENTS (Updated with your specific academic data)
+        $achievementsHtml = "<ul style='margin:0; padding-left:15px; color: #444; font-size: 10.5px;'>
+                            <li style='margin-bottom:6px;'>Exceptional <b>95% aggregate</b> in B.Tech[cite: 7, 13, 105].</li>
+                            <li style='margin-bottom:6px;'>Successfully guided numerous students as an English Teacher[cite: 11, 52].</li>
+                            <li style='margin-bottom:6px;'>Secured <b>94.2%</b> in Intermediate Education[cite: 105].</li>
                          </ul>";
 
         // 5. REPLACE VARIABLES
