@@ -1691,17 +1691,20 @@ class AdminController extends Controller
     {
         try {
 
-            $applications = JobApplication::withTrashed()->where('job_id', $jobId)
+            $applications = JobApplication::withTrashed()
+                ->where('job_id', $jobId)
                 ->with([
                     'jobSeeker.user:id,name,email'
                 ])
                 ->latest()
-                ->get();
+                ->paginate(10); // ✅ FIX
 
             return response()->json([
                 'status' => true,
-                'total' => $applications->total(),
-                'data' => $applications
+                'total' => $applications->total(), // ✅ works now
+                'data' => $applications->items(), // cleaner response
+                'current_page' => $applications->currentPage(),
+                'last_page' => $applications->lastPage(),
             ], 200);
         } catch (\Exception $e) {
 
