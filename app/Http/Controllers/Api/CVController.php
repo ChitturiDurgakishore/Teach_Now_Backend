@@ -131,8 +131,9 @@ class CVController extends Controller
             }
 
             // ✅ DATA
+            $profile_photo = env('MEDIA_URL') . '/' . ($jobSeeker->profile_photo ?? 'https://cdn-icons-png.flaticon.com/512/847/847969.png');
             $data = [
-                'profile_photo' => $jobSeeker->profile_photo_url ?? null,
+                'profile_photo' => $profile_photo,
                 'name' => $jobSeeker->user->name ?? '',
                 'email' => $jobSeeker->user->email ?? '',
                 'phone' => $jobSeeker->phone ?? '',
@@ -176,46 +177,33 @@ class CVController extends Controller
             <meta charset='utf-8'>
            <style>
     @page {
-        margin: 0; /* Important: Removes default PDF margins */
+        margin: 0;
     }
     body {
-        font-family: 'Helvetica', Arial, sans-serif;
-        font-size: 12px; /* Slightly smaller for better fit */
-        color: #333;
+        font-family: Arial, sans-serif;
         margin: 0;
         padding: 0;
-        line-height: 1.4; /* Tighter line height to save space */
+        line-height: 1.3; /* Tighter spacing to keep everything on one page */
     }
     .page {
-        width: 210mm; /* Fixed A4 Width */
-        min-height: 297mm; /* Fixed A4 Height */
-        padding: 40px; /* Internal breathing room */
+        width: 210mm;
+        height: 297mm;
+        padding: 35px;
         box-sizing: border-box;
+        overflow: hidden; /* Prevents content from leaking into a second page */
         background: #ffffff;
-        /* Removed the border as it often triggers a second page break */
     }
-    .section {
-        margin-bottom: 20px;
-        page-break-inside: avoid;
+    /* Circular Image Container */
+    .photo-container {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 1px solid #eee;
     }
-    table {
+    .photo-container img {
         width: 100%;
-        border-collapse: collapse;
-    }
-    tr {
-        page-break-inside: avoid;
-    }
-    h2 {
-        border-bottom: 1px solid #eee; /* Light line instead of heavy border */
-        padding-bottom: 5px;
-        margin-bottom: 15px;
-        text-transform: uppercase;
-        font-size: 16px;
-        letter-spacing: 1px;
-    }
-    p {
-        margin: 0 0 10px 0;
-        line-height: 1.5;
+        height: 100%;
     }
 </style>
         </head>
@@ -232,7 +220,8 @@ class CVController extends Controller
             // ✅ PDF
             $pdf = Pdf::loadHTML($html)->setOptions([
                 'isRemoteEnabled' => true,
-                'isHtml5ParserEnabled' => true
+                'isHtml5ParserEnabled' => true,
+                'chroot' => public_path(),
             ]);
 
             // 🔥 FORMAT NAME
