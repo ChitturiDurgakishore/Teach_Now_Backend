@@ -56,7 +56,7 @@ class AIService
     | 📥 GET PROMPT FROM DB
     |--------------------------------------------------------------------------
     */
-        $promptTemplate = Prompt::where('key', 'cv_generation')->value('content');
+        $promptTemplate = Prompt::where('key', 'cv_generation')->value('prompt');
 
         if (!$promptTemplate) {
             Log::error('❌ Prompt not found in DB');
