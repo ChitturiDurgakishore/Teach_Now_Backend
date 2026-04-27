@@ -1875,7 +1875,7 @@ class AdminController extends Controller
         try {
             $payment = Order::with([
                 'employer',
-                'plan', // Use plan directly since it's in Order model
+                'plan',
                 'subscription.plan',
                 'invoice'
             ])->find($id);
@@ -1891,34 +1891,41 @@ class AdminController extends Controller
 
             $data = [
                 'employer' => [
-                    'id'    => $payment->employer->id ?? null,
-                    'name'  => $payment->employer->company_name ?? null,
-                    // ... other fields
+                    'id'   => optional($payment->employer)->id,
+                    'name' => optional($payment->employer)->company_name,
                 ],
 
                 'payment' => [
                     'id'             => $payment->id,
-                    'transaction_id' => $payment->transaction_id, // Match your table column
+                    'transaction_id' => $payment->razorpay_payment_id, // ✅ correct column
                     'amount'         => $payment->amount,
-                    'status'         => $payment->payment_status,  // Match your table column
+                    'status'         => $payment->status, // ✅ FIXED
                     'created_at'     => $payment->created_at,
                 ],
 
                 'subscription' => [
-                    // This will now work because of the hasOne(Subscription::class, 'order_id')
-                    'id'         => $payment->subscription->id ?? null,
-                    'plan_name'  => $payment->plan->name ?? $payment->subscription->plan->name ?? null,
-                    'starts_at'  => $payment->subscription->starts_at ?? null,
-                    'expires_at' => $payment->subscription->expires_at ?? null,
+                    'id' => optional($payment->subscription)->id,
+
+                    // ✅ fallback priority: order plan → subscription plan
+                    'plan_name' =>
+                    optional($payment->plan)->name
+                        ?? optional(optional($payment->subscription)->plan)->name
+                        ?? null,
+
+                    'starts_at'  => optional($payment->subscription)->starts_at,
+                    'expires_at' => optional($payment->subscription)->expires_at,
                 ],
 
                 'invoice' => [
-                    'id'             => $payment->invoice?->id,
-                    'invoice_number' => $payment->invoice?->invoice_number,
-                    'amount'         => $payment->invoice?->amount,
-                    'currency'       => $payment->invoice?->currency,
-                    'invoice_date'   => $payment->invoice?->invoice_date,
-                    'pdf_url'        => ($payment->invoice && $payment->invoice->pdf_path)
+                    'id'             => optional($payment->invoice)->id,
+                    'invoice_number' => optional($payment->invoice)->invoice_number,
+                    'amount'         => optional($payment->invoice)->amount,
+                    'currency'       => optional($payment->invoice)->currency,
+                    'invoice_date'   => optional($payment->invoice)->invoice_date,
+
+                    'pdf_url' => (
+                        $payment->invoice && $payment->invoice->pdf_path
+                    )
                         ? $baseUrl . '/' . ltrim($payment->invoice->pdf_path, '/')
                         : null,
                 ]
@@ -1929,6 +1936,7 @@ class AdminController extends Controller
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch payment details',

@@ -336,12 +336,7 @@ class CVController extends Controller
         </div>";
         }
 
-        // 4. ACHIEVEMENTS (Updated with your specific academic data)
-        $achievementsHtml = "<ul style='margin:0; padding-left:15px; color: #444; font-size: 10.5px;'>
-                            <li style='margin-bottom:6px;'>Exceptional <b>95% aggregate</b> in B.Tech[cite: 7, 13, 105].</li>
-                            <li style='margin-bottom:6px;'>Successfully guided numerous students as an English Teacher[cite: 11, 52].</li>
-                            <li style='margin-bottom:6px;'>Secured <b>94.2%</b> in Intermediate Education[cite: 105].</li>
-                         </ul>";
+
 
         // 5. REPLACE VARIABLES
         $replacements = [
@@ -355,7 +350,7 @@ class CVController extends Controller
             '{{skills}}'        => $skillsHtml,
             '{{experience}}'    => $expHtml,
             '{{education}}'     => $eduHtml,
-            '{{achievements}}'  => $achievementsHtml
+
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $template);
