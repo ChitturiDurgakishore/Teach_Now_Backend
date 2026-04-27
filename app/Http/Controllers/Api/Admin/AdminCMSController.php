@@ -79,7 +79,7 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:40960'
             ]);
 
             $hero = HomepageHeroSection::first();
@@ -416,7 +416,7 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:5120'
             ]);
 
             // 🔥 Upload image
@@ -464,7 +464,7 @@ class AdminCMSController extends Controller
                 'subtitle' => 'nullable|string|max:255',
                 'button_text' => 'nullable|string|max:100',
                 'button_link' => 'nullable|string|max:255',
-                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120'
+                'background_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:5120'
             ]);
 
             // 🔥 Replace image if new uploaded
@@ -1040,7 +1040,7 @@ class AdminCMSController extends Controller
 
             $request->validate([
                 'company_name' => 'required|string|max:255',
-                'company_logo' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+                'company_logo' => 'required|image|mimes:jpg,jpeg,png,webp,svg|max:20480',
                 'slug' => 'nullable|string|max:255',
                 'company_url' => 'nullable|string|max:255',
                 'display_order' => 'nullable|integer',
@@ -1096,7 +1096,7 @@ class AdminCMSController extends Controller
 
             $request->validate([
                 'company_name' => 'required|string|max:255',
-                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:20480',
                 'slug' => 'nullable|string',
                 'company_url' => 'nullable|string',
                 'display_order' => 'nullable|integer',
