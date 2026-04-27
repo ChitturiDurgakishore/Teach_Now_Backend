@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Prompts;
 use App\Models\ResumeLimitAdmin;
 use App\Models\ResumeLimit;
+use App\Models\Prompt;
 
 class AIService
 {
@@ -18,7 +19,10 @@ class AIService
             'job_description' => $jobDescription
         ]);
         $prompt = $this->buildPrompt($data, $jobDescription);
-
+        if (!$prompt) {
+            Log::error('❌ Prompt generation failed');
+            return null;
+        }
         $url = config('ai.url') . '?key=' . config('ai.key');
 
         $response = Http::post($url, [
@@ -45,39 +49,53 @@ class AIService
 
     private function buildPrompt($data, $jobDescription = null)
     {
-        Log::error('Building Prompt');
-        $base = "
-You are a professional resume writer.
+        Log::info('🧠 Building Prompt from DB');
 
-Generate ONLY a professional summary (3-5 lines) and bullet achievements.
-Make achievements section name and Professional Summary section name bold .
-DO NOT return HTML page.
-DO NOT include <html>, <head>, <body>.
-Return ONLY plain text or simple paragraphs.
+        /*
+    |--------------------------------------------------------------------------
+    | 📥 GET PROMPT FROM DB
+    |--------------------------------------------------------------------------
+    */
+        $promptTemplate = Prompt::where('key', 'cv_generation')->value('content');
 
-Candidate Details:
-Name: {$data['name']}
-Email: {$data['email']}
-
-Skills: " . implode(', ', $data['skills']) . "
-
-Education:
-" . json_encode($data['educations']) . "
-
-Experience:
-" . json_encode($data['experiences']) . "
-
-Instructions:
-- Write strong professional summary
-- Add 3–5 bullet achievements
-- Keep it concise and impactful
-";
-
-        if ($jobDescription) {
-            $base .= "\n\nOptimize this CV for the following job:\n{$jobDescription}";
+        if (!$promptTemplate) {
+            Log::error('❌ Prompt not found in DB');
+            return null;
         }
 
-        return $base;
+        /*
+    |--------------------------------------------------------------------------
+    | 🔄 REPLACE VARIABLES
+    |--------------------------------------------------------------------------
+    */
+        $prompt = str_replace([
+            '{{name}}',
+            '{{email}}',
+            '{{skills}}',
+            '{{education}}',
+            '{{experience}}',
+        ], [
+            $data['name'] ?? '',
+            $data['email'] ?? '',
+            implode(', ', $data['skills'] ?? []),
+            json_encode($data['educations'] ?? []),
+            json_encode($data['experiences'] ?? []),
+        ], $promptTemplate);
+
+        /*
+    |--------------------------------------------------------------------------
+    | 🧠 JOB OPTIMIZATION
+    |--------------------------------------------------------------------------
+    */
+        if (!empty($jobDescription)) {
+            $prompt .= "\n\nOptimize this CV for the following job:\n{$jobDescription}";
+        }
+
+        Log::info('📤 Final Prompt Built', [
+            'length' => strlen($prompt)
+        ]);
+
+        return $prompt;
     }
 
     //================================================================================
