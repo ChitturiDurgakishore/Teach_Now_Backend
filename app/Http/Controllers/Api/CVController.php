@@ -174,43 +174,50 @@ class CVController extends Controller
         <html>
         <head>
             <meta charset='utf-8'>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    font-size: 14px;
-                    color: #333;
-                }
-
-                .page {
-                    border: 2px solid #2c3e50;
-                    padding: 25px;
-                    margin-bottom: 20px;
-                }
-
-                .section {
-                    margin-bottom: 25px;
-                    page-break-inside: avoid;
-                }
-
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-
-                tr {
-                    page-break-inside: avoid;
-                }
-
-                h2 {
-                    border-bottom: 2px solid #2c3e50;
-                    padding-bottom: 5px;
-                    margin-bottom: 10px;
-                }
-
-                p {
-                    line-height: 1.8;
-                }
-            </style>
+           <style>
+    @page {
+        margin: 0; /* Important: Removes default PDF margins */
+    }
+    body {
+        font-family: 'Helvetica', Arial, sans-serif;
+        font-size: 12px; /* Slightly smaller for better fit */
+        color: #333;
+        margin: 0;
+        padding: 0;
+        line-height: 1.4; /* Tighter line height to save space */
+    }
+    .page {
+        width: 210mm; /* Fixed A4 Width */
+        min-height: 297mm; /* Fixed A4 Height */
+        padding: 40px; /* Internal breathing room */
+        box-sizing: border-box;
+        background: #ffffff;
+        /* Removed the border as it often triggers a second page break */
+    }
+    .section {
+        margin-bottom: 20px;
+        page-break-inside: avoid;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    tr {
+        page-break-inside: avoid;
+    }
+    h2 {
+        border-bottom: 1px solid #eee; /* Light line instead of heavy border */
+        padding-bottom: 5px;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        font-size: 16px;
+        letter-spacing: 1px;
+    }
+    p {
+        margin: 0 0 10px 0;
+        line-height: 1.5;
+    }
+</style>
         </head>
         <body>
 
