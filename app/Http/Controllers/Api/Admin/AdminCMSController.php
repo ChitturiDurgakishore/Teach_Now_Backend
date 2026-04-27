@@ -31,6 +31,7 @@ use App\Models\TermsConditionsSections;
 use App\Models\PopularSearch;
 use App\Models\ResumeLimitAdmin;
 use Illuminate\Support\Facades\Log;
+
 class AdminCMSController extends Controller
 {
 
@@ -1099,10 +1100,7 @@ class AdminCMSController extends Controller
                 'company_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:20480',
                 'slug' => 'nullable|string',
                 'company_url' => 'nullable|string',
-                'display_order' => 'nullable|integer',
-                'is_featured' => 'nullable|boolean',
-                'is_verified' => 'nullable|boolean',
-                'is_active' => 'nullable|boolean',
+
                 'meta_title' => 'nullable|string',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
@@ -1141,7 +1139,7 @@ class AdminCMSController extends Controller
 
                 // 🔥 Update other fields
                 Log::error("Started updating company logo");
-               $Status= $logo->update([
+                $Status = $logo->update([
                     'company_name' => $request->company_name,
                     'slug' => $request->slug,
                     'company_url' => $request->company_url,
@@ -1153,8 +1151,8 @@ class AdminCMSController extends Controller
                     'meta_description' => $request->meta_description,
                     'meta_keywords' => $request->meta_keywords
                 ]);
-                Log::error("Status",[
-                    "status"=>$Status
+                Log::error("Status", [
+                    "status" => $Status
                 ]);
             } else {
 
@@ -1190,10 +1188,18 @@ class AdminCMSController extends Controller
             ], 200);
         } catch (\Exception $e) {
 
+            Log::error("UpdateCompanyLogo Failed", [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'status' => false,
                 'message' => 'Operation failed',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(), // The short error for the frontend
+                'line' => $e->getLine()      // Helpful for debugging
             ], 500);
         }
     }
@@ -2565,6 +2571,4 @@ class AdminCMSController extends Controller
             'message' => 'Deleted successfully'
         ]);
     }
-
-
 }
