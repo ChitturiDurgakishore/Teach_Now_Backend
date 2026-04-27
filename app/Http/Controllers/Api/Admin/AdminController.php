@@ -11,6 +11,7 @@ use App\Models\JobSeeker;
 use App\Models\JobApplication;
 use App\Models\User;
 use App\Models\DocumentVerification;
+use App\Models\Order;
 use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -1825,7 +1826,7 @@ class AdminController extends Controller
 
             $perPage = $request->get('per_page', 10);
 
-            $payments = Payment::with([
+            $payments =Order::with([
                 'employer:id,company_name,company_logo',
                 'subscription.plan:id,name'
             ])
@@ -1877,7 +1878,7 @@ class AdminController extends Controller
     {
         try {
 
-            $payment = Payment::with([
+            $payment = Order::with([
                 'employer',
                 'subscription.plan',
                 'invoice'

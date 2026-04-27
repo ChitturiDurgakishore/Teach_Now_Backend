@@ -21,4 +21,17 @@ class Order extends Model
     {
         return $this->belongsTo(Plan::class);
     }
+    public function employer()
+    {
+        return $this->belongsTo(Employer::class);
+    }
+
+    public function subscription()
+    {
+        return $this->belongsTo(Subscription::class);
+    }
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class, 'subscription_id', 'subscription_id');
+    }
 }
