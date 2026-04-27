@@ -1823,33 +1823,35 @@ class AdminController extends Controller
     public function getPayments(Request $request)
     {
         try {
-
             $perPage = $request->get('per_page', 10);
 
-            $payments =Order::with([
+            // Load 'plan' directly since it's defined in your Order model
+            $payments = Order::with([
                 'employer:id,company_name,company_logo',
-                'subscription.plan:id,name'
+                'plan:id,name'
             ])
                 ->latest()
                 ->paginate($perPage);
 
             $data = $payments->map(function ($payment) {
-
                 return [
                     'id' => $payment->id,
-
                     'employer_name' => $payment->employer->company_name ?? null,
                     'employer_logo' => $payment->employer->company_logo
                         ? config('app.media_url') . $payment->employer->company_logo
                         : null,
 
-                    'plan_name' => $payment->subscription->plan->name ?? null,
+                    // Access plan directly from the Order model
+                    'plan_name' => $payment->plan->name ?? null,
 
                     'amount' => $payment->amount,
-                    'payment_method' => $payment->payment_method,
-                    'status' => $payment->payment_status,
+                    'currency' => $payment->currency,
 
-                    'transaction_id' => $payment->transaction_id,
+                    // Use 'status' as defined in your $fillable
+                    'status' => $payment->status,
+
+                    // Use 'razorpay_payment_id' as defined in your $fillable
+                    'transaction_id' => $payment->razorpay_payment_id,
                     'created_at' => $payment->created_at,
                 ];
             });
@@ -1857,15 +1859,9 @@ class AdminController extends Controller
             return response()->json([
                 'status' => true,
                 'total_payments' => $payments->total(),
-                'current_page' => $payments->currentPage(),
-                'last_page' => $payments->lastPage(),
-                'per_page' => $payments->perPage(),
-                'next_page_url' => $payments->nextPageUrl(),
-                'prev_page_url' => $payments->previousPageUrl(),
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch payments',
@@ -1877,9 +1873,9 @@ class AdminController extends Controller
     public function getPaymentDetails($id)
     {
         try {
-
             $payment = Order::with([
                 'employer',
+                'plan', // Use plan directly since it's in Order model
                 'subscription.plan',
                 'invoice'
             ])->find($id);
@@ -1894,70 +1890,40 @@ class AdminController extends Controller
             $baseUrl = rtrim(config('app.media_url'), '/');
 
             $data = [
-
-                /*
-            |--------------------------------------------------------------------------
-            | 🏢 EMPLOYER / INSTITUTE
-            |--------------------------------------------------------------------------
-            */
                 'employer' => [
                     'id' => $payment->employer->id ?? null,
                     'name' => $payment->employer->company_name ?? null,
                     'email' => $payment->employer->email ?? null,
-                    'phone' => $payment->employer->phone ?? null,
                     'logo' => $payment->employer->company_logo
                         ? $baseUrl . '/' . ltrim($payment->employer->company_logo, '/')
                         : null,
-                    'address' => $payment->employer->address ?? null,
                 ],
 
-                /*
-            |--------------------------------------------------------------------------
-            | 💳 PAYMENT
-            |--------------------------------------------------------------------------
-            */
                 'payment' => [
                     'id' => $payment->id,
-                    'transaction_id' => $payment->transaction_id,
+                    'transaction_id' => $payment->razorpay_payment_id, // Corrected
                     'amount' => $payment->amount,
-                    'payment_method' => $payment->payment_method,
-                    'status' => $payment->payment_status,
+                    'status' => $payment->status,                     // Corrected
+                    'currency' => $payment->currency,
                     'created_at' => $payment->created_at,
                 ],
 
-                /*
-            |--------------------------------------------------------------------------
-            | 📦 SUBSCRIPTION
-            |--------------------------------------------------------------------------
-            */
                 'subscription' => [
                     'id' => $payment->subscription->id ?? null,
-                    'plan_name' => $payment->subscription->plan->name ?? null,
-                    'job_posts_total' => $payment->subscription->job_posts_total ?? null,
-                    'job_posts_used' => $payment->subscription->job_posts_used ?? null,
-                    'featured_jobs_total' => $payment->subscription->featured_jobs_total ?? null,
-                    'featured_jobs_used' => $payment->subscription->featured_jobs_used ?? null,
+                    // Fallback: If subscription is null, get plan from order directly
+                    'plan_name' => $payment->subscription->plan->name ?? $payment->plan->name ?? null,
                     'starts_at' => $payment->subscription->starts_at ?? null,
                     'expires_at' => $payment->subscription->expires_at ?? null,
                     'status' => $payment->subscription->status ?? null,
                 ],
 
-                /*
-            |--------------------------------------------------------------------------
-            | 🧾 INVOICE
-            |--------------------------------------------------------------------------
-            */
                 'invoice' => [
                     'id' => $payment->invoice->id ?? null,
                     'invoice_number' => $payment->invoice->invoice_number ?? null,
-                    'amount' => $payment->invoice->amount ?? null,
-                    'currency' => $payment->invoice->currency ?? null,
-                    'invoice_date' => $payment->invoice->invoice_date ?? null,
-                    'pdf_url' => $payment->invoice->pdf_path
+                    'pdf_url' => ($payment->invoice && $payment->invoice->pdf_path)
                         ? $baseUrl . '/' . ltrim($payment->invoice->pdf_path, '/')
                         : null,
                 ]
-
             ];
 
             return response()->json([
@@ -1965,7 +1931,6 @@ class AdminController extends Controller
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to fetch payment details',
