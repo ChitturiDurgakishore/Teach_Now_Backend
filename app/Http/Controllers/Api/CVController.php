@@ -353,6 +353,7 @@ class CVController extends Controller
 
 
 
+
     private function parseTemplate($template, $data, $aiContent = null)
     {
         Log::info('🧩 parseTemplate START');
@@ -534,5 +535,40 @@ class CVController extends Controller
         Log::info('🧩 parseTemplate END');
 
         return $finalHtml;
+    }
+
+    public function getActiveTemplates()
+    {
+        $baseUrl = rtrim(config('cv.base_url'), '/');
+
+        $templates = CVTemplate::where('is_active', true)
+            ->get()
+            ->map(function ($template) use ($baseUrl) {
+
+                return [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'preview_image' => $template->preview_image
+                        ? $baseUrl . '/' . $template->preview_image
+                        : null
+                ];
+            });
+        //data for sending limit and user usage
+        $user = auth()->user();
+        $month = now()->format('Y-m');
+        $limit = ResumeLimitAdmin::value('limit') ?? 5;
+        $usage = ResumeLimit::where('user_id', $user->id)
+            ->where('month', $month)
+            ->first();
+        $used = $usage->count ?? 0;
+        return response()->json([
+            'status' => true,
+            'data' => $templates,
+            'resume_limit' => [
+                'limit' => $limit,
+                'used' => $used,
+                'remaining' => max(0, $limit - $used)
+            ]
+        ]);
     }
 }
