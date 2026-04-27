@@ -1694,18 +1694,21 @@ class AdminController extends Controller
             $applications = JobApplication::withTrashed()
                 ->where('job_id', $jobId)
                 ->with([
-                    'jobSeeker.user:id,name,email',
-                    'jobSeeker:profile_photo'
+                    // ✅ include id (important)
+                    'jobSeeker:id,user_id,profile_photo',
+
+                    // ✅ nested relation
+                    'jobSeeker.user:id,name,email'
                 ])
                 ->latest()
-                ->paginate(10); // ✅ FIX
+                ->paginate(10);
 
             return response()->json([
                 'status' => true,
-                'total' => $applications->total(), // ✅ works now
-                'data' => $applications->items(), // cleaner response
+                'total' => $applications->total(),
                 'current_page' => $applications->currentPage(),
                 'last_page' => $applications->lastPage(),
+                'data' => $applications->items()
             ], 200);
         } catch (\Exception $e) {
 
