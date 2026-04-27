@@ -98,12 +98,11 @@ class CVController extends Controller
             }
 
             /*
-|--------------------------------------------------------------------------
-| 🔥 RESUME LIMIT CHECK (ADD HERE)
-|--------------------------------------------------------------------------
-*/
-
-            $resumeService = app(\App\Services\AIService::class); // since you already put it there
+        |--------------------------------------------------------------------------
+        | 🔥 RESUME LIMIT CHECK
+        |--------------------------------------------------------------------------
+        */
+            $resumeService = app(\App\Services\AIService::class);
 
             $limitCheck = $resumeService->checkAndConsume($user->id);
 
@@ -130,8 +129,13 @@ class CVController extends Controller
                 ], 404);
             }
 
-            // ✅ DATA
-            $profile_photo = env('MEDIA_URL') . '/' . ($jobSeeker->profile_photo ?? 'https://cdn-icons-png.flaticon.com/512/847/847969.png');
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ BASE DATA
+        |--------------------------------------------------------------------------
+        */
+            $profile_photo = env('MEDIA_URL') . '/' . ($jobSeeker->profile_photo ?? 'defaults/user.png');
+
             $data = [
                 'profile_photo' => $profile_photo,
                 'name' => $jobSeeker->user->name ?? '',
@@ -139,21 +143,41 @@ class CVController extends Controller
                 'phone' => $jobSeeker->phone ?? '',
                 'location' => $jobSeeker->location ?? '',
 
-                // 🔥 LIMIT CONTENT (IMPORTANT FOR 2 PAGE CV)
                 'skills' => $jobSeeker->skills->pluck('name')->take(8)->toArray(),
                 'educations' => $jobSeeker->educations->take(3)->toArray(),
                 'experiences' => $jobSeeker->experiences->take(4)->toArray(),
             ];
 
-            // ✅ AI CONTENT
+            /*
+        |--------------------------------------------------------------------------
+        | 🤖 AI GENERATION
+        |--------------------------------------------------------------------------
+        */
             $aiContent = null;
+
             try {
                 $aiContent = $this->ai->generateCV($data, $jobDescription);
             } catch (\Exception $e) {
                 $aiContent = null;
             }
 
-            // ✅ TEMPLATE
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FALLBACK SUMMARY (VERY IMPORTANT)
+        |--------------------------------------------------------------------------
+        */
+            if (!empty($aiContent)) {
+                $data['summary'] = $aiContent;
+            } else {
+                $data['summary'] = $jobSeeker->bio
+                    ?? "Dedicated professional with strong skills in " . implode(', ', array_slice($data['skills'], 0, 3)) . ".";
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ TEMPLATE
+        |--------------------------------------------------------------------------
+        */
             $template = \App\Models\CVTemplate::find($templateId);
 
             if (!$template) {
@@ -163,75 +187,70 @@ class CVController extends Controller
                 ]);
             }
 
-            // ✅ PARSE TEMPLATE
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ PARSE TEMPLATE
+        |--------------------------------------------------------------------------
+        */
             $htmlBody = $this->parseTemplate(
                 $template->html_template,
                 $data,
                 $aiContent
             );
 
-            // ✅ FINAL HTML WITH PAGE CONTROL
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ FINAL HTML
+        |--------------------------------------------------------------------------
+        */
             $html = "
         <html>
         <head>
             <meta charset='utf-8'>
-           <style>
-    @page {
-        margin: 0;
-    }
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        line-height: 1.3; /* Tighter spacing to keep everything on one page */
-    }
-    .page {
-    padding: 25px;
-}
-    /* Circular Image Container */
-    .photo-container {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        overflow: hidden;
-        border: 1px solid #eee;
-    }
-    .photo-container img {
-        width: 100%;
-        height: 100%;
-    }
-</style>
+            <style>
+                @page { margin: 0; }
+
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    line-height: 1.3;
+                }
+
+                .page {
+                    padding: 25px;
+                }
+            </style>
         </head>
         <body>
-
-        <div class='page'>
-            {$htmlBody}
-        </div>
-
+            <div class='page'>
+                {$htmlBody}
+            </div>
         </body>
         </html>
         ";
 
-            // ✅ PDF
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ PDF GENERATION
+        |--------------------------------------------------------------------------
+        */
             $pdf = Pdf::loadHTML($html)->setOptions([
                 'isRemoteEnabled' => true,
                 'isHtml5ParserEnabled' => true,
                 'chroot' => public_path(),
             ]);
 
-            // 🔥 FORMAT NAME
+            /*
+        |--------------------------------------------------------------------------
+        | 📄 FILE NAME
+        |--------------------------------------------------------------------------
+        */
             $userName = $jobSeeker->user->name ?? 'User';
-
-            // Remove spaces & special chars
             $cleanName = preg_replace('/[^A-Za-z0-9]/', '', $userName);
-
-            // Format date
             $date = now()->format('d-m-Y');
-
-            // Optional: add timestamp to avoid duplicates
             $timestamp = now()->timestamp;
 
-            // Final filename
             $fileName = "{$cleanName}_{$date}_{$timestamp}.pdf";
             $path = "media/cv/{$fileName}";
 
@@ -239,11 +258,15 @@ class CVController extends Controller
 
             $pdfPath = "storage/" . $path;
 
-            // ✅ SAVE
+            /*
+        |--------------------------------------------------------------------------
+        | 💾 SAVE
+        |--------------------------------------------------------------------------
+        */
             $cv = JobSeekerCV::create([
                 'job_seeker_id' => $jobSeeker->id,
                 'title' => "{$userName}-{$date}",
-                'content' => $aiContent,
+                'content' => $data['summary'], // 🔥 store final summary (not raw AI)
                 'pdf_path' => $pdfPath
             ]);
 
@@ -264,7 +287,6 @@ class CVController extends Controller
             ], 500);
         }
     }
-
 
     private function parseTemplate($template, $data, $aiContent = null)
     {
