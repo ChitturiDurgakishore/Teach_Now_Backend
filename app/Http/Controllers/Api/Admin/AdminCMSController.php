@@ -30,7 +30,8 @@ use App\Models\PrivacyPolicySections;
 use App\Models\TermsConditionsSections;
 use App\Models\PopularSearch;
 use App\Models\ResumeLimitAdmin;
-
+use Illuminate\Container\Attributes\Log;
+use Illuminate\Support\Facades\Log as FacadesLog;
 class AdminCMSController extends Controller
 {
 
@@ -1140,7 +1141,8 @@ class AdminCMSController extends Controller
                 }
 
                 // 🔥 Update other fields
-                $logo->update([
+                Log::error("Started updating company logo");
+               $Status= $logo->update([
                     'company_name' => $request->company_name,
                     'slug' => $request->slug,
                     'company_url' => $request->company_url,
@@ -1151,6 +1153,9 @@ class AdminCMSController extends Controller
                     'meta_title' => $request->meta_title,
                     'meta_description' => $request->meta_description,
                     'meta_keywords' => $request->meta_keywords
+                ]);
+                Log::error("Status",[
+                    "status"=>$Status
                 ]);
             } else {
 
