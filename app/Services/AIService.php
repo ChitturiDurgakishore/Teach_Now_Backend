@@ -34,7 +34,9 @@ class AIService
         $result = $response->json();
 
         if (!isset($result['candidates'][0]['content']['parts'][0]['text'])) {
-            Log::error('Gemini Error', $result);
+            Log::error('Gemini Error', [
+                'response' => $result ?? []
+            ]);
             return null;
         }
 
