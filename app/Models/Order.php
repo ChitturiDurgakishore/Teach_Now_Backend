@@ -38,7 +38,6 @@ class Order extends Model
 
     public function invoice()
     {
-        // You have order_id in invoice table, so Order HAS ONE invoice
         return $this->hasOne(Invoice::class, 'order_id', 'id');
     }
 }

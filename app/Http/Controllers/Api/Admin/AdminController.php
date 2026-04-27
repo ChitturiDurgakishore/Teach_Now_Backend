@@ -1913,10 +1913,12 @@ class AdminController extends Controller
                 ],
 
                 'invoice' => [
-                    // This will now work because of the hasOne(Invoice::class, 'order_id')
-                    'id'             => $payment->invoice->id ?? null,
-                    'invoice_number' => $payment->invoice->invoice_number ?? null,
-                    'pdf_url'        => $payment->invoice->pdf_path
+                    'id'             => $payment->invoice?->id,
+                    'invoice_number' => $payment->invoice?->invoice_number,
+                    'amount'         => $payment->invoice?->amount,
+                    'currency'       => $payment->invoice?->currency,
+                    'invoice_date'   => $payment->invoice?->invoice_date,
+                    'pdf_url'        => ($payment->invoice && $payment->invoice->pdf_path)
                         ? $baseUrl . '/' . ltrim($payment->invoice->pdf_path, '/')
                         : null,
                 ]
