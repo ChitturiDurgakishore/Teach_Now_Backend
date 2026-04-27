@@ -353,206 +353,186 @@ class CVController extends Controller
 
 
 
+    private function parseTemplate($template, $data, $aiContent = null)
+    {
+        Log::info('🧩 parseTemplate START');
 
-private function parseTemplate($template, $data, $aiContent = null)
-{
-    Log::info('🧩 parseTemplate START');
-
-    /*
+        /*
     |--------------------------------------------------------------------------
     | 📦 INPUT CHECK
     |--------------------------------------------------------------------------
     */
-    Log::info('📦 Incoming Data', [
-        'has_template' => !empty($template),
-        'skills_count' => count($data['skills'] ?? []),
-        'exp_count' => count($data['experiences'] ?? []),
-        'edu_count' => count($data['educations'] ?? []),
-        'has_summary' => !empty($data['summary']),
-    ]);
+        Log::info('📦 Incoming Data', [
+            'has_template' => !empty($template),
+            'skills_count' => count($data['skills'] ?? []),
+            'exp_count' => count($data['experiences'] ?? []),
+            'edu_count' => count($data['educations'] ?? []),
+            'has_summary' => !empty($data['summary']),
+        ]);
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | 🧠 SKILLS
     |--------------------------------------------------------------------------
     */
-    $skills = $data['skills'] ?? [];
+        $skills = $data['skills'] ?? [];
 
-    if (empty($skills)) {
-        Log::warning('⚠️ No skills found');
-    }
-
-    $chunks = array_chunk($skills, 5);
-
-    Log::info('🧠 Skills chunked', [
-        'chunks_count' => count($chunks)
-    ]);
-
-    $skillsHtml = "<tr>";
-
-    foreach ($chunks as $index => $chunk) {
-
-        Log::info("➡️ Processing skill chunk {$index}", $chunk);
-
-        $skillsHtml .= "<td width='" . (100 / max(count($chunks),1)) . "%' valign='top' style='padding-right:15px;'>
-                        <ul style='margin:0; padding-left:15px; list-style-type:square;'>";
-
-        foreach ($chunk as $skill) {
-            $formattedSkill = ucwords(strtolower($skill));
-            $skillsHtml .= "<li style='margin-bottom:5px;'>{$formattedSkill}</li>";
+        if (empty($skills)) {
+            Log::warning('⚠️ No skills found');
         }
 
-        $skillsHtml .= "</ul></td>";
-    }
+        $chunks = array_chunk($skills, 5);
 
-    $skillsHtml .= "</tr>";
+        Log::info('🧠 Skills chunked', [
+            'chunks_count' => count($chunks)
+        ]);
 
-    Log::info('✅ Skills HTML generated', [
-        'length' => strlen($skillsHtml)
-    ]);
+        $skillsHtml = "<tr>";
 
-    /*
+        foreach ($chunks as $index => $chunk) {
+
+            Log::info("➡️ Processing skill chunk {$index}", $chunk);
+
+            $skillsHtml .= "<td width='" . (100 / max(count($chunks), 1)) . "%' valign='top' style='padding-right:15px;'>
+                        <ul style='margin:0; padding-left:15px; list-style-type:square;'>";
+
+            foreach ($chunk as $skill) {
+                $formattedSkill = ucwords(strtolower($skill));
+                $skillsHtml .= "<li style='margin-bottom:5px;'>{$formattedSkill}</li>";
+            }
+
+            $skillsHtml .= "</ul></td>";
+        }
+
+        $skillsHtml .= "</tr>";
+
+        Log::info('✅ Skills HTML generated', [
+            'length' => strlen($skillsHtml)
+        ]);
+
+        /*
     |--------------------------------------------------------------------------
     | 💼 EXPERIENCE
     |--------------------------------------------------------------------------
     */
-    $expHtml = '';
+        $expHtml = '';
 
-    foreach (($data['experiences'] ?? []) as $i => $exp) {
+        foreach (($data['experiences'] ?? []) as $i => $exp) {
 
-        Log::info("💼 Experience {$i}", $exp);
+            Log::info("💼 Experience {$i}", $exp);
 
-        $end = (!empty($exp['end_date'])) ? $exp['end_date'] : 'Present';
+            $end = !empty($exp['end_date']) ? $exp['end_date'] : 'Present';
 
-        $expHtml .= "
+            // ✅ FIXED HERE (NO ?? INSIDE STRING)
+            $description = $exp['description'] ?? 'Worked on key responsibilities.';
+            $jobTitle = $exp['job_title'] ?? '';
+            $company = $exp['company_name'] ?? '';
+            $location = $exp['location'] ?? '';
+            $start = $exp['start_date'] ?? '';
+
+            $expHtml .= "
         <div style='margin-bottom: 20px;'>
-            <div style='font-weight: 800; font-size: 13px; color: #1a1a1a;'>{$exp['job_title']}</div>
-            <div style='font-size: 10.5px; color: #555; margin-top: 2px;'>{$exp['company_name']} | {$exp['location']}</div>
+            <div style='font-weight: 800; font-size: 13px; color: #1a1a1a;'>{$jobTitle}</div>
+            <div style='font-size: 10.5px; color: #555; margin-top: 2px;'>{$company} | {$location}</div>
             <div style='font-size: 10px; color: #888; font-weight: 600; margin-bottom: 6px;'>
-                {$exp['start_date']} — {$end}
+                {$start} — {$end}
             </div>
             <div style='font-size: 11px; color: #444; line-height: 1.4;'>
-                {$exp['description'] ?? 'Worked on key responsibilities.'}
+                {$description}
             </div>
         </div>";
-    }
+        }
 
-    Log::info('✅ Experience HTML generated', [
-        'length' => strlen($expHtml)
-    ]);
+        Log::info('✅ Experience HTML generated', [
+            'length' => strlen($expHtml)
+        ]);
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | 🎓 EDUCATION
     |--------------------------------------------------------------------------
     */
-    $eduHtml = '';
+        $eduHtml = '';
 
-    foreach (($data['educations'] ?? []) as $i => $edu) {
+        foreach (($data['educations'] ?? []) as $i => $edu) {
 
-        Log::info("🎓 Education {$i}", $edu);
+            Log::info("🎓 Education {$i}", $edu);
 
-        $eduHtml .= "
+            $degree = $edu['degree'] ?? '';
+            $institution = $edu['institution'] ?? '';
+            $startYear = $edu['start_year'] ?? '';
+            $endYear = $edu['end_year'] ?? '';
+
+            $eduHtml .= "
         <div style='margin-bottom: 15px;'>
-            <div style='font-weight: 800; font-size: 12px; color: #1a1a1a;'>{$edu['degree']}</div>
-            <div style='font-size: 10.5px; color: #555; margin-top: 2px;'>{$edu['institution']}</div>
+            <div style='font-weight: 800; font-size: 12px; color: #1a1a1a;'>{$degree}</div>
+            <div style='font-size: 10.5px; color: #555; margin-top: 2px;'>{$institution}</div>
             <div style='font-size: 10px; color: #888;'>
-                ({$edu['start_year']} — {$edu['end_year']})
+                ({$startYear} — {$endYear})
             </div>
         </div>";
-    }
+        }
 
-    Log::info('✅ Education HTML generated', [
-        'length' => strlen($eduHtml)
-    ]);
+        Log::info('✅ Education HTML generated', [
+            'length' => strlen($eduHtml)
+        ]);
 
-    /*
+        /*
     |--------------------------------------------------------------------------
-    | 🏆 ACHIEVEMENTS (STATIC / OPTIONAL)
+    | 🏆 ACHIEVEMENTS
     |--------------------------------------------------------------------------
     */
-    $achievementsHtml = "
+        $achievementsHtml = "
         <ul style='margin:0; padding-left:15px; color: #444; font-size: 10.5px;'>
             <li>Strong academic performance</li>
             <li>Effective teaching and mentoring</li>
         </ul>";
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | 🔄 REPLACEMENTS
     |--------------------------------------------------------------------------
     */
-    $replacements = [
-        '{{profile_photo}}' => $data['profile_photo'] ?? '',
-        '{{name}}' => $data['name'] ?? '',
-        '{{title}}' => $data['title'] ?? 'Professional',
-        '{{email}}' => "<div style='word-break: break-all;'>{$data['email']}</div>",
-        '{{phone}}' => "<div>{$data['phone']}</div>",
-        '{{location}}' => $data['location'] ?? '',
-        '{{summary}}' => nl2br($data['summary'] ?? ''),
-        '{{skills}}' => $skillsHtml,
-        '{{experience}}' => $expHtml,
-        '{{education}}' => $eduHtml,
-        '{{achievements}}' => $achievementsHtml
-    ];
+        $summary = $data['summary'] ?? '';
+        $email = $data['email'] ?? '';
+        $phone = $data['phone'] ?? '';
 
-    Log::info('🔄 Replacements prepared', [
-        'keys' => array_keys($replacements)
-    ]);
+        $replacements = [
+            '{{profile_photo}}' => $data['profile_photo'] ?? '',
+            '{{name}}' => $data['name'] ?? '',
+            '{{title}}' => $data['title'] ?? 'Professional',
+            '{{email}}' => "<div style='word-break: break-all;'>{$email}</div>",
+            '{{phone}}' => "<div>{$phone}</div>",
+            '{{location}}' => $data['location'] ?? '',
+            '{{summary}}' => nl2br($summary),
+            '{{skills}}' => $skillsHtml,
+            '{{experience}}' => $expHtml,
+            '{{education}}' => $eduHtml,
+            '{{achievements}}' => $achievementsHtml
+        ];
 
-    /*
+        Log::info('🔄 Replacements prepared', [
+            'keys' => array_keys($replacements)
+        ]);
+
+        /*
     |--------------------------------------------------------------------------
     | 🧾 FINAL HTML
     |--------------------------------------------------------------------------
     */
-    $finalHtml = str_replace(
-        array_keys($replacements),
-        array_values($replacements),
-        $template
-    );
+        $finalHtml = str_replace(
+            array_keys($replacements),
+            array_values($replacements),
+            $template
+        );
 
-    Log::info('🧾 Final HTML built', [
-        'length' => strlen($finalHtml),
-        'preview' => substr($finalHtml, 0, 300)
-    ]);
-
-    Log::info('🧩 parseTemplate END');
-
-    return $finalHtml;
-}
-
-    public function getActiveTemplates()
-    {
-        $baseUrl = rtrim(config('cv.base_url'), '/');
-
-        $templates = CVTemplate::where('is_active', true)
-            ->get()
-            ->map(function ($template) use ($baseUrl) {
-
-                return [
-                    'id' => $template->id,
-                    'name' => $template->name,
-                    'preview_image' => $template->preview_image
-                        ? $baseUrl . '/' . $template->preview_image
-                        : null
-                ];
-            });
-        //data for sending limit and user usage
-        $user = auth()->user();
-        $month = now()->format('Y-m');
-        $limit = ResumeLimitAdmin::value('limit') ?? 5;
-        $usage = ResumeLimit::where('user_id', $user->id)
-            ->where('month', $month)
-            ->first();
-        $used = $usage->count ?? 0;
-        return response()->json([
-            'status' => true,
-            'data' => $templates,
-            'resume_limit' => [
-                'limit' => $limit,
-                'used' => $used,
-                'remaining' => max(0, $limit - $used)
-            ]
+        Log::info('🧾 Final HTML built', [
+            'length' => strlen($finalHtml),
+            'preview' => substr($finalHtml, 0, 300)
         ]);
+
+        Log::info('🧩 parseTemplate END');
+
+        return $finalHtml;
     }
 }
