@@ -14,6 +14,7 @@ use Spatie\Browsershot\Browsershot;
 use App\Models\CVTemplate;
 use App\Models\ResumeLimit;
 use App\Models\ResumeLimitAdmin;
+use Illuminate\Support\Facades\Log;
 
 class CVController extends Controller
 {
@@ -85,28 +86,46 @@ class CVController extends Controller
     | COMMON LOGIC
     |--------------------------------------------------------------------------
     */
+
+
     private function generateCVLogic($jobDescription = null, $templateId = null)
     {
         try {
 
+            Log::info('🚀 CV Generation Started', [
+                'template_id' => $templateId,
+                'job_description' => $jobDescription
+            ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔐 AUTH CHECK
+        |--------------------------------------------------------------------------
+        */
             $user = auth()->user();
+
             if (!$user) {
+                Log::error('❌ User not authenticated');
                 return response()->json([
                     'status' => false,
                     'message' => 'Unauthenticated'
                 ], 401);
             }
 
+            Log::info('✅ User Authenticated', ['user_id' => $user->id]);
+
             /*
         |--------------------------------------------------------------------------
-        | 🔥 RESUME LIMIT CHECK
+        | 🔥 LIMIT CHECK
         |--------------------------------------------------------------------------
         */
             $resumeService = app(\App\Services\AIService::class);
-
             $limitCheck = $resumeService->checkAndConsume($user->id);
 
+            Log::info('📊 Limit Check Result', $limitCheck ?? []);
+
             if (!$limitCheck['status']) {
+                Log::warning('⚠️ Limit exceeded');
                 return response()->json([
                     'status' => false,
                     'message' => $limitCheck['message'],
@@ -115,6 +134,11 @@ class CVController extends Controller
                 ], 403);
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | 👤 FETCH PROFILE
+        |--------------------------------------------------------------------------
+        */
             $jobSeeker = JobSeeker::with([
                 'educations',
                 'experiences',
@@ -123,15 +147,22 @@ class CVController extends Controller
             ])->where('user_id', $user->id)->first();
 
             if (!$jobSeeker) {
+                Log::error('❌ JobSeeker not found');
                 return response()->json([
                     'status' => false,
                     'message' => 'Profile not found'
                 ], 404);
             }
 
+            Log::info('✅ JobSeeker Loaded', [
+                'skills_count' => $jobSeeker->skills->count(),
+                'edu_count' => $jobSeeker->educations->count(),
+                'exp_count' => $jobSeeker->experiences->count()
+            ]);
+
             /*
         |--------------------------------------------------------------------------
-        | ✅ BASE DATA
+        | 📦 DATA PREP
         |--------------------------------------------------------------------------
         */
             $profile_photo = env('MEDIA_URL') . '/' . ($jobSeeker->profile_photo ?? 'defaults/user.png');
@@ -142,11 +173,12 @@ class CVController extends Controller
                 'email' => $jobSeeker->user->email ?? '',
                 'phone' => $jobSeeker->phone ?? '',
                 'location' => $jobSeeker->location ?? '',
-
                 'skills' => $jobSeeker->skills->pluck('name')->take(8)->toArray(),
                 'educations' => $jobSeeker->educations->take(3)->toArray(),
                 'experiences' => $jobSeeker->experiences->take(4)->toArray(),
             ];
+
+            Log::info('📦 Prepared Data', $data);
 
             /*
         |--------------------------------------------------------------------------
@@ -157,39 +189,51 @@ class CVController extends Controller
 
             try {
                 $aiContent = $this->ai->generateCV($data, $jobDescription);
+                Log::info('🤖 AI Response', [
+                    'length' => strlen($aiContent ?? ''),
+                    'preview' => substr($aiContent ?? '', 0, 200)
+                ]);
             } catch (\Exception $e) {
+                Log::error('❌ AI Failed', [
+                    'error' => $e->getMessage()
+                ]);
                 $aiContent = null;
             }
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FALLBACK SUMMARY (VERY IMPORTANT)
+        | 🔥 FALLBACK
         |--------------------------------------------------------------------------
         */
             if (!empty($aiContent)) {
                 $data['summary'] = $aiContent;
+                Log::info('✅ Using AI summary');
             } else {
                 $data['summary'] = $jobSeeker->bio
                     ?? "Dedicated professional with strong skills in " . implode(', ', array_slice($data['skills'], 0, 3)) . ".";
+                Log::warning('⚠️ Using fallback summary');
             }
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ TEMPLATE
+        | 📄 TEMPLATE
         |--------------------------------------------------------------------------
         */
             $template = \App\Models\CVTemplate::find($templateId);
 
             if (!$template) {
+                Log::error('❌ Template not found', ['template_id' => $templateId]);
                 return response()->json([
                     'status' => false,
                     'message' => 'Template not found'
                 ]);
             }
 
+            Log::info('✅ Template Loaded');
+
             /*
         |--------------------------------------------------------------------------
-        | ✅ PARSE TEMPLATE
+        | 🧩 PARSE TEMPLATE
         |--------------------------------------------------------------------------
         */
             $htmlBody = $this->parseTemplate(
@@ -198,52 +242,51 @@ class CVController extends Controller
                 $aiContent
             );
 
+            Log::info('🧩 HTML Parsed', [
+                'length' => strlen($htmlBody)
+            ]);
+
             /*
         |--------------------------------------------------------------------------
-        | ✅ FINAL HTML
+        | 🌐 FINAL HTML
         |--------------------------------------------------------------------------
         */
             $html = "
         <html>
         <head>
             <meta charset='utf-8'>
-            <style>
-                @page { margin: 0; }
-
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 0;
-                    line-height: 1.3;
-                }
-
-                .page {
-                    padding: 25px;
-                }
-            </style>
         </head>
         <body>
-            <div class='page'>
-                {$htmlBody}
-            </div>
+            {$htmlBody}
         </body>
         </html>
         ";
 
-            /*
-        |--------------------------------------------------------------------------
-        | ✅ PDF GENERATION
-        |--------------------------------------------------------------------------
-        */
-            $pdf = Pdf::loadHTML($html)->setOptions([
-                'isRemoteEnabled' => true,
-                'isHtml5ParserEnabled' => true,
-                'chroot' => public_path(),
-            ]);
+            Log::info('🌐 Final HTML Ready');
 
             /*
         |--------------------------------------------------------------------------
-        | 📄 FILE NAME
+        | 🧾 PDF GENERATION
+        |--------------------------------------------------------------------------
+        */
+            try {
+                $pdf = Pdf::loadHTML($html)->setOptions([
+                    'isRemoteEnabled' => true,
+                    'isHtml5ParserEnabled' => true,
+                    'chroot' => public_path(),
+                ]);
+
+                Log::info('✅ PDF Generated');
+            } catch (\Exception $e) {
+                Log::error('❌ PDF Generation Failed', [
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 💾 SAVE FILE
         |--------------------------------------------------------------------------
         */
             $userName = $jobSeeker->user->name ?? 'User';
@@ -254,22 +297,37 @@ class CVController extends Controller
             $fileName = "{$cleanName}_{$date}_{$timestamp}.pdf";
             $path = "media/cv/{$fileName}";
 
-            Storage::disk('public')->put($path, $pdf->output());
+            try {
+                Storage::disk('public')->put($path, $pdf->output());
+                Log::info('💾 PDF Stored', ['path' => $path]);
+            } catch (\Exception $e) {
+                Log::error('❌ Storage Failed', [
+                    'error' => $e->getMessage()
+                ]);
+                throw $e;
+            }
 
             $pdfPath = "storage/" . $path;
 
             /*
         |--------------------------------------------------------------------------
-        | 💾 SAVE
+        | 🗄 SAVE DB
         |--------------------------------------------------------------------------
         */
             $cv = JobSeekerCV::create([
                 'job_seeker_id' => $jobSeeker->id,
                 'title' => "{$userName}-{$date}",
-                'content' => $data['summary'], // 🔥 store final summary (not raw AI)
+                'content' => $data['summary'],
                 'pdf_path' => $pdfPath
             ]);
 
+            Log::info('🗄 CV Saved', ['cv_id' => $cv->id]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ SUCCESS
+        |--------------------------------------------------------------------------
+        */
             return response()->json([
                 'status' => true,
                 'message' => 'CV generated successfully',
@@ -280,6 +338,11 @@ class CVController extends Controller
             ]);
         } catch (\Exception $e) {
 
+            Log::error('🔥 CV Generation FAILED', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'status' => false,
                 'message' => 'CV generation failed',
@@ -288,73 +351,175 @@ class CVController extends Controller
         }
     }
 
-    private function parseTemplate($template, $data, $aiContent = null)
-    {
-        // 1. SKILLS → 5 PER COLUMN (KEEPING YOUR EXISTING LOGIC)
-        $skills = $data['skills'];
-        $chunks = array_chunk($skills, 5);
-        $skillsHtml = "<tr>";
-        foreach ($chunks as $chunk) {
-            $skillsHtml .= "<td width='" . (100 / count($chunks)) . "%' valign='top' style='padding-right:15px;'>
+
+
+
+private function parseTemplate($template, $data, $aiContent = null)
+{
+    Log::info('🧩 parseTemplate START');
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📦 INPUT CHECK
+    |--------------------------------------------------------------------------
+    */
+    Log::info('📦 Incoming Data', [
+        'has_template' => !empty($template),
+        'skills_count' => count($data['skills'] ?? []),
+        'exp_count' => count($data['experiences'] ?? []),
+        'edu_count' => count($data['educations'] ?? []),
+        'has_summary' => !empty($data['summary']),
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🧠 SKILLS
+    |--------------------------------------------------------------------------
+    */
+    $skills = $data['skills'] ?? [];
+
+    if (empty($skills)) {
+        Log::warning('⚠️ No skills found');
+    }
+
+    $chunks = array_chunk($skills, 5);
+
+    Log::info('🧠 Skills chunked', [
+        'chunks_count' => count($chunks)
+    ]);
+
+    $skillsHtml = "<tr>";
+
+    foreach ($chunks as $index => $chunk) {
+
+        Log::info("➡️ Processing skill chunk {$index}", $chunk);
+
+        $skillsHtml .= "<td width='" . (100 / max(count($chunks),1)) . "%' valign='top' style='padding-right:15px;'>
                         <ul style='margin:0; padding-left:15px; list-style-type:square;'>";
-            foreach ($chunk as $skill) {
-                $formattedSkill = ucwords(strtolower($skill));
-                $skillsHtml .= "<li style='margin-bottom:5px;'>{$formattedSkill}</li>";
-            }
-            $skillsHtml .= "</ul></td>";
+
+        foreach ($chunk as $skill) {
+            $formattedSkill = ucwords(strtolower($skill));
+            $skillsHtml .= "<li style='margin-bottom:5px;'>{$formattedSkill}</li>";
         }
-        $skillsHtml .= "</tr>";
 
-        // 2. EXPERIENCE (FIXED: Stacked layout with dates on new line)
-        $expHtml = '';
-        foreach ($data['experiences'] as $exp) {
-            $end = (!empty($exp['end_date'])) ? $exp['end_date'] : 'Present';
+        $skillsHtml .= "</ul></td>";
+    }
 
-            $expHtml .= "
+    $skillsHtml .= "</tr>";
+
+    Log::info('✅ Skills HTML generated', [
+        'length' => strlen($skillsHtml)
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 💼 EXPERIENCE
+    |--------------------------------------------------------------------------
+    */
+    $expHtml = '';
+
+    foreach (($data['experiences'] ?? []) as $i => $exp) {
+
+        Log::info("💼 Experience {$i}", $exp);
+
+        $end = (!empty($exp['end_date'])) ? $exp['end_date'] : 'Present';
+
+        $expHtml .= "
         <div style='margin-bottom: 20px;'>
             <div style='font-weight: 800; font-size: 13px; color: #1a1a1a;'>{$exp['job_title']}</div>
             <div style='font-size: 10.5px; color: #555; margin-top: 2px;'>{$exp['company_name']} | {$exp['location']}</div>
-            <div style='font-size: 10px; color: #888; font-weight: 600; text-transform: uppercase; margin-bottom: 6px;'>
+            <div style='font-size: 10px; color: #888; font-weight: 600; margin-bottom: 6px;'>
                 {$exp['start_date']} — {$end}
             </div>
-            <div style='font-size: 11px; color: #444; line-height: 1.4; text-align: justify;'>
-                Built impactful educational experiences and fostered student growth.
+            <div style='font-size: 11px; color: #444; line-height: 1.4;'>
+                {$exp['description'] ?? 'Worked on key responsibilities.'}
             </div>
         </div>";
-        }
+    }
 
-        // 3. EDUCATION (FIXED: Stacked layout)
-        $eduHtml = '';
-        foreach ($data['educations'] as $edu) {
-            $eduHtml .= "
+    Log::info('✅ Experience HTML generated', [
+        'length' => strlen($expHtml)
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🎓 EDUCATION
+    |--------------------------------------------------------------------------
+    */
+    $eduHtml = '';
+
+    foreach (($data['educations'] ?? []) as $i => $edu) {
+
+        Log::info("🎓 Education {$i}", $edu);
+
+        $eduHtml .= "
         <div style='margin-bottom: 15px;'>
             <div style='font-weight: 800; font-size: 12px; color: #1a1a1a;'>{$edu['degree']}</div>
             <div style='font-size: 10.5px; color: #555; margin-top: 2px;'>{$edu['institution']}</div>
-            <div style='font-size: 10px; color: #888; font-weight: 600;'>
+            <div style='font-size: 10px; color: #888;'>
                 ({$edu['start_year']} — {$edu['end_year']})
             </div>
         </div>";
-        }
-
-
-
-        // 5. REPLACE VARIABLES
-        $replacements = [
-            '{{profile_photo}}' => $data['profile_photo'] ?? '',
-            '{{name}}'          => $data['name'],
-            '{{title}}'         => $data['title'] ?? 'Professional',
-            '{{email}}'         => "<div style='word-wrap: break-word; word-break: break-all; max-width: 180px;'>{$data['email']}</div>",
-            '{{phone}}'         => "<div>{$data['phone']}</div>",
-            '{{location}}'      => $data['location'],
-            '{{summary}}' => nl2br($data['summary'] ?? ''),
-            '{{skills}}'        => $skillsHtml,
-            '{{experience}}'    => $expHtml,
-            '{{education}}'     => $eduHtml,
-            '{{achievements}}'  => $achievementsHtml
-        ];
-
-        return str_replace(array_keys($replacements), array_values($replacements), $template);
     }
+
+    Log::info('✅ Education HTML generated', [
+        'length' => strlen($eduHtml)
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🏆 ACHIEVEMENTS (STATIC / OPTIONAL)
+    |--------------------------------------------------------------------------
+    */
+    $achievementsHtml = "
+        <ul style='margin:0; padding-left:15px; color: #444; font-size: 10.5px;'>
+            <li>Strong academic performance</li>
+            <li>Effective teaching and mentoring</li>
+        </ul>";
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🔄 REPLACEMENTS
+    |--------------------------------------------------------------------------
+    */
+    $replacements = [
+        '{{profile_photo}}' => $data['profile_photo'] ?? '',
+        '{{name}}' => $data['name'] ?? '',
+        '{{title}}' => $data['title'] ?? 'Professional',
+        '{{email}}' => "<div style='word-break: break-all;'>{$data['email']}</div>",
+        '{{phone}}' => "<div>{$data['phone']}</div>",
+        '{{location}}' => $data['location'] ?? '',
+        '{{summary}}' => nl2br($data['summary'] ?? ''),
+        '{{skills}}' => $skillsHtml,
+        '{{experience}}' => $expHtml,
+        '{{education}}' => $eduHtml,
+        '{{achievements}}' => $achievementsHtml
+    ];
+
+    Log::info('🔄 Replacements prepared', [
+        'keys' => array_keys($replacements)
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🧾 FINAL HTML
+    |--------------------------------------------------------------------------
+    */
+    $finalHtml = str_replace(
+        array_keys($replacements),
+        array_values($replacements),
+        $template
+    );
+
+    Log::info('🧾 Final HTML built', [
+        'length' => strlen($finalHtml),
+        'preview' => substr($finalHtml, 0, 300)
+    ]);
+
+    Log::info('🧩 parseTemplate END');
+
+    return $finalHtml;
+}
 
     public function getActiveTemplates()
     {

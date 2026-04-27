@@ -45,6 +45,7 @@ class AIService
 
     private function buildPrompt($data, $jobDescription = null)
     {
+        Log::error('Building Prompt');
         $base = "
 You are a professional resume writer.
 
