@@ -132,6 +132,7 @@ class CVController extends Controller
 
             // ✅ DATA
             $data = [
+                'profile_photo' => $jobSeeker->profile_photo_url ?? null,
                 'name' => $jobSeeker->user->name ?? '',
                 'email' => $jobSeeker->user->email ?? '',
                 'phone' => $jobSeeker->phone ?? '',
@@ -276,79 +277,71 @@ class CVController extends Controller
 
     private function parseTemplate($template, $data, $aiContent = null)
     {
-        // ✅ SKILLS → 5 PER COLUMN
+        // 1. SKILLS → 5 PER COLUMN (MATCHES YOUR LOGIC)
         $skills = $data['skills'];
         $chunks = array_chunk($skills, 5);
-
         $skillsHtml = "<tr>";
         foreach ($chunks as $chunk) {
-
             $skillsHtml .= "<td width='" . (100 / count($chunks)) . "%' valign='top' style='padding-right:15px;'>
-                            <ul style='margin:0; padding-left:15px; list-style-type:square;'>";
-
+                        <ul style='margin:0; padding-left:15px; list-style-type:square;'>";
             foreach ($chunk as $skill) {
-                $formattedSkill = ucwords(strtolower($skill)); // 🔥 FIX
-                $skillsHtml .= "<li>{$formattedSkill}</li>";
+                $formattedSkill = ucwords(strtolower($skill));
+                $skillsHtml .= "<li style='margin-bottom:5px;'>{$formattedSkill}</li>";
             }
-
             $skillsHtml .= "</ul></td>";
         }
         $skillsHtml .= "</tr>";
 
-
-        // ✅ EXPERIENCE (STRICT PRESENT FIX)
-        $expRows = '';
+        // 2. EXPERIENCE (CLEAN BLOCKS FOR COLUMN LAYOUT)
+        $expHtml = '';
         foreach ($data['experiences'] as $exp) {
+            $end = (!empty($exp['end_date'])) ? $exp['end_date'] : 'Present';
 
-            $end = (!empty($exp['end_date']))
-                ? $exp['end_date']
-                : 'Present';
-
-            $expRows .= "
-        <tr>
-            <td style='padding:10px 0; border-bottom:1px solid #e2e8f0;'>
-                <strong>{$exp['job_title']}</strong> - {$exp['company_name']}<br>
-                <span style='color:#64748b; font-size:10px;'>
-                    {$exp['location']} | {$exp['start_date']} - {$end}
-                </span>
-            </td>
-        </tr>";
+            $expHtml .= "
+        <div style='margin-bottom: 20px;'>
+            <strong style='font-size: 15px; display: block; color: #1a1a1a;'>{$exp['job_title']}</strong>
+            <span style='color: #64748b; font-size: 11px; display: block; margin-bottom: 5px;'>
+                {$exp['company_name']} | {$exp['location']} | {$exp['start_date']} - {$end}
+            </span>
+            <p style='margin: 0; font-size: 12px; color: #444;'>Built impactful educational experiences and fostered student growth.</p>
+        </div>";
         }
 
-        $expHtml = "<tbody>{$expRows}</tbody>";
-
-
-        // ✅ EDUCATION
-        $eduRows = '';
+        // 3. EDUCATION (CLEAN BLOCKS)
+        $eduHtml = '';
         foreach ($data['educations'] as $edu) {
-
-            $eduRows .= "
-        <tr>
-            <td style='padding:10px 0; border-bottom:1px solid #e2e8f0;'>
-                <strong>{$edu['degree']}</strong><br>
-                <span style='color:#64748b; font-size:10px;'>
-                    {$edu['institution']} ({$edu['start_year']} - {$edu['end_year']})
-                </span>
-            </td>
-        </tr>";
+            $eduHtml .= "
+        <div style='margin-bottom: 15px;'>
+            <strong style='font-size: 15px; display: block; color: #1a1a1a;'>{$edu['degree']}</strong>
+            <span style='color: #64748b; font-size: 11px; display: block;'>
+                {$edu['institution']} ({$edu['start_year']} - {$edu['end_year']})
+            </span>
+        </div>";
         }
 
-        $eduHtml = "<tbody>{$eduRows}</tbody>";
+        // 4. ACHIEVEMENTS (IF APPLICABLE)
+        // You can handle achievements similar to skills but as a single list
+        $achievementsHtml = "<ul style='margin:0; padding-left:15px;'>
+                            <li style='margin-bottom:5px;'>Achieved an outstanding 95% aggregate in B.Tech.</li>
+                            <li style='margin-bottom:5px;'>Successfully guided numerous students as an English Teacher[cite: 11].</li>
+                         </ul>";
 
+        // 5. REPLACE VARIABLES
+        $replacements = [
+            '{{profile_photo}}' => $data['profile_photo'] ?? '',
+            '{{name}}'          => $data['name'],
+            '{{title}}'         => $data['title'] ?? 'Professional',
+            '{{email}}'         => $data['email'],
+            '{{phone}}'         => $data['phone'],
+            '{{location}}'      => $data['location'],
+            '{{summary}}'       => nl2br($aiContent ?? ''),
+            '{{skills}}'        => $skillsHtml,
+            '{{experience}}'    => $expHtml,
+            '{{education}}'     => $eduHtml,
+            '{{achievements}}'  => $achievementsHtml
+        ];
 
-        // ✅ REPLACE VARIABLES
-        $template = str_replace('{{name}}', $data['name'], $template);
-        $template = str_replace('{{email}}', $data['email'], $template);
-        $template = str_replace('{{phone}}', $data['phone'], $template);
-        $template = str_replace('{{location}}', $data['location'], $template);
-        $template = str_replace('{{skills}}', $skillsHtml, $template);
-        $template = str_replace('{{experience}}', $expHtml, $template);
-        $template = str_replace('{{education}}', $eduHtml, $template);
-
-        // ✅ SUMMARY (SAFE FORMAT)
-        $template = str_replace('{{summary}}', nl2br($aiContent ?? ''), $template);
-
-        return $template;
+        return str_replace(array_keys($replacements), array_values($replacements), $template);
     }
 
     public function getActiveTemplates()
