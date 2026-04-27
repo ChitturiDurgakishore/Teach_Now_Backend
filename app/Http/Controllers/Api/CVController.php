@@ -351,7 +351,7 @@ class CVController extends Controller
             '{{email}}'         => "<div style='word-wrap: break-word; word-break: break-all; max-width: 180px;'>{$data['email']}</div>",
             '{{phone}}'         => "<div>{$data['phone']}</div>",
             '{{location}}'      => $data['location'],
-            '{{summary}}'       => nl2br($aiContent ?? ''),
+            '{{summary}}' => nl2br($data['summary'] ?? ''),
             '{{skills}}'        => $skillsHtml,
             '{{experience}}'    => $expHtml,
             '{{education}}'     => $eduHtml,
