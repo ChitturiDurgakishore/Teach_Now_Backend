@@ -1097,7 +1097,7 @@ class AdminCMSController extends Controller
 
             $request->validate([
                 'company_name' => 'required|string|max:255',
-                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:20480',
+                'company_logo' => 'nullable|mimes:jpg,jpeg,png,webp,svg|max:20480',
                 'slug' => 'nullable|string',
                 'company_url' => 'nullable|string',
 
