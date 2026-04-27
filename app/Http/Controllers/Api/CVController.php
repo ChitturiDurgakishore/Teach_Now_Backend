@@ -350,7 +350,7 @@ class CVController extends Controller
             '{{skills}}'        => $skillsHtml,
             '{{experience}}'    => $expHtml,
             '{{education}}'     => $eduHtml,
-
+            '{{achievements}}'  => $achievementsHtml
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $template);

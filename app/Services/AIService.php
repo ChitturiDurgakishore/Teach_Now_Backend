@@ -49,7 +49,7 @@ class AIService
 You are a professional resume writer.
 
 Generate ONLY a professional summary (3-5 lines) and bullet achievements.
-
+Make achievements section name and Professional Summary section name bold .
 DO NOT return HTML page.
 DO NOT include <html>, <head>, <body>.
 Return ONLY plain text or simple paragraphs.
