@@ -1694,7 +1694,8 @@ class AdminController extends Controller
             $applications = JobApplication::withTrashed()
                 ->where('job_id', $jobId)
                 ->with([
-                    'jobSeeker.user:id,name,email,profile_photo'
+                    'jobSeeker.user:id,name,email',
+                    'jobSeeker.profile_photo'
                 ])
                 ->latest()
                 ->paginate(10); // ✅ FIX
