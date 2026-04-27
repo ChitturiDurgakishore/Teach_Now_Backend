@@ -1825,34 +1825,43 @@ class AdminController extends Controller
         try {
             $perPage = $request->get('per_page', 10);
 
-            // Load 'plan' directly since it's defined in your Order model
             $payments = Order::with([
                 'employer:id,company_name,company_logo',
-                'plan:id,name'
+                'plan:id,name',
+                'subscription',
             ])
                 ->latest()
                 ->paginate($perPage);
 
-            $data = $payments->map(function ($payment) {
+            $data = $payments->map(function ($order) {
+
+                // 🔥 Get payment using subscription_id
+                $payment = \App\Models\Payment::where(
+                    'subscription_id',
+                    optional($order->subscription)->id
+                )->first();
+
                 return [
-                    'id' => $payment->id,
-                    'employer_name' => $payment->employer->company_name ?? null,
-                    'employer_logo' => $payment->employer->company_logo
-                        ? config('app.media_url') . $payment->employer->company_logo
+                    'order_id' => $order->id,
+
+                    // ✅ THIS IS IMPORTANT FOR NEXT API
+                    'payment_id' => optional($payment)->id,
+
+                    'employer_name' => optional($order->employer)->company_name,
+
+                    'employer_logo' => $order->employer && $order->employer->company_logo
+                        ? config('app.media_url') . $order->employer->company_logo
                         : null,
 
-                    // Access plan directly from the Order model
-                    'plan_name' => $payment->plan->name ?? null,
+                    'plan_name' => optional($order->plan)->name,
 
-                    'amount' => $payment->amount,
-                    'currency' => $payment->currency,
+                    'amount' => $order->amount,
+                    'currency' => $order->currency,
+                    'status' => $order->status,
 
-                    // Use 'status' as defined in your $fillable
-                    'status' => $payment->status,
+                    'transaction_id' => $order->razorpay_payment_id,
 
-                    // Use 'razorpay_payment_id' as defined in your $fillable
-                    'transaction_id' => $payment->razorpay_payment_id,
-                    'created_at' => $payment->created_at,
+                    'created_at' => $order->created_at,
                 ];
             });
 
@@ -1862,6 +1871,7 @@ class AdminController extends Controller
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
+
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch payments',
@@ -1873,9 +1883,8 @@ class AdminController extends Controller
     public function getPaymentDetails($id)
     {
         try {
-            $payment = Order::with([
+            $payment = \App\Models\Payment::with([
                 'employer',
-                'plan',
                 'subscription.plan',
                 'invoice'
             ])->find($id);
@@ -1890,7 +1899,7 @@ class AdminController extends Controller
             $baseUrl = rtrim(config('app.media_url'), '/');
 
             $subscription = $payment->subscription;
-            $plan = $payment->plan ?? optional($subscription)->plan;
+            $plan = optional($subscription)->plan;
 
             $data = [
 
@@ -1900,12 +1909,12 @@ class AdminController extends Controller
                 ],
 
                 'payment' => [
-                    'id'             => $payment->id,
-                    'transaction_id' => $payment->razorpay_payment_id, // ✅ FIXED
-                    'amount'         => $payment->amount,
-                    'status'         => $payment->status,
-                    'created_at'     => $payment->created_at,
-                    'payment_method' => $payment->payment_method ?? null,
+                    'id'              => $payment->id,
+                    'transaction_id'  => $payment->transaction_id,
+                    'amount'          => $payment->amount,
+                    'status'          => $payment->payment_status,
+                    'payment_method'  => $payment->payment_method,
+                    'created_at'      => $payment->created_at,
                 ],
 
                 'subscription' => [
@@ -1913,27 +1922,24 @@ class AdminController extends Controller
 
                     'plan_name' => optional($plan)->name,
 
-                    'job_posts_used'       => optional($subscription)->job_posts_used ?? 0,
-                    'job_posts_total'      => optional($subscription)->job_posts_total ?? 0,
+                    'job_posts_used'      => optional($subscription)->job_posts_used ?? 0,
+                    'job_posts_total'     => optional($subscription)->job_posts_total ?? 0,
 
-                    'featured_jobs_used'   => optional($subscription)->featured_jobs_used ?? 0,
-                    'featured_jobs_total'  => optional($subscription)->featured_jobs_total ?? 0,
+                    'featured_jobs_used'  => optional($subscription)->featured_jobs_used ?? 0,
+                    'featured_jobs_total' => optional($subscription)->featured_jobs_total ?? 0,
 
                     'starts_at'  => optional($subscription)->starts_at,
                     'expires_at' => optional($subscription)->expires_at,
-
-                    // optional field
-                    'purchase_date' => optional($subscription)->purchase_date ?? null,
-
+                    'purchase_date' => optional($subscription)->purchase_date,
                     'status' => optional($subscription)->status,
                 ],
 
                 'invoice' => [
-                    'id'             => optional($payment->invoice)->id,
+                    'id' => optional($payment->invoice)->id,
                     'invoice_number' => optional($payment->invoice)->invoice_number,
-                    'amount'         => optional($payment->invoice)->amount,
-                    'currency'       => optional($payment->invoice)->currency,
-                    'invoice_date'   => optional($payment->invoice)->invoice_date,
+                    'amount' => optional($payment->invoice)->amount,
+                    'currency' => optional($payment->invoice)->currency,
+                    'invoice_date' => optional($payment->invoice)->invoice_date,
 
                     'pdf_url' => (
                         $payment->invoice && $payment->invoice->pdf_path

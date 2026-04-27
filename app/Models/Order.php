@@ -40,4 +40,9 @@ class Order extends Model
     {
         return $this->hasOne(Invoice::class, 'order_id', 'id');
     }
+
+    public function payment()
+    {
+        return $this->hasOne(\App\Models\Payment::class, 'subscription_id', 'id');
+    }
 }
