@@ -1889,7 +1889,11 @@ class AdminController extends Controller
 
             $baseUrl = rtrim(config('app.media_url'), '/');
 
+            $subscription = $payment->subscription;
+            $plan = $payment->plan ?? optional($subscription)->plan;
+
             $data = [
+
                 'employer' => [
                     'id'   => optional($payment->employer)->id,
                     'name' => optional($payment->employer)->company_name,
@@ -1897,29 +1901,31 @@ class AdminController extends Controller
 
                 'payment' => [
                     'id'             => $payment->id,
-                    'transaction_id' => $payment->transaction_id, // ✅ correct column
+                    'transaction_id' => $payment->razorpay_payment_id, // ✅ FIXED
                     'amount'         => $payment->amount,
-                    'status'         => $payment->status, // ✅ FIXED
+                    'status'         => $payment->status,
                     'created_at'     => $payment->created_at,
-                    'payment_method' => $payment->payment_method, // ✅ added field
+                    'payment_method' => $payment->payment_method ?? null,
                 ],
 
                 'subscription' => [
-                    'id' => optional($payment->subscription)->id,
+                    'id' => optional($subscription)->id,
 
-                    // ✅ fallback priority: order plan → subscription plan
-                    'plan_name' =>
-                    optional($payment->plan)->name
-                        ?? optional(optional($payment->subscription)->plan)->name
-                        ?? null,
-                    'job_posts_used'=> optional($payment->subscription)->job_posts_used,
-                    'jobs_posts_total'=> optional($payment->subscription)->job_posts_total,
-                    'featured_jobs_used'=> optional($payment->subscription)->featured_jobs_used,
-                    'featured_jobs_total'=> optional($payment->subscription)->featured_jobs_total,
-                    'starts_at'  => optional($payment->subscription)->starts_at,
-                    'expires_at' => optional($payment->subscription)->expires_at,
-                    'purchase_date'=> optional($payment->subscription)->purchase_date,
-                    'status'=> optional($payment->subscription)->status,
+                    'plan_name' => optional($plan)->name,
+
+                    'job_posts_used'       => optional($subscription)->job_posts_used ?? 0,
+                    'job_posts_total'      => optional($subscription)->job_posts_total ?? 0,
+
+                    'featured_jobs_used'   => optional($subscription)->featured_jobs_used ?? 0,
+                    'featured_jobs_total'  => optional($subscription)->featured_jobs_total ?? 0,
+
+                    'starts_at'  => optional($subscription)->starts_at,
+                    'expires_at' => optional($subscription)->expires_at,
+
+                    // optional field
+                    'purchase_date' => optional($subscription)->purchase_date ?? null,
+
+                    'status' => optional($subscription)->status,
                 ],
 
                 'invoice' => [
