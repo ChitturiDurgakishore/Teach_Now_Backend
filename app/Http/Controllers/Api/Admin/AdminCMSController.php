@@ -30,8 +30,7 @@ use App\Models\PrivacyPolicySections;
 use App\Models\TermsConditionsSections;
 use App\Models\PopularSearch;
 use App\Models\ResumeLimitAdmin;
-use Illuminate\Container\Attributes\Log;
-use Illuminate\Support\Facades\Log as FacadesLog;
+use Illuminate\Support\Facades\Log;
 class AdminCMSController extends Controller
 {
 
