@@ -362,6 +362,10 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
     Route::delete('/cv-templates/{id}', [AdminCMSController::class, 'destroyCVTemplate']);
     Route::patch('/cv-templates/{id}/toggle', [AdminCMSController::class, 'toggleStatusCVTemplate']);
 
+    // Prompts management
+    Route::get('/prompts', [AdminCMSController::class, 'getAllPrompts']);
+    Route::get('/prompts/{id}', [AdminCMSController::class, 'getPrompt']);
+    Route::put('/prompts/{id}', [AdminCMSController::class, 'updatePrompt']);
 
     //About Us Page management
     Route::get('/about-us', [ContentPagesController::class, 'AboutUsIndex']);

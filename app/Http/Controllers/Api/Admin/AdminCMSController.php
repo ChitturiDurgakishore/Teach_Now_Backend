@@ -30,6 +30,7 @@ use App\Models\PrivacyPolicySections;
 use App\Models\TermsConditionsSections;
 use App\Models\PopularSearch;
 use App\Models\ResumeLimitAdmin;
+use App\Models\Prompt;
 use Illuminate\Support\Facades\Log;
 
 class AdminCMSController extends Controller
@@ -2570,5 +2571,77 @@ class AdminCMSController extends Controller
             'status' => true,
             'message' => 'Deleted successfully'
         ]);
+    }
+
+    // Prompt Management
+    public function getAllPrompts(Request $request)
+    {
+        try {
+            $perPage = $request->get('per_page', 10);
+            $prompts = Prompt::paginate($perPage);
+
+            return response()->json([
+                'status' => true,
+                'total' => $prompts->total(),
+                'current_page' => $prompts->currentPage(),
+                'last_page' => $prompts->lastPage(),
+                'data' => $prompts->items()
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch prompts',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getPrompt($id)
+    {
+        try {
+            $prompt = Prompt::findOrFail($id);
+
+            return response()->json([
+                'status' => true,
+                'data' => $prompt
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Prompt not found',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
+
+    public function updatePrompt(Request $request, $id)
+    {
+        try {
+            $prompt = Prompt::findOrFail($id);
+
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'prompt' => 'required|string',
+                'is_active' => 'required|boolean'
+            ]);
+
+            $prompt->update([
+                'title' => $request->title,
+                'prompt' => $request->prompt,
+                'is_active' => $request->is_active
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Prompt updated successfully',
+                'data' => $prompt
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to update prompt',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
