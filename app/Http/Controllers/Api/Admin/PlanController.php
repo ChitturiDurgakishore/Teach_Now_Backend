@@ -20,9 +20,13 @@ class PlanController extends Controller
                 'validity_days' => 'required|integer|min:1',
                 'job_live_days' => 'required|integer|min:1',
                 'features' => 'nullable|array',
-                'featured_jobs_limit' => 'required|integer|min:0',
+                // 'featured_jobs_limit' => 'required|integer|min:0',
                 'company_featured' => 'required|boolean',
-                'feature_days'=>'required|integer'
+                // 'feature_days'=>'required|integer'
+            ]);
+            $request->merge([
+                'featured_jobs_limit' => $request->featured_jobs_limit === "" ? 0 : $request->featured_jobs_limit,
+                'feature_days' => $request->feature_days === "" ? 0 : $request->feature_days,
             ]);
 
             $plan = Plan::create([
@@ -34,11 +38,11 @@ class PlanController extends Controller
                 'job_live_days' => $request->job_live_days,
                 'features' => $request->features,
                 'is_active' => true,
-                'featured_jobs_limit' => $request->featured_jobs_limit,
+                'featured_jobs_limit' => $request->featured_jobs_limit ?? 0,
                 'company_featured' => $request->company_featured,
                 'display_order' => Plan::max('display_order') + 1,
-                'is_highlighted'=>$request->is_highlighted ?? false,
-                'feature_days'=>$request->feature_days
+                'is_highlighted' => $request->is_highlighted ?? false,
+                'feature_days' => $request->feature_days ?? 0,
             ]);
 
             return response()->json([
@@ -84,7 +88,7 @@ class PlanController extends Controller
                 'features' => 'nullable|array',
                 'featured_jobs_limit' => 'required|integer|min:0',
                 'company_featured' => 'required|boolean',
-                'feature_days'=>'required'
+                'feature_days' => 'required'
             ]);
 
             $plan->update($request->only([
