@@ -615,12 +615,17 @@ class AdminCMSController extends Controller
 
             $link = NavigationLink::findOrFail($id);
 
+            Log::info('Slug from request', [
+                'slug' => $request->slug
+            ]);
             $link->update([
                 'title' => $request->title ?? $link->title,
                 'url' => $request->url ?? $link->url,
                 'parent_id' => $request->parent_id ?? $link->parent_id,
                 'display_order' => $request->display_order ?? $link->display_order,
-                'slug' => $request->slug ?? Str::slug($request->title ?? $link->title)
+                'slug' => $request->has('slug')
+                    ? $request->slug
+                    : Str::slug($request->title ?? $link->title)
             ]);
 
             return response()->json([
