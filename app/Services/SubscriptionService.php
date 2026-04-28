@@ -106,4 +106,29 @@ class SubscriptionService
             ->orderBy('starts_at', 'asc')
             ->first();
     }
+
+    //Function only for Featured COMpany API
+    public function getFeatureEnabledPlan($employerId)
+    {
+        $subscription = Subscription::with('plan')
+            ->where('employer_id', $employerId)
+            ->where('status', 'active')
+            ->where('expires_at', '>', now())
+            ->whereHas('plan', function ($q) {
+                $q->where('company_featured', true);
+            })
+            ->first(); // just check ANY valid plan
+
+        if (!$subscription) {
+            return [
+                'status' => false,
+                'message' => 'No active plan supports company featuring'
+            ];
+        }
+
+        return [
+            'status' => true,
+            'subscription' => $subscription
+        ];
+    }
 }

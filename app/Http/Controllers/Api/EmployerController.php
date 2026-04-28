@@ -191,7 +191,7 @@ class EmployerController extends Controller
         */
 
             $result = $this->subscriptionService
-                ->getAvailableFeatureSubscription($employer->id);
+                ->getFeatureEnabledPlan($employer->id);
 
             if (!$result['status']) {
                 return response()->json([
@@ -224,9 +224,13 @@ class EmployerController extends Controller
             if ($isNowFeatured) {
 
                 // ✅ Employer requests feature
+                $validTill = now()->addDays($subscription->plan->featured_days);
+                if ($validTill > $subscription->expires_at) {
+                    $validTill = $subscription->expires_at;
+                }
                 $employer->update([
                     'company_featured' => true,
-                    'featured_until' => $subscription->expires_at
+                    'featured_until' => $validTill
                 ]);
             } else {
 
