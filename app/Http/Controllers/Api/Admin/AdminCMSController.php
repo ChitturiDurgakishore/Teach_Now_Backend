@@ -1611,7 +1611,8 @@ class AdminCMSController extends Controller
                 'title' => 'required|string|max:255',
                 'url' => 'nullable|string',
                 'parent_id' => 'nullable|exists:navigation_links,id',
-                'display_order' => 'nullable|integer'
+                'display_order' => 'nullable|integer',
+                'slug' => 'nullable|string|max:255'
             ]);
 
             $link->update([
@@ -1619,7 +1620,9 @@ class AdminCMSController extends Controller
                 'url' => $request->url,
                 'parent_id' => $request->parent_id,
                 'display_order' => $request->display_order ?? $link->display_order,
-                'slug' => Str::slug($request->title),
+                'slug' => $request->has('slug')
+                    ? $request->slug
+                    : Str::slug($request->title ?? $link->title),
                 'meta_title' => $request->meta_title ?? $link->meta_title,
                 'meta_description' => $request->meta_description ?? $link->meta_description,
                 'meta_keywords' => $request->meta_keywords ?? $link->meta_keywords
