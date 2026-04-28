@@ -88,7 +88,8 @@ class PlanController extends Controller
                 'features' => 'nullable|array',
                 'featured_jobs_limit' => 'required|integer|min:0',
                 'company_featured' => 'required|boolean',
-                'feature_days' => 'required'
+                'feature_days' => 'required',
+
             ]);
 
             $plan->update($request->only([
@@ -103,7 +104,8 @@ class PlanController extends Controller
                 'company_featured',
                 'is_highlighted',
                 'display_order',
-                'feature_days'
+                'feature_days',
+                'is_active'
             ]));
 
             return response()->json([
