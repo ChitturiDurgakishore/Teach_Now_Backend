@@ -234,6 +234,8 @@ Route::prefix('admin/seo')->middleware(['auth:sanctum', 'role:admin'])->group(fu
 });
 
 
+
+
 // ----------------------------------------------------------------------------------
 //Admin CMS Management routes
 
