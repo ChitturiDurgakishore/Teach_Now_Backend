@@ -87,6 +87,7 @@ class PublicAPIController extends Controller
     {
         try {
 
+           $user=Auth::user();
             $keyword = strtolower(trim($request->input('keyword')));
             $location = $request->input('location');
             $perPage = $request->get('per_page', 10);
@@ -96,7 +97,7 @@ class PublicAPIController extends Controller
                 'keyword' => $keyword,
                 'location' => $location,
                 'ip_address' => $request->ip(),
-                'user_id' => $request->userAgent()
+                'user_id' => $user ? $user->id : null
             ]);
 
             /*
