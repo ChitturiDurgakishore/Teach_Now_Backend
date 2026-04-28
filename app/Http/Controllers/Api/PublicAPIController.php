@@ -92,6 +92,12 @@ class PublicAPIController extends Controller
             $perPage = $request->get('per_page', 10);
 
             $words = $keyword ? array_filter(explode(' ', $keyword)) : [];
+            SearchLog::create([
+                'keyword' => $keyword,
+                'location' => $location,
+                'ip_address' => $request->ip(),
+                'user_id' => $request->userAgent()
+            ]);
 
             /*
         |--------------------------------------------------------------------------
