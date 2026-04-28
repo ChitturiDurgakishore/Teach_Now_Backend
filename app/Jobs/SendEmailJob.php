@@ -37,7 +37,7 @@ class SendEmailJob implements ShouldQueue
         Mail::html($this->body, function ($message) {
 
             $message->to($this->toEmail)
-                ->subject($this->subject);
+                ->subject($this->subject)->setBody($this->body, 'text/html');
 
             // ✅ Attachments (PDF invoice etc.)
             if (!empty($this->attachments)) {
