@@ -898,7 +898,10 @@ class AdminCMSController extends Controller
                 'icon' => $iconPath,
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
-                'slug' => $request->slug ?? Str::slug($request->title)
+                'slug' => $request->slug ?? Str::slug($request->title),
+                'meta_title' => $request->meta_title,
+                'meta_description' => $request->meta_description,
+                'meta_keywords' => $request->meta_keywords
             ]);
 
             return response()->json([
@@ -935,7 +938,11 @@ class AdminCMSController extends Controller
                 'title' => $request->title ?? $link->title,
                 'url' => $request->url ?? $link->url,
                 'icon' => $request->icon ?? $link->icon,
-                'display_order' => $request->display_order ?? $link->display_order
+                'display_order' => $request->display_order ?? $link->display_order,
+                'meta_title' => $request->meta_title ?? $link->meta_title,
+                'meta_description' => $request->meta_description ?? $link->meta_description,
+                'meta_keywords' => $request->meta_keywords ?? $link->meta_keywords,
+                'slug' => $request->slug ?? Str::slug($request->title ?? $link->title)
             ]);
 
             return response()->json([
