@@ -224,7 +224,7 @@ class EmployerController extends Controller
             if ($isNowFeatured) {
 
                 // ✅ Employer requests feature
-                $validTill = now()->addDays($subscription->plan->featured_days);
+                $validTill = now()->addDays($subscription->plan->validity_days);
                 if ($validTill > $subscription->expires_at) {
                     $validTill = $subscription->expires_at;
                 }
