@@ -75,7 +75,7 @@ class LocationController extends Controller
             $validatedData = $request->validate([
                 'name' => 'required|string|max:150',
                 'country' => 'nullable|string|max:150',
-                'image' => 'nullable|image|mimes:jpg,jpeg,png,svg,webp|max:20480',
+                'image' => 'nullable|mimes:jpg,jpeg,png,svg,webp|max:20480',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
@@ -134,7 +134,7 @@ class LocationController extends Controller
             $request->validate([
                 'name' => 'required|string|max:150',
                 'country' => 'nullable|string|max:150',
-                'image' => 'nullable|image|mimes:jpg,jpeg,png,svg,webp|max:20480',
+                'image' => 'nullable|mimes:jpg,jpeg,png,svg,webp|max:20480',
                 'meta_title' => 'nullable|string|max:255',
                 'meta_description' => 'nullable|string',
                 'meta_keywords' => 'nullable|string'
