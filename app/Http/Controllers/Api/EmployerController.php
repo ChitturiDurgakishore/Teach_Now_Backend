@@ -1014,7 +1014,7 @@ class EmployerController extends Controller
                         'company_name' => $employer->company_name
                     ], $recruiter->email);
                 } else {
-                    $mailService->send('recruiter_disabled', [
+                    $mailService->send('recruiter_disabled_employer', [
                         'name' => $recruiter->name,
                         'company_name' => $employer->company_name
                     ], $recruiter->email);
