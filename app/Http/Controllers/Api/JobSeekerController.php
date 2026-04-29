@@ -87,8 +87,8 @@ class JobSeekerController extends Controller
                 'certifications.*.issued_at' => 'nullable|date',
                 'certifications.*.expires_at' => 'nullable|date',
 
-                'gender' => 'nullable|in:male,female,other',
-                'notice_period' => 'nullable|integer|min:0'
+                'gender' => 'nullable|in:male,female,other'
+
             ]);
 
             Log::info('✅ Validation passed');
@@ -306,8 +306,8 @@ class JobSeekerController extends Controller
                 'skills' => 'nullable|array',
                 'skills.*' => 'string|max:100',
 
-                'gender' => 'nullable|in:male,female,other',
-                'notice_period' => 'nullable|integer|min:0'
+                'gender' => 'nullable|in:male,female,other'
+
             ]);
 
             Log::info('✅ Validation passed');
