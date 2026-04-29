@@ -62,9 +62,13 @@ class JobSeekerController extends Controller
     }
 
     // Profile creation
+
+
     public function createProfile(Request $request)
     {
         try {
+
+            Log::info('🔹 createProfile API called', ['request' => $request->all()]);
 
             $request->validate([
                 'title' => 'nullable|string|max:150',
@@ -77,40 +81,55 @@ class JobSeekerController extends Controller
                 'bio' => 'nullable|string',
                 'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
 
-                // ✅ certifications validation
                 'certifications' => 'nullable|array',
                 'certifications.*.name' => 'required|string|max:150',
                 'certifications.*.issuer' => 'nullable|string|max:150',
                 'certifications.*.issued_at' => 'nullable|date',
                 'certifications.*.expires_at' => 'nullable|date',
 
-                // optional fields you are using
                 'gender' => 'nullable|in:male,female,other',
                 'notice_period' => 'nullable|integer|min:0'
             ]);
 
+            Log::info('✅ Validation passed');
+
             $user = Auth::user();
+
+            if (!$user) {
+                Log::warning('❌ Unauthenticated user');
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+
+            Log::info('✅ Auth user', ['user_id' => $user->id]);
 
             $existingProfile = JobSeeker::where('user_id', $user->id)->first();
 
             if ($existingProfile) {
+                Log::warning('⚠️ Profile already exists', ['user_id' => $user->id]);
                 return response()->json([
                     'status' => false,
                     'message' => 'Profile already exists'
                 ], 409);
             }
 
-            // ✅ Upload profile photo
+            // 🔥 Upload profile photo
             $profilePhotoPath = null;
 
             if ($request->hasFile('profile_photo')) {
+                Log::info('📸 Uploading profile photo');
+
                 $profilePhotoPath = $this->uploadFile(
                     $request->file('profile_photo'),
                     'profile_images'
                 );
+
+                Log::info('✅ Photo uploaded', ['path' => $profilePhotoPath]);
             }
 
-            // ✅ CREATE PROFILE FIRST
+            // ✅ CREATE PROFILE
             $profile = JobSeeker::create([
                 'user_id' => $user->id,
                 'title' => $request->title,
@@ -126,8 +145,13 @@ class JobSeekerController extends Controller
                 'notice_period' => $request->notice_period
             ]);
 
-            // ✅ NOW attach certifications (FIXED)
+            Log::info('✅ Profile created', ['profile_id' => $profile->id]);
+
+            // 🔥 Certifications
             if ($request->has('certifications')) {
+
+                Log::info('📜 Adding certifications');
+
                 foreach ($request->certifications as $cert) {
                     $profile->certifications()->create([
                         'name' => $cert['name'],
@@ -136,6 +160,8 @@ class JobSeekerController extends Controller
                         'expires_at' => $cert['expires_at'] ?? null,
                     ]);
                 }
+
+                Log::info('✅ Certifications added');
             }
 
             return response()->json([
@@ -144,6 +170,12 @@ class JobSeekerController extends Controller
                 'data' => $profile->load('certifications')
             ], 201);
         } catch (\Exception $e) {
+
+            Log::error('❌ Profile creation failed', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
 
             return response()->json([
                 'status' => false,
