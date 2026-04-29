@@ -1817,7 +1817,7 @@ class RecruiterController extends Controller
                 'message' => $request->message,
                 'photo' => $photo,
                 'display_order' => $request->display_order ?? 0,
-                'is_active' => true,
+                'is_active' => false,
                 'user_id' => $user->id,
                 'rating' => $request->rating
             ]);
@@ -1942,7 +1942,7 @@ class RecruiterController extends Controller
                 'message' => $request->message ?? $testimonial->message,
                 'photo' => $photo,
                 'display_order' => $request->display_order ?? $testimonial->display_order,
-                'rating' => $request->rating
+                'rating' => $request->rating ?? $testimonial->rating
             ]);
 
             return response()->json([
