@@ -458,7 +458,7 @@ class EmployerController extends Controller
                 'company_description' => 'nullable|string',
                 'industry' => 'nullable|string|max:150',
                 'website' => 'nullable|string',
-                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
                 'address' => 'nullable|string',
                 'phone' => 'nullable|string',
                 'country' => 'nullable|string',
