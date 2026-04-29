@@ -23,6 +23,8 @@ use App\Http\Controllers\Api\CVController;
 use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+
 
 class JobSeekerController extends Controller
 {
@@ -218,30 +220,40 @@ class JobSeekerController extends Controller
 
 
     // Update profile
+
+
     public function updateProfile(Request $request)
     {
         try {
 
+            Log::info('🔹 updateProfile API called', ['request' => $request->all()]);
+
             $user = Auth::user();
 
             if (!$user) {
+                Log::warning('❌ Unauthenticated access');
                 return response()->json([
                     'status' => false,
                     'message' => 'Unauthenticated'
                 ], 401);
             }
 
+            Log::info('✅ Auth user', ['user_id' => $user->id]);
+
             $profile = JobSeeker::where('user_id', $user->id)->first();
 
             if (!$profile) {
+                Log::warning('❌ Profile not found', ['user_id' => $user->id]);
                 return response()->json([
                     'status' => false,
                     'message' => 'Profile not found'
                 ], 404);
             }
 
+            Log::info('✅ Profile found', ['profile_id' => $profile->id]);
+
             $request->validate([
-                'name' => 'nullable|string|max:150', // ✅ USER FIELD
+                'name' => 'nullable|string|max:150',
                 'title' => 'nullable|string|max:150',
                 'phone' => 'nullable|string|max:20',
                 'location' => 'nullable|string|max:200',
@@ -251,36 +263,55 @@ class JobSeekerController extends Controller
                 'portfolio_website' => 'nullable|string',
                 'bio' => 'nullable|string',
                 'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
+
+                // ✅ FIXED
+                'certifications' => 'nullable|array',
+                'certifications.*.name' => 'required|string|max:150',
+                'certifications.*.issuer' => 'nullable|string|max:150',
+                'certifications.*.issued_at' => 'nullable|date',
+                'certifications.*.expires_at' => 'nullable|date',
+
                 'skills' => 'nullable|array',
-                'skills.*' => 'string|max:100'
+                'skills.*' => 'string|max:100',
+
+                'gender' => 'nullable|in:male,female,other',
+                'notice_period' => 'nullable|integer|min:0'
             ]);
 
-            // ✅ UPDATE USER TABLE
+            Log::info('✅ Validation passed');
+
+            // ✅ Update user
             if ($request->has('name')) {
-                $user->update([
-                    'name' => $request->name
-                ]);
+                $user->update(['name' => $request->name]);
+                Log::info('✅ User name updated');
             }
 
             // 🔥 Handle profile photo
             if ($request->hasFile('profile_photo')) {
 
+                Log::info('📸 Profile photo upload started');
+
                 if ($profile->profile_photo) {
-                    Storage::delete(str_replace('storage/', 'public/', $profile->profile_photo));
+                    $path = str_replace('/storage/', '', $profile->profile_photo);
+                    Storage::disk('public')->delete($path);
+                    Log::info('🗑 Old photo deleted', ['path' => $path]);
                 }
 
                 $profile->profile_photo = $this->uploadFile(
                     $request->file('profile_photo'),
                     'profile_images'
                 );
+
+                Log::info('✅ New photo uploaded', ['path' => $profile->profile_photo]);
             }
-            // 🔥 Certifications (replace all)
+
+            // 🔥 Certifications
             if ($request->has('certifications')) {
 
-                // delete old
+                Log::info('📜 Updating certifications');
+
                 $profile->certifications()->delete();
 
-                // insert new
                 foreach ($request->certifications as $cert) {
                     $profile->certifications()->create([
                         'name' => $cert['name'],
@@ -289,9 +320,11 @@ class JobSeekerController extends Controller
                         'expires_at' => $cert['expires_at'] ?? null,
                     ]);
                 }
+
+                Log::info('✅ Certifications updated');
             }
 
-            // ✅ UPDATE PROFILE TABLE
+            // ✅ Update profile
             $profile->update($request->only([
                 'title',
                 'phone',
@@ -305,10 +338,14 @@ class JobSeekerController extends Controller
                 'notice_period'
             ]));
 
-            // ✅ HANDLE SKILLS
-            $skillIds = [];
+            Log::info('✅ Profile basic data updated');
 
+            // 🔥 Skills
             if ($request->has('skills')) {
+
+                Log::info('🧠 Updating skills');
+
+                $skillIds = [];
 
                 foreach ($request->skills as $skill) {
 
@@ -325,17 +362,25 @@ class JobSeekerController extends Controller
                 }
 
                 $profile->skills()->sync($skillIds);
+
+                Log::info('✅ Skills synced', ['skill_ids' => $skillIds]);
             }
 
             return response()->json([
                 'status' => true,
                 'message' => 'Profile updated successfully',
                 'data' => [
-                    'user' => $user,          // ✅ include user
-                    'profile' => $profile    // ✅ include profile
+                    'user' => $user,
+                    'profile' => $profile->load('skills', 'certifications')
                 ]
             ], 200);
         } catch (\Exception $e) {
+
+            Log::error('❌ Profile update failed', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
 
             return response()->json([
                 'status' => false,
