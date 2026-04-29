@@ -73,7 +73,18 @@ class JobSeekerController extends Controller
                 'dob' => 'nullable|date',
                 'portfolio_website' => 'nullable|string',
                 'bio' => 'nullable|string',
-                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480'
+                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
+
+                // ✅ certifications validation
+                'certifications' => 'nullable|array',
+                'certifications.*.name' => 'required|string|max:150',
+                'certifications.*.issuer' => 'nullable|string|max:150',
+                'certifications.*.issued_at' => 'nullable|date',
+                'certifications.*.expires_at' => 'nullable|date',
+
+                // optional fields you are using
+                'gender' => 'nullable|in:male,female,other',
+                'notice_period' => 'nullable|integer|min:0'
             ]);
 
             $user = Auth::user();
@@ -87,7 +98,7 @@ class JobSeekerController extends Controller
                 ], 409);
             }
 
-            // 🔥 Upload profile photo if exists
+            // ✅ Upload profile photo
             $profilePhotoPath = null;
 
             if ($request->hasFile('profile_photo')) {
@@ -96,29 +107,14 @@ class JobSeekerController extends Controller
                     'profile_images'
                 );
             }
-            // 🔥 Certifications (replace all)
-            if ($request->has('certifications')) {
 
-                // delete old
-                $existingProfile->certifications()->delete();
-
-                // insert new
-                foreach ($request->certifications as $cert) {
-                    $existingProfile->certifications()->create([
-                        'name' => $cert['name'],
-                        'issuer' => $cert['issuer'] ?? null,
-                        'issued_at' => $cert['issued_at'] ?? null,
-                        'expires_at' => $cert['expires_at'] ?? null,
-                    ]);
-                }
-            }
-
+            // ✅ CREATE PROFILE FIRST
             $profile = JobSeeker::create([
                 'user_id' => $user->id,
                 'title' => $request->title,
                 'phone' => $request->phone,
                 'location' => $request->location,
-                'experience_years' => $request->experience_years ?? 0,
+                'experience_years' => $request->experience_years,
                 'availability' => $request->availability ?? 'open',
                 'dob' => $request->dob,
                 'portfolio_website' => $request->portfolio_website,
@@ -128,10 +124,22 @@ class JobSeekerController extends Controller
                 'notice_period' => $request->notice_period
             ]);
 
+            // ✅ NOW attach certifications (FIXED)
+            if ($request->has('certifications')) {
+                foreach ($request->certifications as $cert) {
+                    $profile->certifications()->create([
+                        'name' => $cert['name'],
+                        'issuer' => $cert['issuer'] ?? null,
+                        'issued_at' => $cert['issued_at'] ?? null,
+                        'expires_at' => $cert['expires_at'] ?? null,
+                    ]);
+                }
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Profile created successfully',
-                'data' => $profile
+                'data' => $profile->load('certifications')
             ], 201);
         } catch (\Exception $e) {
 
@@ -193,7 +201,7 @@ class JobSeekerController extends Controller
 
             return response()->json([
                 'status' => true,
-                'profile_flag'=>$profileCompleted,
+                'profile_flag' => $profileCompleted,
                 'data' => $profile,
                 'skills' => $skills,
                 'company_logos' => $Company_logo
@@ -839,7 +847,7 @@ class JobSeekerController extends Controller
                         'job_id' => $app->job->id ?? null,
                         'title' => $app->job->title ?? null,
                         'company_name' => $app->job->employer->company_name ?? null,
-                        'company_logo'=>$app->job->employer->company_logo ?? null,
+                        'company_logo' => $app->job->employer->company_logo ?? null,
                         'status' => $app->status,
                         'applied_at' => $app->created_at,
                     ];
