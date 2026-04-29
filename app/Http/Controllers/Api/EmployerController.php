@@ -907,6 +907,154 @@ class EmployerController extends Controller
         }
     }
 
+    //EMployer Recruiter Toggle Active
+
+    public function toggleEmployerRecruiterStatus($id)
+    {
+        try {
+
+            $employer = Auth::guard('employer')->user();
+
+            if (!$employer) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
+
+            // ✅ Only recruiter under this employer
+            $recruiter = EmployerUser::where('id', $id)
+                ->where('employer_id', $employer->id)
+                ->first();
+
+            if (!$recruiter) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Recruiter not found'
+                ], 404);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 TOGGLE
+        |--------------------------------------------------------------------------
+        */
+
+            $isNowActive = $recruiter->is_active ? 0 : 1;
+
+            $recruiter->update([
+                'is_active' => $isNowActive
+            ]);
+
+            $statusText = $isNowActive ? 'enabled' : 'disabled';
+            $titleText = $isNowActive ? 'Account Enabled' : 'Account Disabled';
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔔 NOTIFICATIONS
+        |--------------------------------------------------------------------------
+        */
+
+            // ✅ Recruiter
+            $this->notification->send(
+                'recruiter_status',
+                'recruiter',
+                $recruiter->id,
+                $titleText,
+                "Your recruiter account has been {$statusText} by employer",
+                [
+                    'status' => $isNowActive
+                ]
+            );
+
+            // ✅ Employer (self confirmation)
+            $this->notification->send(
+                'recruiter_status',
+                'employer',
+                $employer->id,
+                $isNowActive ? 'Recruiter Enabled' : 'Recruiter Disabled',
+                "You {$statusText} '{$recruiter->name}'",
+                [
+                    'recruiter_id' => $recruiter->id,
+                    'status' => $isNowActive
+                ]
+            );
+
+            // ✅ Admins
+            $admins = \App\Models\User::where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $this->notification->send(
+                    'recruiter_status',
+                    'admin',
+                    $admin->id,
+                    $isNowActive ? 'Recruiter Enabled' : 'Recruiter Disabled',
+                    "Recruiter '{$recruiter->name}' {$statusText} by employer '{$employer->company_name}'",
+                    [
+                        'recruiter_id' => $recruiter->id,
+                        'employer_id' => $employer->id,
+                        'status' => $isNowActive
+                    ]
+                );
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 MAILS
+        |--------------------------------------------------------------------------
+        */
+
+            try {
+
+                $mailService = new MailService();
+
+                if ($isNowActive) {
+                    $mailService->send('recruiter_enabled', [
+                        'name' => $recruiter->name,
+                        'company_name' => $employer->company_name
+                    ], $recruiter->email);
+                } else {
+                    $mailService->send('recruiter_disabled', [
+                        'name' => $recruiter->name,
+                        'company_name' => $employer->company_name
+                    ], $recruiter->email);
+                }
+            } catch (\Exception $mailException) {
+
+                Log::error('Employer toggle recruiter mail failed', [
+                    'recruiter_id' => $recruiter->id,
+                    'error' => $mailException->getMessage()
+                ]);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | ✅ RESPONSE
+        |--------------------------------------------------------------------------
+        */
+
+            return response()->json([
+                'status' => true,
+                'message' => "Recruiter {$statusText} successfully",
+                'data' => [
+                    'recruiter_id' => $recruiter->id,
+                    'is_active' => $isNowActive
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+
+            Log::error('Employer toggle recruiter failed', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     //Employer Dashboard
 
     public function dashboard(Request $request)

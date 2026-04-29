@@ -399,8 +399,8 @@ Route::prefix('admin/cms')->middleware(['auth:sanctum', 'role:admin'])->group(fu
     Route::delete('/resumes/{id}', [ResumeManagementController::class, 'deleteResume']);
     Route::get('/resumes', [ResumeManagementController::class, 'getAllResumes']);
     //Resume Limit Setting
-    Route::get('resume-limit',[ResumeManagementController::class,'GetLimit']);
-    Route::put('resume-limit',[ResumeManagementController::class,'UpdateLimit']);
+    Route::get('resume-limit', [ResumeManagementController::class, 'GetLimit']);
+    Route::put('resume-limit', [ResumeManagementController::class, 'UpdateLimit']);
 });
 
 // =================================================================================
@@ -463,6 +463,8 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     Route::get('/users', [EmployerController::class, 'getEmployerUsers']); //Get employer users
     Route::delete('/users/{id}', [EmployerController::class, 'deleteEmployerUser']); //Delete employer user
     Route::get('/recruiter/{id}', [EmployerController::class, 'getRecruiterDetails']); //Recruiter details
+    Route::patch('/recruiter/{id}/toggle', [EmployerController::class, 'toggleEmployerRecruiterStatus']); //Enable disable recruiter access
+
     //Dashboard
     Route::get('/dashboard', [EmployerController::class, 'dashboard']); //Employer dashboard
 
@@ -514,7 +516,7 @@ Route::middleware(['auth:employer', 'role:employer'])->prefix('employer')->group
     //Payments
     Route::get('payments-history', [EmployerController::class, 'getPaymentHistory']);
 
-    Route::get('subscription/{id}/usage',[EmployerController::class,'getSubscriptionUsage']);
+    Route::get('subscription/{id}/usage', [EmployerController::class, 'getSubscriptionUsage']);
     //Invoice management
     Route::get('/invoices', [EmployerController::class, 'getInvoices']);
     Route::get('/invoices/{id}', [EmployerController::class, 'getInvoicePdf']);
