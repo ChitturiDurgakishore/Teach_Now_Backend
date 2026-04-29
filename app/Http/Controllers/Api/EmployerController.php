@@ -2678,7 +2678,7 @@ class EmployerController extends Controller
             $request->validate([
                 'document_type' => 'required|string',
                 'document_name' => 'nullable|string',
-                'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240'
+                'document_file' => 'required|file|mimes:pdf,docx,jpg,jpeg,png,svg,webp|max:10240'
             ]);
 
             $employer = Auth::guard('employer')->user();
