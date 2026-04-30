@@ -932,16 +932,20 @@ class JobSeekerController extends Controller
                 });
 
             //Recent Job Alertt 5
-            $recentJobAlerts = Job::where('job_status', 'open')->where('status', 'approved')->where('application_deadline', '>', now())->latest()->take(5)
-                ->get()->map(function ($app) {
+            $recentJobAlerts = Job::where('job_status', 'open')
+                ->where('status', 'approved')
+                ->where('application_deadline', '>', now())
+                ->latest()
+                ->take(5)
+                ->get()
+                ->map(function ($job) {
 
                     return [
-                        'job_id' => $app->job->id ?? null,
-                        'title' => $app->job->title ?? null,
-                        'company_name' => $app->job->employer->company_name ?? null,
-                        'company_logo' => $app->job->employer->company_logo ?? null,
-                        'status' => $app->status,
-                        'applied_at' => $app->created_at,
+                        'job_id' => $job->id,
+                        'title' => $job->title,
+                        'company_name' => $job->employer->company_name ?? null,
+                        'company_logo' => $job->employer->company_logo ?? null,
+                        'posted_at' => $job->created_at,
                     ];
                 });
 
