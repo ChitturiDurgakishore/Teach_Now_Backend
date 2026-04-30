@@ -20,6 +20,7 @@ use App\Models\BookmarkedJob;
 use App\Models\HomepageCompanyLogo;
 use App\Models\JobSeekerCV;
 use App\Http\Controllers\Api\CVController;
+use App\Models\Job;
 use App\Models\Resume;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -930,13 +931,17 @@ class JobSeekerController extends Controller
                     ];
                 });
 
+            //Recent Job Alertt 5
+            $recentJobAlerts=Job::where('is_active',true)->where('job_status','open')->where('status','approved')->latest()->take(5);
+
             return response()->json([
                 'status' => true,
                 'data' => [
                     'total_applied' => $totalApplied,
                     'total_shortlisted' => $totalShortlisted,
                     'total_bookmarked' => $totalBookmarked,
-                    'recent_applications' => $recentApplications
+                    'recent_applications' => $recentApplications,
+                    'recent_job_alerts'=>$recentJobAlerts
                 ]
             ]);
         } catch (\Exception $e) {
