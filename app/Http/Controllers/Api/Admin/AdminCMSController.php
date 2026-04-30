@@ -1581,7 +1581,7 @@ class AdminCMSController extends Controller
                 'display_order' => 'nullable|integer',
                 'show_in_nav' => 'nullable|boolean',
                 'is_active' => 'nullable|boolean',
-                'slug' => 'string|max:255',
+                'slug' => 'string|max:255|unique:navigation_links,slug',
             ]);
 
             $link = NavigationLink::create([
@@ -1602,7 +1602,7 @@ class AdminCMSController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Creation failed'.$e->getMessage(),
+                'message' => 'Creation failed',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -1633,7 +1633,7 @@ class AdminCMSController extends Controller
                 'url' => 'nullable|string',
                 'parent_id' => 'nullable|exists:navigation_links,id',
                 'display_order' => 'nullable|integer',
-                'slug' => 'nullable|string|max:255'
+                'slug' => 'nullable|string|max:255|unique:navigation_links,slug'
             ]);
 
             $link->update([
@@ -1645,7 +1645,7 @@ class AdminCMSController extends Controller
                 'meta_title' => $request->meta_title ?? $link->meta_title,
                 'meta_description' => $request->meta_description ?? $link->meta_description,
                 'meta_keywords' => $request->meta_keywords ?? $link->meta_keywords,
-                'slug' => $request->slug,
+                'slug' => $request->slug ?? $link->slug,
 
             ]);
 
@@ -1657,7 +1657,7 @@ class AdminCMSController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Update failed: ' . $e->getMessage(),
+                'message' => 'Update failed: ',
                 'error' => $e->getMessage()
             ], 500);
         }
