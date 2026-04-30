@@ -917,7 +917,7 @@ class JobSeekerController extends Controller
             $recentApplications = JobApplication::with('job.employer')
                 ->where('job_seeker_id', $jobSeeker->id)
                 ->latest()
-                ->take(3)
+                ->take(5)
                 ->get()
                 ->map(function ($app) {
 
