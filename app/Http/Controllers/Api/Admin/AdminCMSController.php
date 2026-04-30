@@ -1602,7 +1602,7 @@ class AdminCMSController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Creation failed',
+                'message' => 'Creation failed'.$e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -1641,9 +1641,7 @@ class AdminCMSController extends Controller
                 'url' => $request->url,
                 'parent_id' => $request->parent_id,
                 'display_order' => $request->display_order ?? $link->display_order,
-                'slug' => $request->has('slug')
-                    ? $request->slug
-                    : Str::slug($request->title ?? $link->title),
+
                 'meta_title' => $request->meta_title ?? $link->meta_title,
                 'meta_description' => $request->meta_description ?? $link->meta_description,
                 'meta_keywords' => $request->meta_keywords ?? $link->meta_keywords,
@@ -1659,7 +1657,7 @@ class AdminCMSController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Update failed',
+                'message' => 'Update failed: ' . $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
         }
