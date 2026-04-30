@@ -30,6 +30,13 @@ use App\Models\PrivacyPolicySections;
 use App\Models\Skill;
 use App\Models\TermsConditionsSections;
 use App\Models\PopularSearch;
+use App\Models\ContactMessage;
+use App\Models\EmailOtp;
+use App\Services\MailService;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Services;
+
 
 class PublicAPIController extends Controller
 {
@@ -87,7 +94,7 @@ class PublicAPIController extends Controller
     {
         try {
 
-           $user=Auth::user();
+            $user = Auth::user();
             $keyword = strtolower(trim($request->input('keyword')));
             $location = $request->input('location');
             $perPage = $request->get('per_page', 10);
@@ -1186,6 +1193,115 @@ class PublicAPIController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Unable to fetch CV templates',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //OTP API for email verification
+
+    public function sendOtp(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'email' => 'required|email'
+            ]);
+
+            $email = $request->email;
+
+            // 🔥 Generate OTP
+            $otp = rand(100000, 999999);
+
+            // 🔥 Save / update
+            DB::table('email_otps')->updateOrInsert(
+                ['email' => $email],
+                [
+                    'otp' => $otp,
+                    'expires_at' => now()->addMinutes(10),
+                    'is_verified' => false,
+                    'updated_at' => now(),
+                    'created_at' => now()
+                ]
+            );
+
+            // 🔥 Send Mail
+            try {
+                $mailService = new MailService();
+
+                $mailService->send('email_verification_otp', [
+                    'otp' => $otp
+                ], $email);
+            } catch (\Exception $mailEx) {
+                Log::error("OTP mail failed: " . $mailEx->getMessage());
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'OTP sent successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to send OTP',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //verifying OTP
+
+    public function verifyOtp(Request $request)
+    {
+        try {
+
+            $request->validate([
+                'email' => 'required|email',
+                'otp' => 'required'
+            ]);
+
+            $record = DB::table('email_otps')
+                ->where('email', $request->email)
+                ->first();
+
+            if (!$record) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'OTP not found'
+                ], 404);
+            }
+
+            if ($record->otp != $request->otp) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid OTP'
+                ], 400);
+            }
+
+            if (now()->gt($record->expires_at)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'OTP expired'
+                ], 400);
+            }
+
+            // ✅ Mark verified
+            DB::table('email_otps')
+                ->where('email', $request->email)
+                ->update([
+                    'is_verified' => true
+                ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Email verified successfully'
+            ]);
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Verification failed',
                 'error' => $e->getMessage()
             ], 500);
         }

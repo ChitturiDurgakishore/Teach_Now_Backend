@@ -29,6 +29,18 @@ class AuthController extends Controller
                 'password' => 'required|min:6',
                 'role' => 'required|in:admin,employer_member,job_seeker'
             ]);
+            $otpRecord = DB::table('email_otps')
+                ->where('email', $request->email)
+                ->where('is_verified', true)
+                ->first();
+
+            if($request->role!='admin' && !$otpRecord) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Email not verified'
+                ], 403);
+            }
+
 
             // 2. Database Action
             $user = User::create([
