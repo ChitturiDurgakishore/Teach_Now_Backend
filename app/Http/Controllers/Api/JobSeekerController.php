@@ -79,7 +79,7 @@ class JobSeekerController extends Controller
                 'dob' => 'nullable|date',
                 'portfolio_website' => 'nullable|string',
                 'bio' => 'nullable|string',
-                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
+                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
 
                 'certifications' => 'nullable|array',
                 'certifications.*.name' => 'required|string|max:150',
@@ -294,7 +294,7 @@ class JobSeekerController extends Controller
                 'dob' => 'nullable|date',
                 'portfolio_website' => 'nullable|string',
                 'bio' => 'nullable|string',
-                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
+                'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
 
                 // ✅ FIXED
                 'certifications' => 'nullable|array',

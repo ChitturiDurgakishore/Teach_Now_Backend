@@ -458,7 +458,7 @@ class EmployerController extends Controller
                 'company_description' => 'nullable|string',
                 'industry' => 'nullable|string|max:150',
                 'website' => 'nullable|string',
-                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:20480',
+                'company_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:4096',
                 'address' => 'nullable|string',
                 'phone' => 'nullable|string',
                 'country' => 'nullable|string',
@@ -2678,7 +2678,7 @@ class EmployerController extends Controller
             $request->validate([
                 'document_type' => 'required|string',
                 'document_name' => 'nullable|string',
-                'document_file' => 'required|file|mimes:pdf,docx,jpg,jpeg,png,svg,webp|max:10240'
+                'document_file' => 'required|file|mimes:pdf,docx,jpg,jpeg,png,svg,webp|max:4096'
             ]);
 
             $employer = Auth::guard('employer')->user();
