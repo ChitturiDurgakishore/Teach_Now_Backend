@@ -932,7 +932,7 @@ class JobSeekerController extends Controller
                 });
 
             //Recent Job Alertt 5
-            $recentJobAlerts=Job::where('is_active',true)->where('job_status','open')->where('status','approved')->latest()->take(5);
+            $recentJobAlerts=Job::where('job_status','open')->where('status','approved')->where('application_deadline','>', now())->latest()->take(5)->get();
 
             return response()->json([
                 'status' => true,
