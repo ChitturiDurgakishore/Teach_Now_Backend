@@ -1566,7 +1566,8 @@ class AdminCMSController extends Controller
                 'parent_id' => 'nullable|exists:navigation_links,id',
                 'display_order' => 'nullable|integer',
                 'show_in_nav' => 'nullable|boolean',
-                'is_active' => 'nullable|boolean'
+                'is_active' => 'nullable|boolean',
+                'slug' => 'string|max:255',
             ]);
 
             $link = NavigationLink::create([
@@ -1576,7 +1577,7 @@ class AdminCMSController extends Controller
                 'display_order' => $request->display_order ?? 0,
                 'show_in_nav' => $request->show_in_nav ?? true,
                 'is_active' => $request->is_active ?? true,
-                'slug' => Str::slug($request->title)
+                'slug' => $request->slug,
             ]);
 
             return response()->json([
@@ -1631,7 +1632,8 @@ class AdminCMSController extends Controller
                     : Str::slug($request->title ?? $link->title),
                 'meta_title' => $request->meta_title ?? $link->meta_title,
                 'meta_description' => $request->meta_description ?? $link->meta_description,
-                'meta_keywords' => $request->meta_keywords ?? $link->meta_keywords
+                'meta_keywords' => $request->meta_keywords ?? $link->meta_keywords,
+                'slug' => $request->slug,
 
             ]);
 
