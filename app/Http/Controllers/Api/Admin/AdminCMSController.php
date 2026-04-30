@@ -592,7 +592,7 @@ class AdminCMSController extends Controller
                 'display_order' => $request->display_order ?? 0,
                 'is_active' => true,
                 'show_in_nav' => true,
-                'slug' => Str::slug($request->title)
+                'slug' => $request->slug,
             ]);
 
             return response()->json([
@@ -623,9 +623,8 @@ class AdminCMSController extends Controller
                 'url' => $request->url ?? $link->url,
                 'parent_id' => $request->parent_id ?? $link->parent_id,
                 'display_order' => $request->display_order ?? $link->display_order,
-                'slug' => $request->has('slug')
-                    ? $request->slug
-                    : Str::slug($request->title ?? $link->title)
+                'slug' => $request->slug
+
             ]);
 
             return response()->json([
