@@ -36,6 +36,35 @@ use Illuminate\Support\Facades\Log;
 class AdminCMSController extends Controller
 {
 
+    private function handleException(\Exception $e)
+    {
+        if ($e instanceof \Illuminate\Validation\ValidationException) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed: ' . collect($e->errors())->flatten()->implode(', '),
+                'statusCode' => 422
+            ], 422);
+        } elseif ($e instanceof \Illuminate\Database\QueryException) {
+            if ($e->getCode() == 23000) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Duplicate entry not allowed',
+                    'statusCode' => 400
+                ], 400);
+            }
+            return response()->json([
+                'status' => false,
+                'message' => 'Database error occurred',
+                'statusCode' => 500
+            ], 500);
+        } else {
+            return response()->json([
+                'status' => false,
+                'message' => 'Operation failed: ' . $e->getMessage(),
+                'statusCode' => 500
+            ], 500);
+        }
+    }
 
     //Helper function for Media Uploads
 
@@ -577,7 +606,6 @@ class AdminCMSController extends Controller
     public function createNavigationLink(Request $request)
     {
         try {
-
             $request->validate([
                 'title' => 'required|string|max:150',
                 'url' => 'nullable|string|max:255',
@@ -601,11 +629,7 @@ class AdminCMSController extends Controller
                 'data' => $link
             ], 201);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Creation failed',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->handleException($e);
         }
     }
 
@@ -909,12 +933,7 @@ class AdminCMSController extends Controller
                 'data' => $link
             ], 201);
         } catch (\Exception $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Creation failed',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->handleException($e);
         }
     }
 
@@ -1272,12 +1291,7 @@ class AdminCMSController extends Controller
                 'data' => $faq
             ], 201);
         } catch (\Exception $e) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Creation failed',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->handleException($e);
         }
     }
 
