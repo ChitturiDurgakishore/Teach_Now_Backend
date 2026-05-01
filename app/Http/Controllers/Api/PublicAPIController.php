@@ -129,7 +129,6 @@ class PublicAPIController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            // 🔥 employer table filter
             if ($request->filled('institution_type')) {
                 $baseQuery->whereHas('employer', function ($q) use ($request) {
                     $q->where('institution_type', $request->institution_type);
@@ -154,13 +153,12 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔍 SEARCH JOBS (EXACT MATCH PRIORITY)
+        | 🔍 SEARCH JOBS
         |--------------------------------------------------------------------------
         */
             $searchQuery = clone $baseQuery;
 
             if ($keyword) {
-
                 $searchQuery->where(function ($q) use ($keyword, $words) {
 
                     $q->where('title', 'LIKE', "%{$keyword}%");
@@ -172,7 +170,6 @@ class PublicAPIController extends Controller
                     }
                 });
 
-                // 🔥 Priority ranking
                 $searchQuery->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
@@ -180,13 +177,8 @@ class PublicAPIController extends Controller
                     WHEN description LIKE ? THEN 3
                     ELSE 4
                 END
-            ", [
-                    "%{$keyword}%",
-                    "%{$keyword}%",
-                    "%{$keyword}%"
-                ]);
+            ", ["%{$keyword}%", "%{$keyword}%", "%{$keyword}%"]);
 
-                // 🔥 Multi-word boost
                 foreach ($words as $word) {
                     $searchQuery->orderByRaw("title LIKE ? DESC", ["%{$word}%"]);
                     $searchQuery->orderByRaw("keywords LIKE ? DESC", ["%{$word}%"]);
@@ -201,7 +193,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔁 SIMILAR JOBS (STRICT FILTER APPLIED)
+        | 🔁 SIMILAR JOBS
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
@@ -228,7 +220,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FALLBACK (NO EXACT MATCH → RELAX FILTERS)
+        | 🔥 FALLBACK LEVEL 1
         |--------------------------------------------------------------------------
         */
             if ($searchJobs->total() == 0) {
@@ -240,7 +232,6 @@ class PublicAPIController extends Controller
                     ->where('job_status', 'open')
                     ->where('application_deadline', '>', now());
 
-                // 🔥 only keyword + location (NO strict filters)
                 if (!empty($words)) {
                     $fallbackQuery->where(function ($q) use ($words) {
                         foreach ($words as $word) {
@@ -256,6 +247,41 @@ class PublicAPIController extends Controller
                 }
 
                 $similarJobs = $fallbackQuery->paginate($perPage, ['*'], 'similar_page');
+
+                /*
+            |--------------------------------------------------------------------------
+            | 🔥 FALLBACK LEVEL 2 (FILL WITH LATEST)
+            |--------------------------------------------------------------------------
+            */
+                if ($similarJobs->total() < 5) {
+
+                    $latestQuery = Job::with(['employer:id,company_name,company_logo,institution_type'])
+                        ->where('is_active', true)
+                        ->where('expires_at', '>', now())
+                        ->where('status', 'approved')
+                        ->where('job_status', 'open')
+                        ->where('application_deadline', '>', now())
+                        ->latest();
+
+                    if ($location) {
+                        $latestQuery->where('location', 'LIKE', "%{$location}%");
+                    }
+
+                    if ($similarJobs->total() > 0) {
+                        $latestQuery->whereNotIn('id', $similarJobs->pluck('id'));
+                    }
+
+                    $extraJobs = $latestQuery->take(5)->get();
+
+                    $merged = collect($similarJobs->items())->merge($extraJobs);
+
+                    $similarJobs = new \Illuminate\Pagination\LengthAwarePaginator(
+                        $merged,
+                        $merged->count(),
+                        $perPage,
+                        1
+                    );
+                }
             }
 
             /*
@@ -298,25 +324,15 @@ class PublicAPIController extends Controller
         */
             return response()->json([
                 'status' => true,
-
-                // 🔥 flag for frontend
                 'fallback' => $searchJobs->total() == 0,
 
                 'search_jobs' => [
                     'total' => $searchJobs->total(),
-                    'current_page' => $searchJobs->currentPage(),
-                    'last_page' => $searchJobs->lastPage(),
-                    'next_page_url' => $searchJobs->nextPageUrl(),
-                    'prev_page_url' => $searchJobs->previousPageUrl(),
                     'data' => $formatJobs($searchJobs)
                 ],
 
                 'similar_jobs' => [
                     'total' => $similarJobs->total(),
-                    'current_page' => $similarJobs->currentPage(),
-                    'last_page' => $similarJobs->lastPage(),
-                    'next_page_url' => $similarJobs->nextPageUrl(),
-                    'prev_page_url' => $similarJobs->previousPageUrl(),
                     'data' => $formatJobs($similarJobs)
                 ]
 
