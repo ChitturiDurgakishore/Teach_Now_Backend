@@ -175,6 +175,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
 
     Route::get('/jobs/expired', [AdminController::class, 'getExpiredJobsForAdmin']);
     Route::post('/jobs/{id}/republish', [AdminController::class, 'adminRepublishJob']);
+
     Route::get('/jobs', [AdminController::class, 'getAllJobs']);
     Route::get('/jobs/{id}', [AdminController::class, 'getJobDetails']);
     Route::patch('/jobs/{id}/approve', [AdminController::class, 'approveJob']);

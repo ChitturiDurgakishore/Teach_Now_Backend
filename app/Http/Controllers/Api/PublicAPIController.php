@@ -1205,15 +1205,51 @@ class PublicAPIController extends Controller
         try {
 
             $request->validate([
-                'email' => 'required|email'
+                'email' => 'required|email',
+                'role' => 'nullable|in:job_seeker'
             ]);
 
             $email = $request->email;
+            $role = $request->role ?? null;
 
-            // 🔥 Generate OTP
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 CHECK EXISTENCE BASED ON ROLE
+        |--------------------------------------------------------------------------
+        */
+
+            if ($role === 'job_seeker') {
+
+                // ✅ Check in users table
+                $exists = \App\Models\User::where('email', $email)->exists();
+
+                if ($exists) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Email already registered as job seeker'
+                    ], 409);
+                }
+            } else {
+
+                // ✅ Employer flow (no role passed)
+                $exists = \App\Models\Employer::where('email', $email)->exists();
+
+                if ($exists) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Email already registered as employer'
+                    ], 409);
+                }
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 GENERATE OTP
+        |--------------------------------------------------------------------------
+        */
+
             $otp = rand(100000, 999999);
 
-            // 🔥 Save / update
             DB::table('email_otps')->updateOrInsert(
                 ['email' => $email],
                 [
@@ -1225,7 +1261,12 @@ class PublicAPIController extends Controller
                 ]
             );
 
-            // 🔥 Send Mail
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 SEND MAIL
+        |--------------------------------------------------------------------------
+        */
+
             try {
                 $mailService = new MailService();
 
