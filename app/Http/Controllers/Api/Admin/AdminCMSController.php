@@ -419,8 +419,7 @@ class AdminCMSController extends Controller
     {
         try {
 
-            $ctas = HomepageCtaSection::where('is_active', true)
-                ->orderBy('id', 'desc')
+            $ctas = HomepageCtaSection::orderBy('id', 'desc')
                 ->get();
 
             return response()->json([

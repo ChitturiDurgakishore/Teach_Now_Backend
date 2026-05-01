@@ -193,11 +193,9 @@ class ContentPagesController extends Controller
     {
         try {
 
-            $data = TermsConditionsSections::whereNull('parent_id')
-                ->where('is_active', true)
-                ->with(['children' => function ($q) {
-                    $q->where('is_active', true)->orderBy('display_order');
-                }])
+            $data = TermsConditionsSections::whereNull('parent_id')->with(['children' => function ($q) {
+                $q->orderBy('display_order');
+            }])
                 ->orderBy('display_order')
                 ->get();
 
@@ -273,6 +271,4 @@ class ContentPagesController extends Controller
             'message' => 'Deleted'
         ]);
     }
-
-
 }
