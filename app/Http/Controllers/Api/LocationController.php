@@ -34,7 +34,7 @@ class LocationController extends Controller
     // Get all locations (Public)
     public function index()
     {
-        $locations = Location::where('is_featured', true)
+        $locations = Location::where('is_featured', true)->where('is_visible', true)
             ->select('locations.*')
             ->selectSub(function ($query) {
                 $query->from('jobs')
