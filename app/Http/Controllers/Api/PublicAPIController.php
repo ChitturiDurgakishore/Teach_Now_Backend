@@ -125,10 +125,11 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 STRICT FILTERS (EXACT MATCH ONLY)
+        | 🔥 STRICT FILTERS
         |--------------------------------------------------------------------------
         */
 
+            // 🔥 employer table filter
             if ($request->filled('institution_type')) {
                 $baseQuery->whereHas('employer', function ($q) use ($request) {
                     $q->where('institution_type', $request->institution_type);
@@ -153,7 +154,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔍 SEARCH JOBS
+        | 🔍 SEARCH JOBS (EXACT MATCH PRIORITY)
         |--------------------------------------------------------------------------
         */
             $searchQuery = clone $baseQuery;
@@ -200,7 +201,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔁 SIMILAR JOBS
+        | 🔁 SIMILAR JOBS (STRICT FILTER APPLIED)
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
@@ -224,6 +225,38 @@ class PublicAPIController extends Controller
             }
 
             $similarJobs = $similarQuery->paginate($perPage, ['*'], 'similar_page');
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔥 FALLBACK (NO EXACT MATCH → RELAX FILTERS)
+        |--------------------------------------------------------------------------
+        */
+            if ($searchJobs->total() == 0) {
+
+                $fallbackQuery = Job::with(['employer:id,company_name,company_logo,institution_type'])
+                    ->where('is_active', true)
+                    ->where('expires_at', '>', now())
+                    ->where('status', 'approved')
+                    ->where('job_status', 'open')
+                    ->where('application_deadline', '>', now());
+
+                // 🔥 only keyword + location (NO strict filters)
+                if (!empty($words)) {
+                    $fallbackQuery->where(function ($q) use ($words) {
+                        foreach ($words as $word) {
+                            $q->orWhere('title', 'LIKE', "%{$word}%")
+                                ->orWhere('keywords', 'LIKE', "%{$word}%")
+                                ->orWhere('description', 'LIKE', "%{$word}%");
+                        }
+                    });
+                }
+
+                if ($location) {
+                    $fallbackQuery->where('location', 'LIKE', "%{$location}%");
+                }
+
+                $similarJobs = $fallbackQuery->paginate($perPage, ['*'], 'similar_page');
+            }
 
             /*
         |--------------------------------------------------------------------------
@@ -254,7 +287,7 @@ class PublicAPIController extends Controller
             if ($searchJobs->total() == 0 && $similarJobs->total() == 0) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Job not found'
+                    'message' => 'No jobs found'
                 ], 404);
             }
 
@@ -265,6 +298,9 @@ class PublicAPIController extends Controller
         */
             return response()->json([
                 'status' => true,
+
+                // 🔥 flag for frontend
+                'fallback' => $searchJobs->total() == 0,
 
                 'search_jobs' => [
                     'total' => $searchJobs->total(),
