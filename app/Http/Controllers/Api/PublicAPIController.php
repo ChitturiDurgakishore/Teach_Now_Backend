@@ -32,6 +32,7 @@ use App\Models\TermsConditionsSections;
 use App\Models\PopularSearch;
 use App\Models\ContactMessage;
 use App\Models\EmailOtp;
+use App\Models\EmployerUser;
 use App\Models\User;
 use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
@@ -1233,12 +1234,17 @@ class PublicAPIController extends Controller
             } else {
 
                 // ✅ Employer flow (no role passed)
-                $exists = Employer::where('email', $email)->exists();
-
-                if ($exists) {
+                if (Employer::where('email', $email)->exists()) {
                     return response()->json([
                         'status' => false,
                         'message' => 'Email already registered as employer'
+                    ], 409);
+                }
+
+                if (EmployerUser::where('email', $email)->exists()) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'Hi, you are already registered as a recruiter'
                     ], 409);
                 }
             }
