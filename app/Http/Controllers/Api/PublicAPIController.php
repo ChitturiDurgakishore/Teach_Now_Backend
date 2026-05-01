@@ -130,7 +130,9 @@ class PublicAPIController extends Controller
         */
 
             if ($request->filled('institution_type')) {
-                $baseQuery->where('institution_type', $request->institution_type);
+                $baseQuery->whereHas('employer', function ($q) use ($request) {
+                    $q->where('institution_type', $request->institution_type);
+                });
             }
 
             if ($request->filled('experience')) {
