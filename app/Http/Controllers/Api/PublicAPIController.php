@@ -32,6 +32,7 @@ use App\Models\TermsConditionsSections;
 use App\Models\PopularSearch;
 use App\Models\ContactMessage;
 use App\Models\EmailOtp;
+use App\Models\User;
 use App\Services\MailService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -1221,7 +1222,7 @@ class PublicAPIController extends Controller
             if ($role === 'job_seeker') {
 
                 // ✅ Check in users table
-                $exists = \App\Models\User::where('email', $email)->exists();
+                $exists = User::where('email', $email)->exists();
 
                 if ($exists) {
                     return response()->json([
@@ -1232,7 +1233,7 @@ class PublicAPIController extends Controller
             } else {
 
                 // ✅ Employer flow (no role passed)
-                $exists = \App\Models\Employer::where('email', $email)->exists();
+                $exists = Employer::where('email', $email)->exists();
 
                 if ($exists) {
                     return response()->json([
