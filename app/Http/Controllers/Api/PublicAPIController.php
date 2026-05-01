@@ -153,7 +153,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔍 SEARCH JOBS
+        | 🔍 STRICT SEARCH JOBS (NO PARTIAL)
         |--------------------------------------------------------------------------
         */
             $searchQuery = clone $baseQuery;
@@ -161,28 +161,23 @@ class PublicAPIController extends Controller
             if ($keyword) {
                 $searchQuery->where(function ($q) use ($keyword, $words) {
 
-                    $q->where('title', 'LIKE', "%{$keyword}%");
+                    // ✅ prefix match ONLY (no %keyword%)
+                    $q->where('title', 'LIKE', "{$keyword}%");
 
                     foreach ($words as $word) {
-                        $q->orWhere('title', 'LIKE', "%{$word}%")
-                            ->orWhere('keywords', 'LIKE', "%{$word}%")
-                            ->orWhere('description', 'LIKE', "%{$word}%");
+                        $q->orWhere('title', 'LIKE', "{$word}%")
+                            ->orWhere('keywords', 'LIKE', "{$word}%");
                     }
                 });
 
+                // 🔥 ranking
                 $searchQuery->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
                     WHEN keywords LIKE ? THEN 2
-                    WHEN description LIKE ? THEN 3
-                    ELSE 4
+                    ELSE 3
                 END
-            ", ["%{$keyword}%", "%{$keyword}%", "%{$keyword}%"]);
-
-                foreach ($words as $word) {
-                    $searchQuery->orderByRaw("title LIKE ? DESC", ["%{$word}%"]);
-                    $searchQuery->orderByRaw("keywords LIKE ? DESC", ["%{$word}%"]);
-                }
+            ", ["{$keyword}%", "{$keyword}%"]);
             }
 
             if ($location) {
@@ -193,7 +188,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔁 SIMILAR JOBS
+        | 🔁 SIMILAR JOBS (PARTIAL MATCH ALLOWED)
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
@@ -286,27 +281,6 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔧 FORMAT
-        |--------------------------------------------------------------------------
-        */
-            $formatJobs = function ($jobs) {
-                return collect($jobs->items())->map(function ($job) {
-
-                    $jobArray = $job->toArray();
-
-                    $jobArray['employer'] = [
-                        'id' => $job->employer->id ?? null,
-                        'company_name' => $job->employer->company_name ?? null,
-                        'company_logo' => $job->employer->company_logo ?? null,
-                        'institution_type' => $job->employer->institution_type ?? null
-                    ];
-
-                    return $jobArray;
-                });
-            };
-
-            /*
-        |--------------------------------------------------------------------------
         | ❌ NO DATA
         |--------------------------------------------------------------------------
         */
@@ -328,12 +302,12 @@ class PublicAPIController extends Controller
 
                 'search_jobs' => [
                     'total' => $searchJobs->total(),
-                    'data' => $formatJobs($searchJobs)
+                    'data' => $searchJobs->items()
                 ],
 
                 'similar_jobs' => [
                     'total' => $similarJobs->total(),
-                    'data' => $formatJobs($similarJobs)
+                    'data' => $similarJobs->items()
                 ]
 
             ], 200);
