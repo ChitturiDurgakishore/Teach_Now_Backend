@@ -156,7 +156,7 @@ class AdminController extends Controller
             $search = $request->get('search');
 
             $query = Job::with([
-                'employer:id,company_name,company_logo',
+                'employer:id,company_name,company_logo,is_verified',
                 'category:id,name'
             ]);
 
