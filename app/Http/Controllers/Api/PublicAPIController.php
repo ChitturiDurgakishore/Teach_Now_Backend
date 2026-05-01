@@ -102,6 +102,8 @@ class PublicAPIController extends Controller
             $perPage = $request->get('per_page', 10);
 
             $words = $keyword ? array_filter(explode(' ', $keyword)) : [];
+
+            // 🔥 Log search
             SearchLog::create([
                 'keyword' => $keyword,
                 'location' => $location,
@@ -123,7 +125,33 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ SEARCH JOBS (PRIORITY: TITLE > KEYWORDS > DESCRIPTION)
+        | 🔥 STRICT FILTERS (EXACT MATCH ONLY)
+        |--------------------------------------------------------------------------
+        */
+
+            if ($request->filled('institution_type')) {
+                $baseQuery->where('institution_type', $request->institution_type);
+            }
+
+            if ($request->filled('experience')) {
+                $baseQuery->where('experience_required', $request->experience);
+            }
+
+            if ($request->filled('job_type')) {
+                $types = is_array($request->job_type)
+                    ? $request->job_type
+                    : explode(',', $request->job_type);
+
+                $baseQuery->whereIn('job_type', $types);
+            }
+
+            if ($request->filled('gender')) {
+                $baseQuery->where('gender', $request->gender);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | 🔍 SEARCH JOBS
         |--------------------------------------------------------------------------
         */
             $searchQuery = clone $baseQuery;
@@ -141,7 +169,7 @@ class PublicAPIController extends Controller
                     }
                 });
 
-                // 🔥 STRICT PRIORITY RANKING
+                // 🔥 Priority ranking
                 $searchQuery->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
@@ -155,7 +183,7 @@ class PublicAPIController extends Controller
                     "%{$keyword}%"
                 ]);
 
-                // 🔥 BOOST MULTI-WORD MATCHES
+                // 🔥 Multi-word boost
                 foreach ($words as $word) {
                     $searchQuery->orderByRaw("title LIKE ? DESC", ["%{$word}%"]);
                     $searchQuery->orderByRaw("keywords LIKE ? DESC", ["%{$word}%"]);
@@ -170,7 +198,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | ✅ SIMILAR JOBS (PARTIAL MATCH)
+        | 🔁 SIMILAR JOBS
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
@@ -189,7 +217,6 @@ class PublicAPIController extends Controller
                 $similarQuery->where('location', 'LIKE', "%{$location}%");
             }
 
-            // remove duplicates
             if ($searchJobs->total() > 0) {
                 $similarQuery->whereNotIn('id', $searchJobs->pluck('id'));
             }
@@ -198,7 +225,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FORMAT
+        | 🔧 FORMAT
         |--------------------------------------------------------------------------
         */
             $formatJobs = function ($jobs) {
