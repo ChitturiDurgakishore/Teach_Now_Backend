@@ -100,7 +100,6 @@ class PublicAPIController extends Controller
             $keyword = strtolower(trim($request->input('keyword')));
             $location = $request->input('location');
             $perPage = $request->get('per_page', 10);
-
             $words = $keyword ? array_filter(explode(' ', $keyword)) : [];
 
             // 🔥 Log search
@@ -128,7 +127,6 @@ class PublicAPIController extends Controller
         | 🔥 STRICT FILTERS
         |--------------------------------------------------------------------------
         */
-
             if ($request->filled('institution_type')) {
                 $baseQuery->whereHas('employer', function ($q) use ($request) {
                     $q->where('institution_type', $request->institution_type);
@@ -153,7 +151,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔍 STRICT SEARCH JOBS (NO PARTIAL)
+        | 🔍 SEARCH JOBS (FIXED LOGIC)
         |--------------------------------------------------------------------------
         */
             $searchQuery = clone $baseQuery;
@@ -161,23 +159,32 @@ class PublicAPIController extends Controller
             if ($keyword) {
                 $searchQuery->where(function ($q) use ($keyword, $words) {
 
-                    // ✅ prefix match ONLY (no %keyword%)
-                    $q->where('title', 'LIKE', "{$keyword}%");
+                    // ✅ 1. Full phrase match (highest priority)
+                    $q->where('title', 'LIKE', "%{$keyword}%");
 
-                    foreach ($words as $word) {
-                        $q->orWhere('title', 'LIKE', "{$word}%")
-                            ->orWhere('keywords', 'LIKE', "{$word}%");
+                    // ✅ 2. AND logic (all words must match)
+                    if (!empty($words)) {
+                        $q->orWhere(function ($qq) use ($words) {
+                            foreach ($words as $word) {
+                                $qq->where(function ($sub) use ($word) {
+                                    $sub->where('title', 'LIKE', "%{$word}%")
+                                        ->orWhere('keywords', 'LIKE', "%{$word}%")
+                                        ->orWhere('description', 'LIKE', "%{$word}%");
+                                });
+                            }
+                        });
                     }
                 });
 
-                // 🔥 ranking
+                // 🔥 Ranking
                 $searchQuery->orderByRaw("
                 CASE
                     WHEN title LIKE ? THEN 1
                     WHEN keywords LIKE ? THEN 2
-                    ELSE 3
+                    WHEN description LIKE ? THEN 3
+                    ELSE 4
                 END
-            ", ["{$keyword}%", "{$keyword}%"]);
+            ", ["%{$keyword}%", "%{$keyword}%", "%{$keyword}%"]);
             }
 
             if ($location) {
@@ -188,7 +195,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔁 SIMILAR JOBS (PARTIAL MATCH ALLOWED)
+        | 🔁 SIMILAR JOBS (LOOSE MATCH)
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
