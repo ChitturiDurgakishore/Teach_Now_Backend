@@ -124,7 +124,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FILTERS (STRICT)
+        | 🔥 FILTERS
         |--------------------------------------------------------------------------
         */
             if ($request->filled('institution_type')) {
@@ -158,11 +158,12 @@ class PublicAPIController extends Controller
 
             if ($keyword) {
 
-                // 🔥 WHERE (same logic as before)
                 $searchQuery->where(function ($q) use ($keyword, $words) {
 
+                    // Full phrase match
                     $q->where('title', 'LIKE', "%{$keyword}%");
 
+                    // AND logic for words
                     if (!empty($words)) {
                         $q->orWhere(function ($qq) use ($words) {
                             foreach ($words as $word) {
@@ -176,11 +177,7 @@ class PublicAPIController extends Controller
                     }
                 });
 
-                /*
-            |--------------------------------------------------------------------------
-            | 🔥 SCORE SYSTEM
-            |--------------------------------------------------------------------------
-            */
+                // 🔥 SCORE SYSTEM
                 $scoreSql = "(
                 (CASE WHEN title LIKE ? THEN 100 ELSE 0 END) +
                 (CASE WHEN keywords LIKE ? THEN 60 ELSE 0 END) +
@@ -193,7 +190,6 @@ class PublicAPIController extends Controller
                     "%{$keyword}%"
                 ];
 
-                // 🔥 add per-word scoring
                 foreach ($words as $word) {
                     $scoreSql .= " +
                 (CASE WHEN title LIKE ? THEN 40 ELSE 0 END) +
@@ -203,7 +199,6 @@ class PublicAPIController extends Controller
                     $bindings[] = "%{$word}%";
                 }
 
-                // apply score
                 $searchQuery->select('*')
                     ->selectRaw("$scoreSql as relevance_score", $bindings)
                     ->orderByDesc('relevance_score');
@@ -217,7 +212,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔁 SIMILAR JOBS (LOOSE)
+        | 🔁 SIMILAR JOBS (ALWAYS RUN)
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
@@ -236,36 +231,31 @@ class PublicAPIController extends Controller
                 $similarQuery->where('location', 'LIKE', "%{$location}%");
             }
 
-            if ($searchJobs->total() > 0) {
+            // remove duplicates (optional)
+            if ($searchJobs->count() > 0) {
                 $similarQuery->whereNotIn('id', $searchJobs->pluck('id'));
             }
 
-            $similarJobs = $similarQuery->paginate($perPage, ['*'], 'similar_page');
+            $similarJobs = $similarQuery->latest()->take(10)->get();
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FALLBACK (IF NO SEARCH RESULTS)
+        | 🔥 FILL SIMILAR JOBS (IF LOW COUNT)
         |--------------------------------------------------------------------------
         */
-            if ($searchJobs->total() == 0) {
+            if ($similarJobs->count() < 5) {
 
-                $fallbackQuery = clone $baseQuery;
+                $extraJobs = Job::with(['employer:id,company_name,company_logo,institution_type'])
+                    ->where('is_active', true)
+                    ->where('expires_at', '>', now())
+                    ->where('status', 'approved')
+                    ->where('job_status', 'open')
+                    ->where('application_deadline', '>', now())
+                    ->latest()
+                    ->take(5)
+                    ->get();
 
-                if (!empty($words)) {
-                    $fallbackQuery->where(function ($q) use ($words) {
-                        foreach ($words as $word) {
-                            $q->orWhere('title', 'LIKE', "%{$word}%")
-                                ->orWhere('keywords', 'LIKE', "%{$word}%")
-                                ->orWhere('description', 'LIKE', "%{$word}%");
-                        }
-                    });
-                }
-
-                if ($location) {
-                    $fallbackQuery->where('location', 'LIKE', "%{$location}%");
-                }
-
-                $similarJobs = $fallbackQuery->paginate($perPage, ['*'], 'similar_page');
+                $similarJobs = $similarJobs->merge($extraJobs);
             }
 
             /*
@@ -273,7 +263,7 @@ class PublicAPIController extends Controller
         | ❌ NO DATA
         |--------------------------------------------------------------------------
         */
-            if ($searchJobs->total() == 0 && $similarJobs->total() == 0) {
+            if ($searchJobs->total() == 0 && $similarJobs->count() == 0) {
                 return response()->json([
                     'status' => false,
                     'message' => 'No jobs found'
@@ -287,6 +277,7 @@ class PublicAPIController extends Controller
         */
             return response()->json([
                 'status' => true,
+                'fallback' => $searchJobs->total() == 0,
 
                 'search_jobs' => [
                     'total' => $searchJobs->total(),
@@ -294,8 +285,8 @@ class PublicAPIController extends Controller
                 ],
 
                 'similar_jobs' => [
-                    'total' => $similarJobs->total(),
-                    'data' => $similarJobs->items()
+                    'total' => $similarJobs->count(),
+                    'data' => $similarJobs->values()
                 ]
 
             ], 200);
