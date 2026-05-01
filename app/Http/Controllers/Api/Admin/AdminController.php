@@ -222,7 +222,7 @@ class AdminController extends Controller
         try {
 
             $job = Job::withTrashed()->with([
-                'employer:id,company_name,company_logo',
+                'employer:id,company_name,company_logo,is_verified',
                 'category:id,name',
                 'questions'
             ])
