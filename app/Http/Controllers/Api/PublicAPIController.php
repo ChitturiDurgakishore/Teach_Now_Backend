@@ -124,7 +124,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 STRICT FILTERS
+        | 🔥 FILTERS (STRICT)
         |--------------------------------------------------------------------------
         */
             if ($request->filled('institution_type')) {
@@ -151,18 +151,18 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔍 SEARCH JOBS (FIXED LOGIC)
+        | 🔍 SEARCH WITH SCORING
         |--------------------------------------------------------------------------
         */
             $searchQuery = clone $baseQuery;
 
             if ($keyword) {
+
+                // 🔥 WHERE (same logic as before)
                 $searchQuery->where(function ($q) use ($keyword, $words) {
 
-                    // ✅ 1. Full phrase match (highest priority)
                     $q->where('title', 'LIKE', "%{$keyword}%");
 
-                    // ✅ 2. AND logic (all words must match)
                     if (!empty($words)) {
                         $q->orWhere(function ($qq) use ($words) {
                             foreach ($words as $word) {
@@ -176,15 +176,37 @@ class PublicAPIController extends Controller
                     }
                 });
 
-                // 🔥 Ranking
-                $searchQuery->orderByRaw("
-                CASE
-                    WHEN title LIKE ? THEN 1
-                    WHEN keywords LIKE ? THEN 2
-                    WHEN description LIKE ? THEN 3
-                    ELSE 4
-                END
-            ", ["%{$keyword}%", "%{$keyword}%", "%{$keyword}%"]);
+                /*
+            |--------------------------------------------------------------------------
+            | 🔥 SCORE SYSTEM
+            |--------------------------------------------------------------------------
+            */
+                $scoreSql = "(
+                (CASE WHEN title LIKE ? THEN 100 ELSE 0 END) +
+                (CASE WHEN keywords LIKE ? THEN 60 ELSE 0 END) +
+                (CASE WHEN description LIKE ? THEN 30 ELSE 0 END)
+            )";
+
+                $bindings = [
+                    "%{$keyword}%",
+                    "%{$keyword}%",
+                    "%{$keyword}%"
+                ];
+
+                // 🔥 add per-word scoring
+                foreach ($words as $word) {
+                    $scoreSql .= " +
+                (CASE WHEN title LIKE ? THEN 40 ELSE 0 END) +
+                (CASE WHEN keywords LIKE ? THEN 25 ELSE 0 END)";
+
+                    $bindings[] = "%{$word}%";
+                    $bindings[] = "%{$word}%";
+                }
+
+                // apply score
+                $searchQuery->select('*')
+                    ->selectRaw("$scoreSql as relevance_score", $bindings)
+                    ->orderByDesc('relevance_score');
             }
 
             if ($location) {
@@ -195,7 +217,7 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔁 SIMILAR JOBS (LOOSE MATCH)
+        | 🔁 SIMILAR JOBS (LOOSE)
         |--------------------------------------------------------------------------
         */
             $similarQuery = clone $baseQuery;
@@ -222,17 +244,12 @@ class PublicAPIController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | 🔥 FALLBACK LEVEL 1
+        | 🔥 FALLBACK (IF NO SEARCH RESULTS)
         |--------------------------------------------------------------------------
         */
             if ($searchJobs->total() == 0) {
 
-                $fallbackQuery = Job::with(['employer:id,company_name,company_logo,institution_type'])
-                    ->where('is_active', true)
-                    ->where('expires_at', '>', now())
-                    ->where('status', 'approved')
-                    ->where('job_status', 'open')
-                    ->where('application_deadline', '>', now());
+                $fallbackQuery = clone $baseQuery;
 
                 if (!empty($words)) {
                     $fallbackQuery->where(function ($q) use ($words) {
@@ -249,41 +266,6 @@ class PublicAPIController extends Controller
                 }
 
                 $similarJobs = $fallbackQuery->paginate($perPage, ['*'], 'similar_page');
-
-                /*
-            |--------------------------------------------------------------------------
-            | 🔥 FALLBACK LEVEL 2 (FILL WITH LATEST)
-            |--------------------------------------------------------------------------
-            */
-                if ($similarJobs->total() < 5) {
-
-                    $latestQuery = Job::with(['employer:id,company_name,company_logo,institution_type'])
-                        ->where('is_active', true)
-                        ->where('expires_at', '>', now())
-                        ->where('status', 'approved')
-                        ->where('job_status', 'open')
-                        ->where('application_deadline', '>', now())
-                        ->latest();
-
-                    if ($location) {
-                        $latestQuery->where('location', 'LIKE', "%{$location}%");
-                    }
-
-                    if ($similarJobs->total() > 0) {
-                        $latestQuery->whereNotIn('id', $similarJobs->pluck('id'));
-                    }
-
-                    $extraJobs = $latestQuery->take(5)->get();
-
-                    $merged = collect($similarJobs->items())->merge($extraJobs);
-
-                    $similarJobs = new \Illuminate\Pagination\LengthAwarePaginator(
-                        $merged,
-                        $merged->count(),
-                        $perPage,
-                        1
-                    );
-                }
             }
 
             /*
@@ -305,7 +287,6 @@ class PublicAPIController extends Controller
         */
             return response()->json([
                 'status' => true,
-                'fallback' => $searchJobs->total() == 0,
 
                 'search_jobs' => [
                     'total' => $searchJobs->total(),
